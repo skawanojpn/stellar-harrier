@@ -2250,6 +2250,46 @@
           list.length = 0;
         }
 
+        // エンディング開始時、画面上に残っている敵弾をただ消すのではなく
+        // その場で弾けさせてから消す。ボス戦の余韻の弾がエンディング演出中
+        // に静止画のように浮いたまま見えてしまう(updateEndingはupdateEnemy
+        // Bulletsを呼ばないため弾自体はもう動かない)のを避けるための処理。
+        function popEnemyBullets() {
+          for (var i = 0; i < enemyBullets.length; i++) {
+            spawnBulletPopEffect(enemyBullets[i].mesh.position);
+          }
+          clearGroup(enemyBullets);
+        }
+
+        // spawnExplosionより小規模・無音のパーティクル弾け。敵弾1発ごとに
+        // 爆発音を鳴らすと同時多発時にうるさくなるため専用に用意する。
+        function spawnBulletPopEffect(position) {
+          var particleCount = 5;
+          for (var i = 0; i < particleCount; i++) {
+            var geo = new THREE.SphereGeometry(0.08, 5, 5);
+            var mat = new THREE.MeshBasicMaterial({
+              color: 0xffee88,
+              transparent: true,
+              opacity: 1,
+            });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(position);
+            scene.add(mesh);
+            var angle = (i / particleCount) * Math.PI * 2;
+            var speed = 2 + Math.random() * 3;
+            explosions.push({
+              mesh: mesh,
+              life: 0.3 + Math.random() * 0.2,
+              maxLife: 0.5,
+              vel: new THREE.Vector3(
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed,
+                (Math.random() - 0.5) * speed,
+              ),
+            });
+          }
+        }
+
         // ゲームオーバー/全クリア共通のリザルト内訳(撃破数・被弾数・
         // 最大コンボ)をHTML断片として組み立てる。
         function buildStatsSummaryHtml() {
@@ -2343,7 +2383,7 @@
           playStageClearSound();
           clearGroup(enemies);
           clearGroup(bullets);
-          clearGroup(enemyBullets);
+          popEnemyBullets();
           clearGroup(obstacles);
           hideBossHpBar();
           buildSky({
@@ -2361,6 +2401,10 @@
           if (groundMesh && groundMesh.material.map) {
             groundMesh.material.map.offset.y = groundOffset * 0.03;
           }
+          // ボス戦の余韻で残っていた敵弾のポップ演出(popEnemyBullets)を
+          // 最後までフェードアウトさせるため、エンディング中もパーティクル
+          // 更新だけは継続する。
+          updateExplosions(dt);
 
           if (endingPhase === "cruise") {
             // 飛び去るまでの間は通常プレイと同じ操作性(キーボード/マウス/
