@@ -1,0 +1,5035 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>STELLAR HARRIER</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        overflow: hidden;
+        font-family: "Courier New", monospace;
+        /* body側にtouch-actionが指定されていないと、ブラウザがタッチを
+           スクロール/ズームジェスチャーの候補として解釈し続けることが
+           あり、1回目のタッチ後に以降の入力がスクロール扱いになる
+           現象につながる。html/body両方に明示することで確実に防ぐ。 */
+        touch-action: none;
+        overscroll-behavior: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      #canvas-container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+        /* スマホでタッチ操作(ドラッグ/タップ)を確実にpointerイベントへ
+           渡すため、ブラウザ標準のスクロール/ピンチズーム/ダブルタップ
+           ズームジェスチャー解釈を無効化する。これがないと、モバイル
+           ブラウザがタッチをスクロール候補として先に処理しようとし、
+           pointerdown/pointermoveが遅延・キャンセルされることがある。 */
+        touch-action: none;
+      }
+      #canvas-container canvas {
+        display: block;
+        touch-action: none;
+      }
+      #hud {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 12px 20px;
+        box-sizing: border-box;
+        display: flex;
+        justify-content: space-between;
+        color: #ffcc00;
+        text-shadow: 0 0 6px rgba(255, 150, 0, 0.8);
+        font-size: 22px;
+        /* HUDは画面上部を横断する透明な帯だが、テキスト表示のみで操作対象
+           ではないため、タッチ/クリックを下のcanvasへ透過させる。これが
+           ないと画面上部でのタッチ操作が吸収されてしまう。 */
+        pointer-events: none;
+        font-weight: bold;
+        pointer-events: none;
+        z-index: 10;
+      }
+      #stage-banner {
+        position: absolute;
+        top: 45%;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        color: #fff;
+        text-shadow: 0 0 12px rgba(255, 255, 255, 0.9);
+        font-size: 36px;
+        font-weight: bold;
+        letter-spacing: 6px;
+        z-index: 15;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+      }
+      #stage-banner.visible {
+        opacity: 1;
+      }
+      #boss-warning {
+        position: absolute;
+        top: 38%;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        z-index: 20;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+      #boss-warning.visible {
+        opacity: 1;
+        animation: boss-warning-flash 0.3s step-start infinite;
+      }
+      #boss-warning-label {
+        color: #ff3333;
+        text-shadow:
+          0 0 16px rgba(255, 51, 51, 0.9),
+          0 0 4px #fff;
+        font-size: 26px;
+        font-weight: bold;
+        letter-spacing: 8px;
+      }
+      #boss-warning-name {
+        color: #fff;
+        text-shadow:
+          0 0 20px rgba(255, 68, 34, 0.9),
+          0 0 6px #ff8844;
+        font-size: 52px;
+        font-weight: bold;
+        letter-spacing: 4px;
+        margin-top: 4px;
+      }
+      @keyframes boss-warning-flash {
+        50% {
+          opacity: 0.35;
+        }
+      }
+      #boss-hp-container {
+        position: absolute;
+        top: 56px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 50%;
+        max-width: 480px;
+        z-index: 10;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+      #boss-hp-container.visible {
+        opacity: 1;
+      }
+      #boss-hp-label {
+        color: #ff4444;
+        text-shadow: 0 0 6px rgba(255, 0, 0, 0.8);
+        font-size: 14px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        margin-bottom: 4px;
+        text-align: center;
+      }
+      #boss-hp-bar-outer {
+        width: 100%;
+        height: 14px;
+        border: 2px solid #ff4444;
+        border-radius: 3px;
+        background: rgba(0, 0, 0, 0.5);
+        box-sizing: border-box;
+      }
+      #boss-hp-bar-inner {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #ff2222, #ff8800);
+        transition: width 0.15s ease;
+      }
+      #message-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #ffcc00;
+        text-shadow: 0 0 10px rgba(255, 150, 0, 0.9);
+        z-index: 20;
+        background: rgba(0, 0, 0, 0.55);
+      }
+      #message-overlay.hidden {
+        display: none;
+      }
+      #message-overlay h1 {
+        font-size: 42px;
+        letter-spacing: 4px;
+        margin: 0 0 16px;
+        text-align: center;
+        animation: title-glow 1.8s ease-in-out infinite;
+      }
+      @keyframes title-glow {
+        0%,
+        100% {
+          text-shadow:
+            0 0 10px rgba(255, 150, 0, 0.9),
+            0 0 20px rgba(255, 100, 0, 0.4);
+        }
+        50% {
+          text-shadow:
+            0 0 20px rgba(255, 200, 0, 1),
+            0 0 40px rgba(255, 150, 0, 0.8);
+        }
+      }
+      #message-overlay p {
+        font-size: 16px;
+        margin: 4px 0;
+        text-align: center;
+      }
+      #message-overlay p.stats-summary {
+        font-size: 12px;
+        color: #aaccff;
+        opacity: 0.85;
+        margin-top: 8px;
+        line-height: 1.6;
+      }
+      #high-score-display {
+        font-size: 20px;
+        color: #66ddff;
+        text-shadow: 0 0 8px rgba(100, 200, 255, 0.8);
+        margin: 4px 0 12px;
+        font-weight: bold;
+      }
+      #combo-display {
+        position: absolute;
+        top: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #ffee44;
+        text-shadow: 0 0 10px rgba(255, 230, 0, 0.9);
+        font-size: 20px;
+        font-weight: bold;
+        letter-spacing: 2px;
+        z-index: 10;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+      #combo-display.visible {
+        opacity: 1;
+      }
+      #message-overlay button {
+        margin-top: 24px;
+        padding: 10px 28px;
+        font-size: 18px;
+        font-family: inherit;
+        font-weight: bold;
+        background: #ffcc00;
+        color: #000;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #mute-button {
+        position: absolute;
+        bottom: 16px;
+        right: 16px;
+        z-index: 25;
+        background: rgba(0, 0, 0, 0.5);
+        color: #ffcc00;
+        border: 1px solid #ffcc00;
+        border-radius: 4px;
+        padding: 6px 12px;
+        font-family: inherit;
+        cursor: pointer;
+      }
+      #pause-button {
+        position: absolute;
+        bottom: 16px;
+        right: 110px;
+        z-index: 25;
+        background: rgba(0, 0, 0, 0.5);
+        color: #ffcc00;
+        border: 1px solid #ffcc00;
+        border-radius: 4px;
+        padding: 6px 12px;
+        font-family: inherit;
+        cursor: pointer;
+      }
+      #flash-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 30;
+      }
+      #pause-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #ffcc00;
+        text-shadow: 0 0 10px rgba(255, 150, 0, 0.9);
+        z-index: 26;
+        background: rgba(0, 0, 0, 0.7);
+      }
+      #pause-overlay.hidden {
+        display: none;
+      }
+      #pause-overlay h1 {
+        font-size: 36px;
+        letter-spacing: 6px;
+        margin: 0 0 8px;
+      }
+      #pause-overlay p {
+        font-size: 14px;
+        opacity: 0.8;
+      }
+      #pause-overlay button {
+        margin-top: 20px;
+        padding: 8px 24px;
+        font-size: 15px;
+        font-family: inherit;
+        font-weight: bold;
+        background: #ffcc00;
+        color: #000;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #stage-select-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #ffcc00;
+        text-shadow: 0 0 10px rgba(255, 150, 0, 0.9);
+        z-index: 27;
+        background: rgba(0, 0, 0, 0.85);
+      }
+      #stage-select-overlay.hidden {
+        display: none;
+      }
+      #stage-select-overlay h1 {
+        font-size: 28px;
+        letter-spacing: 4px;
+        margin: 0 0 6px;
+      }
+      #stage-select-overlay p {
+        font-size: 13px;
+        opacity: 0.75;
+        margin: 0 0 20px;
+      }
+      #stage-select-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .stage-select-item {
+        font-size: 20px;
+        padding: 8px 32px;
+        border: 2px solid transparent;
+        border-radius: 4px;
+        cursor: pointer;
+        text-align: center;
+      }
+      .stage-select-item.selected {
+        border-color: #ffcc00;
+        background: rgba(255, 204, 0, 0.15);
+      }
+      #stage-select-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .stage-select-tab {
+        font-size: 14px;
+        padding: 6px 20px;
+        border: 2px solid #665500;
+        border-radius: 4px;
+        cursor: pointer;
+        color: #ffcc00;
+        opacity: 0.6;
+        background: transparent;
+        font-family: inherit;
+      }
+      .stage-select-tab.active {
+        opacity: 1;
+        border-color: #ffcc00;
+        background: rgba(255, 204, 0, 0.15);
+      }
+      .score-popup {
+        position: absolute;
+        color: #ffee44;
+        text-shadow: 0 0 8px rgba(255, 230, 0, 0.9);
+        font-size: 18px;
+        font-weight: bold;
+        pointer-events: none;
+        z-index: 12;
+        transform: translate(-50%, -50%);
+        animation: score-popup-rise 1s ease-out forwards;
+      }
+      .score-popup.boss-defeat {
+        font-size: 28px;
+        color: #ff6644;
+        text-shadow: 0 0 12px rgba(255, 100, 0, 1);
+      }
+      @keyframes score-popup-rise {
+        0% {
+          opacity: 1;
+          transform: translate(-50%, -50%);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -150%);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="canvas-container">
+      <div id="hud">
+        <span id="score-display">SCORE: 0</span>
+        <span id="stage-display">STAGE 1: FANTASY ZONE</span>
+        <span id="lives-display">LIVES: 3</span>
+      </div>
+      <div id="stage-banner"></div>
+      <div id="boss-warning">
+        <div id="boss-warning-label">WARNING</div>
+        <div id="boss-warning-name"></div>
+      </div>
+      <div id="boss-hp-container">
+        <div id="boss-hp-label">BOSS</div>
+        <div id="boss-hp-bar-outer"><div id="boss-hp-bar-inner"></div></div>
+      </div>
+      <div id="combo-display"></div>
+      <div id="flash-overlay"></div>
+      <div id="pause-overlay" class="hidden">
+        <h1>PAUSED</h1>
+        <p>Pキーで再開</p>
+        <button id="pause-quit-button" type="button">QUIT TO TITLE</button>
+      </div>
+      <div id="stage-select-overlay" class="hidden">
+        <h1 id="stage-select-title">STAGE SELECT</h1>
+        <p>↑↓で選択、スペース/クリックで決定、Escでキャンセル、←→でタブ切替</p>
+        <div id="stage-select-tabs">
+          <button
+            class="stage-select-tab active"
+            type="button"
+            data-tab="stage"
+          >
+            STAGE
+          </button>
+          <button class="stage-select-tab" type="button" data-tab="boss">
+            BOSS TEST
+          </button>
+          <button class="stage-select-tab" type="button" data-tab="ending">
+            ENDING
+          </button>
+        </div>
+        <div id="stage-select-list"></div>
+      </div>
+      <button id="pause-button" type="button">PAUSE</button>
+      <button id="mute-button" type="button">SOUND: ON</button>
+      <div id="message-overlay">
+        <h1>STELLAR HARRIER</h1>
+        <div id="high-score-display">HIGH SCORE: 0</div>
+        <p>移動: [矢印キー] or [WASD] or [テンキー] or [マウスドラッグ]</p>
+        <p>ショット: [スペースキー] or [マウスクリック]</p>
+        <button id="start-button" type="button">START</button>
+      </div>
+    </div>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"
+      integrity="sha384-qOkzR5Ke/XkQxuGVJ9hpFEpDlcoLtWwVYhnJf06cLIZa2vaIptSqaubivErzmD5O"
+      crossorigin="anonymous"
+    ></script>
+    <script>
+      (function () {
+        "use strict";
+
+        // ============================================================
+        // 純粋ロジック (src/game/*.ts と同じ考え方をブラウザ実行用に複製)
+        // ============================================================
+
+        function clampPosition(pos, bounds) {
+          return {
+            x: Math.min(Math.max(pos.x, bounds.minX), bounds.maxX),
+            y: Math.min(Math.max(pos.y, bounds.minY), bounds.maxY),
+          };
+        }
+
+        // FORMATION_INTERVAL回に1回、通常の単騎出現の代わりに3機編隊
+        // (原作のスペースハリアーらしい横一列の編隊美)を出現させる。
+        var FORMATION_INTERVAL = 5;
+        var FORMATION_OFFSETS = [-2.5, 0, 2.5];
+
+        function generateSpawnSchedule(
+          durationSeconds,
+          intervalSeconds,
+          bossAtSeconds,
+          domEnabled,
+          tomosEnabled,
+        ) {
+          var lanes = [-6, -3, 0, 3, 6];
+          var kinds = ["grunt", "grunt", "shooter", "dasher", "weaver"];
+          if (domEnabled) kinds.push("dom");
+          if (tomosEnabled) kinds.push("tomos");
+          var events = [];
+          var index = 0;
+          for (
+            var t = intervalSeconds;
+            t < durationSeconds;
+            t += intervalSeconds
+          ) {
+            var kind = kinds[index % kinds.length];
+            var laneX = lanes[index % lanes.length];
+            var isFormation =
+              index > 0 &&
+              index % FORMATION_INTERVAL === 0 &&
+              (kind === "grunt" || kind === "shooter");
+            if (isFormation) {
+              for (var fi = 0; fi < FORMATION_OFFSETS.length; fi++) {
+                events.push({
+                  time: t,
+                  kind: kind,
+                  laneX: laneX + FORMATION_OFFSETS[fi],
+                });
+              }
+            } else {
+              events.push({ time: t, kind: kind, laneX: laneX });
+            }
+            index += 1;
+          }
+          if (bossAtSeconds !== undefined) {
+            events.push({ time: bossAtSeconds, kind: "boss", laneX: 0 });
+          }
+          events.sort(function (a, b) {
+            return a.time - b.time;
+          });
+          return events;
+        }
+
+        function createPrng(seed) {
+          var state = seed % 2147483647;
+          if (state <= 0) state += 2147483646;
+          return function () {
+            state = (state * 16807) % 2147483647;
+            return (state - 1) / 2147483646;
+          };
+        }
+
+        var OBSTACLE_KINDS = ["pillar", "rock", "ruins", "floating_island"];
+
+        function generateObstacleSchedule(
+          durationSeconds,
+          intervalSeconds,
+          seed,
+        ) {
+          var lanes = [-8, -4, 4, 8];
+          var random = createPrng(seed);
+          var events = [];
+          for (
+            var t = intervalSeconds;
+            t < durationSeconds;
+            t += intervalSeconds
+          ) {
+            var laneIndex = Math.floor(random() * lanes.length);
+            var kindIndex = Math.floor(random() * OBSTACLE_KINDS.length);
+            events.push({
+              time: t,
+              laneX: lanes[laneIndex],
+              kind: OBSTACLE_KINDS[kindIndex],
+            });
+          }
+          return events;
+        }
+
+        function scoreForEnemy(kind) {
+          if (kind === "grunt") return 100;
+          if (kind === "shooter") return 200;
+          if (kind === "dasher") return 150;
+          if (kind === "weaver") return 250;
+          if (kind === "dom") return 400;
+          return 5000;
+        }
+
+        function circlesIntersect(a, b) {
+          var dx = a.x - b.x;
+          var dy = a.y - b.y;
+          var distSq = dx * dx + dy * dy;
+          var r = a.radius + b.radius;
+          return distSq <= r * r;
+        }
+
+        var STAGES = [
+          {
+            id: 1,
+            name: "FANTASY ZONE",
+            durationSeconds: 60,
+            spawnIntervalSeconds: 2.2,
+            obstacleIntervalSeconds: 4,
+            bossAtSeconds: 55,
+            groundColor: 0xff2266,
+            skyColorTop: 0x220044,
+            skyColorBottom: 0x662299,
+            enemySpeedMultiplier: 1,
+            bossType: "scaler",
+            bossName: "SCALER",
+            domEnabled: false,
+            tomosEnabled: false,
+          },
+          {
+            id: 2,
+            name: "CRYSTAL CANYON",
+            durationSeconds: 65,
+            spawnIntervalSeconds: 1.9,
+            obstacleIntervalSeconds: 3.5,
+            bossAtSeconds: 60,
+            // 結晶の谷: FROZEN NEBULA(氷/水色)と混同しないよう、紫〜
+            // マゼンタを基調にした幻想的な結晶色にする。
+            groundColor: 0xaa55ff,
+            skyColorTop: 0x1a0033,
+            skyColorBottom: 0x6622aa,
+            enemySpeedMultiplier: 1.1,
+            bossType: "godani",
+            bossName: "GODANI",
+            domEnabled: true,
+            tomosEnabled: false,
+          },
+          {
+            id: 3,
+            name: "FROZEN NEBULA",
+            durationSeconds: 68,
+            spawnIntervalSeconds: 1.8,
+            obstacleIntervalSeconds: 3.3,
+            bossAtSeconds: 62,
+            groundColor: 0x88ddff,
+            skyColorTop: 0x001a33,
+            skyColorBottom: 0x2266aa,
+            enemySpeedMultiplier: 1.18,
+            bossType: "tomos",
+            bossName: "TOMOS",
+            domEnabled: true,
+            tomosEnabled: true,
+          },
+          {
+            id: 4,
+            name: "INFERNO CORE",
+            durationSeconds: 72,
+            spawnIntervalSeconds: 1.6,
+            obstacleIntervalSeconds: 3,
+            bossAtSeconds: 65,
+            groundColor: 0xff6600,
+            skyColorTop: 0x220000,
+            skyColorBottom: 0x881100,
+            enemySpeedMultiplier: 1.25,
+            bossType: "sarpedon",
+            bossName: "JET STREAM DOMS",
+            domEnabled: true,
+            tomosEnabled: true,
+          },
+          {
+            id: 5,
+            name: "VOID GARDEN",
+            durationSeconds: 75,
+            spawnIntervalSeconds: 1.5,
+            obstacleIntervalSeconds: 2.8,
+            bossAtSeconds: 68,
+            groundColor: 0x99ff66,
+            skyColorTop: 0x0a1a00,
+            skyColorBottom: 0x335500,
+            enemySpeedMultiplier: 1.35,
+            bossType: "barbarian",
+            bossName: "MOAI",
+            domEnabled: true,
+            tomosEnabled: true,
+          },
+          {
+            id: 6,
+            name: "HALL OF LEGENDS",
+            durationSeconds: 20,
+            spawnIntervalSeconds: 2.5,
+            obstacleIntervalSeconds: 5,
+            // このステージはボスラッシュ専用(bossAtSecondsによる単発出現は
+            // 使わず、bossSequenceで指定した順にボスを1体ずつ連戦させる)。
+            bossAtSeconds: undefined,
+            bossSequence: [
+              "scaler",
+              "godani",
+              "tomos",
+              "sarpedon",
+              "barbarian",
+            ],
+            groundColor: 0x9955ff,
+            skyColorTop: 0x0a0022,
+            skyColorBottom: 0x440066,
+            enemySpeedMultiplier: 1.4,
+            bossType: "generic",
+            bossName: "BOSS RUSH",
+            domEnabled: false,
+            tomosEnabled: false,
+          },
+          {
+            id: 7,
+            name: "ABSYMBEL",
+            durationSeconds: 90,
+            spawnIntervalSeconds: 1.3,
+            obstacleIntervalSeconds: 2.5,
+            bossAtSeconds: 80,
+            groundColor: 0xffcc00,
+            skyColorTop: 0x1a0011,
+            skyColorBottom: 0x550022,
+            enemySpeedMultiplier: 1.5,
+            bossType: "final",
+            bossName: "ABSYMBEL",
+            domEnabled: true,
+            tomosEnabled: true,
+          },
+        ];
+
+        function getStageConfig(stageId) {
+          for (var i = 0; i < STAGES.length; i++) {
+            if (STAGES[i].id === stageId) return STAGES[i];
+          }
+          throw new Error("存在しないstageIdです: " + stageId);
+        }
+
+        function nextStageId(currentStageId) {
+          for (var i = 0; i < STAGES.length; i++) {
+            if (STAGES[i].id === currentStageId + 1) return STAGES[i].id;
+          }
+          return null;
+        }
+
+        // ============================================================
+        // サウンド (Web Audio API によるチップチューン風 SE/BGM 生成)
+        // ============================================================
+
+        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+        var audioCtx = null;
+        var soundEnabled = true;
+        var bgmGain = null;
+        var bgmTimer = null;
+        var bgmStep = 0;
+
+        function ensureAudio() {
+          if (!audioCtx && AudioCtx) {
+            audioCtx = new AudioCtx();
+          }
+          return audioCtx;
+        }
+
+        // BGM再生用のマスターGainNode。BGMのすべての音はこのノードを経由
+        // させることで、stopBgmAndSilence()時に一括かつ即座に無音化できる
+        // (setIntervalを止めただけでは、既に発音中の個々のOscillatorNode
+        // は自然減衰が終わるまで鳴り続けてしまうため)。
+        function ensureBgmGain(ctx) {
+          if (!bgmGain) {
+            bgmGain = ctx.createGain();
+            bgmGain.gain.value = 1;
+            bgmGain.connect(ctx.destination);
+          }
+          return bgmGain;
+        }
+
+        function playTone(freq, duration, type, volume, destinationNode) {
+          if (!soundEnabled) return;
+          var ctx = ensureAudio();
+          if (!ctx) return;
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.type = type || "square";
+          osc.frequency.value = freq;
+          gain.gain.value = volume !== undefined ? volume : 0.15;
+          gain.gain.exponentialRampToValueAtTime(
+            0.001,
+            ctx.currentTime + duration,
+          );
+          osc.connect(gain);
+          gain.connect(destinationNode || ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + duration);
+        }
+
+        function playShotSound() {
+          playTone(880, 0.08, "square", 0.08);
+        }
+
+        function playExplosionSound() {
+          if (!soundEnabled) return;
+          var ctx = ensureAudio();
+          if (!ctx) return;
+          var bufferSize = ctx.sampleRate * 0.3;
+          var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          var data = buffer.getChannelData(0);
+          for (var i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+          }
+          var noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          var gain = ctx.createGain();
+          gain.gain.value = 0.2;
+          noise.connect(gain);
+          gain.connect(ctx.destination);
+          noise.start();
+        }
+
+        function playHitSound() {
+          playTone(220, 0.2, "sawtooth", 0.15);
+        }
+
+        function playNearMissSound() {
+          playTone(1200, 0.05, "sine", 0.04);
+        }
+
+        // 自機被弾時の効果音: 低いノイズバーストに下降ピッチのビープを
+        // 重ね、敵撃破音(playHitSound)とは異なる「やられた」衝撃感を
+        // 出す。
+        function playPlayerDamageSound() {
+          if (!soundEnabled) return;
+          var ctx = ensureAudio();
+          if (!ctx) return;
+          var bufferSize = ctx.sampleRate * 0.25;
+          var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          var data = buffer.getChannelData(0);
+          for (var i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+          }
+          var noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          var noiseFilter = ctx.createBiquadFilter();
+          noiseFilter.type = "lowpass";
+          noiseFilter.frequency.value = 900;
+          var noiseGain = ctx.createGain();
+          noiseGain.gain.value = 0.35;
+          noise.connect(noiseFilter);
+          noiseFilter.connect(noiseGain);
+          noiseGain.connect(ctx.destination);
+          noise.start();
+
+          var osc = ctx.createOscillator();
+          var oscGain = ctx.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(320, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.3);
+          oscGain.gain.value = 0.2;
+          oscGain.gain.exponentialRampToValueAtTime(
+            0.001,
+            ctx.currentTime + 0.3,
+          );
+          osc.connect(oscGain);
+          oscGain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.3);
+        }
+
+        // ボス出現前の警告音: サイレンのように2音を交互に短く鳴らす。
+        function playBossWarningSound() {
+          var beepCount = 4;
+          for (var i = 0; i < beepCount; i++) {
+            (function (index) {
+              setTimeout(function () {
+                playTone(index % 2 === 0 ? 660 : 440, 0.18, "sawtooth", 0.16);
+              }, index * 220);
+            })(i);
+          }
+        }
+
+        // ステージクリア時のファンファーレ: 短い上昇フレーズの後、
+        // 主和音(ドミソ+オクターブ上のド)をブラス風(sawtooth)で重ねて
+        // 鳴らし、単なるチャイムより祝祭感のあるフレーズにする。
+        function playStageClearSound() {
+          var runNotes = [523, 659, 784, 1046, 784, 1046];
+          runNotes.forEach(function (freq, i) {
+            setTimeout(function () {
+              playTone(freq, 0.16, "square", 0.12);
+            }, i * 90);
+          });
+          var chordStartMs = runNotes.length * 90 + 60;
+          var chordNotes = [523, 659, 784, 1046];
+          setTimeout(function () {
+            chordNotes.forEach(function (freq) {
+              playTone(freq, 0.9, "sawtooth", 0.1);
+              playTone(freq * 2, 0.9, "triangle", 0.05);
+            });
+          }, chordStartMs);
+        }
+
+        // エンディング演出: 自機が奥・上方へ飛び去る瞬間の効果音。
+        // 上昇していくピッチスイープ(ワープ感)に、シューという上昇
+        // フィルターのノイズ(推進音)を重ねる。
+        function playFlyAwaySound() {
+          if (!soundEnabled) return;
+          var ctx = ensureAudio();
+          if (!ctx) return;
+          var duration = 1.6;
+
+          var osc = ctx.createOscillator();
+          var oscGain = ctx.createGain();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(180, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(
+            2200,
+            ctx.currentTime + duration,
+          );
+          oscGain.gain.setValueAtTime(0.001, ctx.currentTime);
+          oscGain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + 0.15);
+          oscGain.gain.exponentialRampToValueAtTime(
+            0.001,
+            ctx.currentTime + duration,
+          );
+          osc.connect(oscGain);
+          oscGain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + duration);
+
+          var bufferSize = ctx.sampleRate * duration;
+          var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          var data = buffer.getChannelData(0);
+          for (var i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+          }
+          var noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          var noiseFilter = ctx.createBiquadFilter();
+          noiseFilter.type = "bandpass";
+          noiseFilter.Q.value = 0.7;
+          noiseFilter.frequency.setValueAtTime(400, ctx.currentTime);
+          noiseFilter.frequency.exponentialRampToValueAtTime(
+            5000,
+            ctx.currentTime + duration,
+          );
+          var noiseGain = ctx.createGain();
+          noiseGain.gain.setValueAtTime(0.001, ctx.currentTime);
+          noiseGain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.2);
+          noiseGain.gain.exponentialRampToValueAtTime(
+            0.001,
+            ctx.currentTime + duration,
+          );
+          noise.connect(noiseFilter);
+          noiseFilter.connect(noiseGain);
+          noiseGain.connect(ctx.destination);
+          noise.start();
+        }
+
+        // ブラウザ標準のSpeechSynthesis APIで音声合成の"Get Ready!"を再生する。
+        // ゲーム開始直後(ステージ1・隠しステージ選択からの直接開始いずれも)
+        // に一度だけ呼ばれる。未対応ブラウザや音声合成が使えない環境では
+        // 何もしない(エラーにせず静かに諦める)。
+        // 英語の音声合成ボイスを優先度順に探す。Windows/Chrome/Edgeなどで
+        // 比較的自然に聞こえるボイス名を優先し、見つからなければ言語コード
+        // (en-*)が一致する最初のボイス、それも無ければブラウザのデフォルトに
+        // 委ねる(voiceを設定しない)。
+        // 男性ボイスを優先。SpeechSynthesisVoiceには性別プロパティが標準で
+        // 存在しないため、名前から男性と判別できる既知ボイスを列挙する。
+        var PREFERRED_MALE_VOICE_NAMES = [
+          "Microsoft Guy Online (Natural) - English (United States)",
+          "Microsoft David Desktop - English (United States)",
+          "Microsoft David - English (United States)",
+          "Google UK English Male",
+          "Daniel",
+          "Fred",
+          "Alex",
+        ];
+        // 名前で判定できない環境向けの補助キーワード(名前に含まれていれば
+        // 男性ボイスと推定する)。
+        var MALE_VOICE_NAME_HINTS = [
+          "male",
+          "guy",
+          "david",
+          "daniel",
+          "fred",
+          "alex",
+          "mark",
+          "james",
+        ];
+
+        function pickEnglishVoice() {
+          var voices = window.speechSynthesis.getVoices();
+          var englishVoices = voices.filter(function (v) {
+            return (
+              typeof v.lang === "string" &&
+              v.lang.slice(0, 2).toLowerCase() === "en"
+            );
+          });
+          if (englishVoices.length === 0) return undefined;
+
+          for (var i = 0; i < PREFERRED_MALE_VOICE_NAMES.length; i++) {
+            var found = englishVoices.find(function (v) {
+              return v.name === PREFERRED_MALE_VOICE_NAMES[i];
+            });
+            if (found) return found;
+          }
+
+          var byHint = englishVoices.find(function (v) {
+            var lowerName = v.name.toLowerCase();
+            return MALE_VOICE_NAME_HINTS.some(function (hint) {
+              return lowerName.indexOf(hint) !== -1;
+            });
+          });
+          if (byHint) return byHint;
+
+          // 男性と判別できるボイスが無ければ、見つかった英語ボイスの
+          // 先頭を使う(pitchを下げて低めの声質に寄せる側で補正する)。
+          return englishVoices[0];
+        }
+
+        function speakGetReady() {
+          // 英語ボイスが1つも見つからない環境(例: 英語音声パック未導入の
+          // 日本語OS)では、日本語訛りの発音になってしまうくらいなら
+          // 再生自体を諦める。中途半端な発音より無音の方がましなため。
+          var voice = pickEnglishVoice();
+          if (!voice) return;
+
+          window.speechSynthesis.cancel();
+          var utterance = new SpeechSynthesisUtterance("Get ready!");
+          utterance.voice = voice;
+          utterance.lang = voice.lang;
+          // 速めのテンポは維持しつつ、低めの男性ボイスらしい声質になるよう
+          // ピッチを下げる。rate=2.3では速すぎて聞き取りにくいとの
+          // フィードバックにより1.5へ調整。
+          utterance.rate = 1.5;
+          utterance.pitch = 0.7;
+          utterance.volume = 1;
+          window.speechSynthesis.speak(utterance);
+        }
+
+        function playGetReadyVoice() {
+          if (!soundEnabled) return;
+          if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+            return;
+          }
+          try {
+            // ボイス一覧が非同期ロードの場合、初回はgetVoices()が空配列を
+            // 返すことがある。その場合はロード完了イベントを一度だけ待つ。
+            if (window.speechSynthesis.getVoices().length === 0) {
+              window.speechSynthesis.addEventListener(
+                "voiceschanged",
+                function onVoicesChanged() {
+                  window.speechSynthesis.removeEventListener(
+                    "voiceschanged",
+                    onVoicesChanged,
+                  );
+                  speakGetReady();
+                },
+                { once: true },
+              );
+            } else {
+              speakGetReady();
+            }
+          } catch (e) {
+            // 音声合成が利用できない環境ではゲーム進行に影響させない
+          }
+        }
+
+        // メロディのルート音(melody配列の値)から自然短音階の三和音を組む。
+        // 平均律の半音比(2^(1/12))でルートからの半音距離を計算し、
+        // 短3度(+3半音)・完全5度(+7半音)を積むことで常時マイナー基調の
+        // 和音になる(全ステージがマイナー調で作られているため固定でよい)。
+        var SEMITONE = Math.pow(2, 1 / 12);
+        function buildMinorTriad(rootFreq) {
+          if (!rootFreq) return [0, 0, 0];
+          var third = rootFreq * Math.pow(SEMITONE, 3);
+          var fifth = rootFreq * Math.pow(SEMITONE, 7);
+          return [rootFreq, third, fifth];
+        }
+
+        // 各ステージの雰囲気(疾走感のあるマイナー調)をイメージしたオリジナル
+        // BGMパターン。0は休符。melody(3声和音の元になるルート音)/bass(1声)
+        // をステップシーケンスで鳴らす。
+        var BGM_PATTERNS = {
+          // メインテーマ: ♩=156、4/4拍子、2小節ループの楽譜のリズム構造を
+          // (テンポ・ベースの8分刻み・裏拍シンコペーション和音)を踏襲し、
+          // 音高はAマイナー(1小節目)→Dマイナー(2小節目、1♭相当)に当てはめる。
+          // 8分音符=1ステップ、1小節=8ステップ、2小節ループ=16ステップ。
+          stage1: {
+            stepMs: 192,
+            melody: [
+              0, 1318, 0, 1318, 0, 1568, 0, 1568, 0, 1174, 0, 1174, 0, 1397, 0,
+              1397,
+            ],
+            bass: [
+              220, 220, 220, 220, 220, 220, 220, 220, 196, 196, 196, 196, 196,
+              196, 196, 196,
+            ],
+          },
+          // CRYSTAL CANYON: 結晶の谷。硬質で反響するような高めの旋律に、
+          // FROZEN NEBULA(氷の宇宙)よりやや速いテンポを当て、切り立った
+          // 渓谷を疾走する緊張感を出す。
+          stage2: {
+            stepMs: 115,
+            melody: [
+              587, 0, 659, 0, 698, 0, 659, 587, 523, 0, 587, 0, 523, 0, 466, 0,
+              587, 0, 659, 0, 698, 0, 784, 698, 659, 0, 587, 0, 523, 0, 0, 0,
+            ],
+            bass: [
+              294, 0, 0, 0, 294, 0, 0, 0, 262, 0, 0, 0, 233, 0, 0, 0, 294, 0, 0,
+              0, 294, 0, 0, 0, 330, 0, 0, 0, 294, 0, 0, 0,
+            ],
+          },
+          // FROZEN NEBULA: 冷たく神秘的な氷の宇宙空間。テンポは中庸、
+          // 音域は高めで金属的な響き(square波)を活かした澄んだ旋律。
+          stage3: {
+            stepMs: 108,
+            melody: [
+              880, 0, 988, 0, 1047, 0, 988, 880, 784, 0, 880, 0, 784, 0, 698, 0,
+              880, 0, 988, 0, 1047, 0, 1175, 1047, 988, 0, 880, 0, 784, 0, 0, 0,
+            ],
+            bass: [
+              440, 0, 0, 0, 440, 0, 0, 0, 392, 0, 0, 0, 349, 0, 0, 0, 440, 0, 0,
+              0, 440, 0, 0, 0, 494, 0, 0, 0, 440, 0, 0, 0,
+            ],
+          },
+          // INFERNO CORE: 火山地帯のコア。不協和寄りの音使いとやや速めの
+          // テンポで、灼熱と機械的な圧迫感(JET STREAM DOMSの重機動兵器感)
+          // を両立させる。
+          stage4: {
+            stepMs: 100,
+            melody: [
+              466, 0, 554, 466, 415, 0, 466, 0, 349, 0, 415, 349, 311, 0, 349,
+              0, 466, 0, 554, 466, 622, 0, 554, 466, 415, 0, 466, 415, 349, 0,
+              0, 0,
+            ],
+            bass: [
+              233, 0, 0, 233, 208, 0, 0, 208, 175, 0, 0, 175, 156, 0, 0, 156,
+              233, 0, 0, 233, 311, 0, 0, 311, 233, 0, 0, 233, 175, 0, 0, 0,
+            ],
+          },
+          // VOID GARDEN: 浮遊感のある魔法的な庭園。マイナー7th的な浮遊和音を
+          // 意識した旋律で、疾走感を保ちつつ神秘性を出す。
+          stage5: {
+            stepMs: 92,
+            melody: [
+              622, 0, 698, 622, 587, 0, 622, 0, 494, 0, 587, 494, 440, 0, 494,
+              0, 622, 0, 698, 622, 784, 0, 698, 622, 587, 0, 622, 587, 494, 0,
+              0, 0,
+            ],
+            bass: [
+              311, 0, 0, 311, 294, 0, 0, 294, 247, 0, 0, 247, 220, 0, 0, 220,
+              311, 0, 0, 311, 392, 0, 0, 392, 311, 0, 0, 311, 247, 0, 0, 0,
+            ],
+          },
+          // HALL OF LEGENDS: これまでのボスが勢揃いするボスラッシュの
+          // 前哨ステージ。荘厳で回顧的な雰囲気を、低めのテンポと
+          // オクターブを跨ぐ旋律の跳躍で表現する。
+          stage6: {
+            stepMs: 120,
+            melody: [
+              440, 0, 587, 0, 523, 0, 440, 0, 392, 0, 523, 0, 466, 0, 392, 0,
+              440, 0, 659, 0, 587, 0, 523, 0, 440, 0, 523, 0, 466, 0, 0, 0, 0,
+              0,
+            ],
+            bass: [
+              220, 0, 0, 220, 196, 0, 0, 196, 175, 0, 0, 175, 196, 0, 0, 196,
+              220, 0, 0, 220, 247, 0, 0, 247, 220, 0, 0, 220, 196, 0, 0, 0,
+            ],
+          },
+          // ABSYMBEL: 最終ステージ。全曲中最速テンポで壮大かつ緊迫した
+          // 旋律。半音を交えて原作終盤の緊張感を演出する。
+          stage7: {
+            stepMs: 85,
+            melody: [
+              698, 0, 831, 698, 622, 0, 698, 0, 554, 0, 622, 554, 494, 0, 554,
+              0, 698, 0, 831, 698, 932, 0, 831, 698, 622, 0, 698, 622, 554, 0,
+              0, 0,
+            ],
+            bass: [
+              349, 0, 349, 0, 311, 0, 311, 0, 277, 0, 277, 0, 247, 0, 247, 0,
+              349, 0, 349, 0, 466, 0, 466, 0, 349, 0, 349, 0, 277, 0, 0, 0,
+            ],
+          },
+          boss: {
+            stepMs: 95,
+            melody: [
+              349, 0, 349, 415, 349, 0, 311, 0, 349, 0, 349, 415, 466, 0, 415,
+              0, 349, 0, 349, 415, 349, 0, 311, 0, 466, 0, 415, 349, 311, 0, 0,
+              0,
+            ],
+            bass: [
+              175, 0, 175, 0, 175, 0, 156, 0, 175, 0, 175, 0, 233, 0, 208, 0,
+              175, 0, 175, 0, 175, 0, 156, 0, 233, 0, 208, 0, 156, 0, 0, 0,
+            ],
+          },
+          // ゲームオーバー画面(RETRY待機の15秒間)専用BGM。静かで物悲しい
+          // 短調のフレーズをゆったりしたテンポでループさせる。32ステップ
+          // ×234ms=約7.5秒/ループ、15秒間で2周する。
+          gameover: {
+            stepMs: 234,
+            melody: [
+              440, 0, 0, 0, 392, 0, 0, 0, 349, 0, 0, 0, 330, 0, 0, 0, 294, 0, 0,
+              0, 330, 0, 0, 0, 349, 0, 0, 0, 0, 0, 0, 0,
+            ],
+            bass: [
+              220, 0, 0, 0, 196, 0, 0, 0, 175, 0, 0, 0, 165, 0, 0, 0, 147, 0, 0,
+              0, 165, 0, 0, 0, 175, 0, 0, 0, 0, 0, 0, 0,
+            ],
+          },
+        };
+
+        var currentBgmKey = "stage1";
+
+        function startBgm(patternKey) {
+          stopBgm();
+          if (!soundEnabled) return;
+          var ctx = ensureAudio();
+          if (!ctx) return;
+          var gainNode = ensureBgmGain(ctx);
+          gainNode.gain.cancelScheduledValues(ctx.currentTime);
+          gainNode.gain.setValueAtTime(1, ctx.currentTime);
+          currentBgmKey = patternKey || currentBgmKey;
+          var pattern = BGM_PATTERNS[currentBgmKey];
+          bgmStep = 0;
+          bgmTimer = setInterval(function () {
+            var melodyRoot = pattern.melody[bgmStep % pattern.melody.length];
+            var bassFreq = pattern.bass[bgmStep % pattern.bass.length];
+            if (melodyRoot > 0) {
+              var chord = buildMinorTriad(melodyRoot);
+              var melodyDuration = pattern.stepMs / 1000 + 0.03;
+              // 3声和音: ルート/短3度/完全5度を同時発音(ルートを主旋律として
+              // やや大きめ、上2声は和音の厚みとして控えめな音量にする)。
+              playTone(chord[0], melodyDuration, "square", 0.05, bgmGain);
+              playTone(chord[1], melodyDuration, "square", 0.03, bgmGain);
+              playTone(chord[2], melodyDuration, "square", 0.03, bgmGain);
+            }
+            if (bassFreq > 0) {
+              playTone(
+                bassFreq,
+                pattern.stepMs / 1000 + 0.05,
+                "triangle",
+                0.07,
+                bgmGain,
+              );
+            }
+            bgmStep += 1;
+          }, pattern.stepMs);
+        }
+
+        function stopBgm() {
+          if (bgmTimer) {
+            clearInterval(bgmTimer);
+            bgmTimer = null;
+          }
+        }
+
+        // BGM再生ループを止めるだけでなく、既に発音中の個々のトーンも
+        // マスターGainを0にすることで即座に無音化する。ゲームオーバーなど
+        // 「前のBGMを一切引きずらず切り替えたい」場面で使う。
+        function stopBgmAndSilence() {
+          stopBgm();
+          if (bgmGain && audioCtx) {
+            bgmGain.gain.cancelScheduledValues(audioCtx.currentTime);
+            bgmGain.gain.setValueAtTime(0, audioCtx.currentTime);
+          }
+        }
+
+        function toggleSound() {
+          soundEnabled = !soundEnabled;
+          document.getElementById("mute-button").textContent = soundEnabled
+            ? "SOUND: ON"
+            : "SOUND: OFF";
+          if (soundEnabled && state === STATE_PLAYING) {
+            startBgm();
+          } else {
+            stopBgm();
+            if (window.speechSynthesis) {
+              window.speechSynthesis.cancel();
+            }
+          }
+        }
+
+        // ============================================================
+        // Three.js シーン構築
+        // ============================================================
+
+        var scene, camera, renderer;
+        var player, playerLight, playerGroup, shieldMesh;
+        var skyMesh, starField;
+        var groundMesh;
+        var bullets = [];
+        var enemyBullets = [];
+        var enemies = [];
+        var explosions = [];
+        var obstacles = [];
+
+        var STATE_READY = "ready";
+        var STATE_PLAYING = "playing";
+        var STATE_STAGE_CLEAR = "stageclear";
+        var STATE_GAMEOVER = "gameover";
+        var STATE_PAUSED = "paused";
+        var STATE_STAGE_SELECT = "stageselect";
+        // 最終ボス撃破後、結果画面を出す前の専用エンディング演出状態。
+        var STATE_ENDING = "ending";
+        var state = STATE_READY;
+        var statePriorToPause = STATE_PLAYING;
+
+        // 隠しコマンド(管理者モード): タイトル画面限定で、ファミコン版
+        // 「裏ドルアーガ」と同じ 上上上上上上左左左左右右右 を入力すると
+        // ステージ選択画面を開く。
+        var SECRET_CODE = [
+          "ArrowUp",
+          "ArrowUp",
+          "ArrowUp",
+          "ArrowUp",
+          "ArrowUp",
+          "ArrowUp",
+          "ArrowLeft",
+          "ArrowLeft",
+          "ArrowLeft",
+          "ArrowLeft",
+          "ArrowRight",
+          "ArrowRight",
+          "ArrowRight",
+        ];
+        var secretCodeProgress = 0;
+
+        // 隠しコマンド(コナミコマンド): 上上下下左右左右BA。
+        // プレイ中に入力すると、ステージクリアまで無敵になる。
+        // ゲームオーバー画面で入力すると、LIVESを3に戻してゲームオーバーに
+        // なった場面から再開する(スコアは0にリセット)。
+        var KONAMI_CODE = [
+          "ArrowUp",
+          "ArrowUp",
+          "ArrowDown",
+          "ArrowDown",
+          "ArrowLeft",
+          "ArrowRight",
+          "ArrowLeft",
+          "ArrowRight",
+          "KeyB",
+          "KeyA",
+        ];
+        var konamiCodeProgress = 0;
+        var invincibleModeActive = false;
+        var selectedStageIndex = 0;
+        var stateBeforeStageSelect = STATE_READY;
+        // ステージ選択画面のタブ("stage" | "boss")。
+        var stageSelectTab = "stage";
+        // ボステストモード中かどうか。trueの間は雑魚敵・障害物の出現を
+        // 止め、ボス単体との戦闘に集中できるようにする。
+        var bossTestModeActive = false;
+        var bossTestBossType = null;
+
+        // ゲームオーバー画面: 突入直後は被弾直前の押しっぱなし入力で即リトライ
+        // してしまわないよう、一定時間RETRY操作を無効化する(GAMEOVER_INPUT_LOCK_SECONDS)。
+        // また一定時間操作がなければ自動的にタイトル画面へ戻す
+        // (GAMEOVER_AUTO_RETURN_SECONDS)。
+        var GAMEOVER_INPUT_LOCK_SECONDS = 1.5;
+        var GAMEOVER_AUTO_RETURN_SECONDS = 15;
+        var gameOverInputLockTimer = 0;
+        var gameOverAutoReturnTimer = 0;
+
+        var score = 0;
+        var lives = 3;
+        var elapsedTime = 0;
+        var spawnSchedule = [];
+        var nextSpawnIndex = 0;
+        // 警告演出中で、まだ実際には出現していないボスの出現待ちキュー。
+        var pendingBossSpawns = [];
+        var obstacleSchedule = [];
+        var nextObstacleIndex = 0;
+        var currentStage = STAGES[0];
+
+        // ボスラッシュステージ(bossSequenceを持つステージ)専用の進行状態。
+        // 1体倒すたびに次のボスを出現させ、全員倒すとステージクリア。
+        var bossRushIndex = 0;
+        var bossRushAllDefeated = false;
+
+        // ステージクリア→次ステージへの遷移(ゲームを止めずにそのまま
+        // 進行させる)。stageTransitionTimerが正の間はファンファーレを
+        // 鳴らしつつ現ステージの描画を続け、0になったら次ステージを
+        // 読み込む。
+        var STAGE_TRANSITION_SECONDS = 2;
+        var stageTransitionTimer = 0;
+        var stageTransitionNextId = null;
+
+        var HIGH_SCORE_STORAGE_KEY = "stellarHarrierHighScore";
+        var comboCount = 0;
+        var comboResetTimer = 0;
+        var COMBO_WINDOW_SECONDS = 2.5;
+        var DIFFICULTY_RAMP_SECONDS = 20;
+        var DIFFICULTY_RAMP_MAX = 0.6;
+
+        // リザルト画面の内訳表示用の集計値(ゲーム開始時にリセットされる)。
+        var stats = {
+          enemiesDefeated: 0,
+          bossesDefeated: 0,
+          hitsTaken: 0,
+          maxCombo: 0,
+        };
+
+        var PLAYER_BOUNDS = { minX: -9, maxX: 9, minY: -4, maxY: 5 };
+        var playerPos = { x: 0, y: 0 };
+        var playerVel = { x: 0, y: 0 };
+        var invulnerableTimer = 0;
+
+        var keys = {};
+        var pointerActive = false;
+        var activePointerId = null;
+        var pointerTarget = { x: 0, y: 0 };
+
+        var GROUND_SPEED = 26;
+        var groundOffset = 0;
+        var cameraShake = 0;
+
+        // 最終ボス撃破後のエンディング演出。晴れ渡ったクリーンな配色の空
+        // (残っていた敵弾・障害物の脅威を感じさせない、平和な帰還のイメ
+        // ージ)を数秒スクロールし続けた後、自機が奥かつ上方へ飛び去って
+        // フェードアウトする。
+        var ENDING_SKY_COLOR_TOP = 0x1a5fcc;
+        var ENDING_SKY_COLOR_BOTTOM = 0xaee0ff;
+        var ENDING_GROUND_COLOR = 0x66ccff;
+        var ENDING_CRUISE_SECONDS = 4;
+        var ENDING_FLY_AWAY_SECONDS = 3.5;
+        var endingTimer = 0;
+        var endingPhase = null;
+        // ボス警告演出の表示時間(ミリ秒)。この間はボスの出現を遅らせる。
+        var BOSS_WARNING_DURATION_MS = 1800;
+
+        // ボス登場時、FOVを一時的に狭めて疑似ズームインする演出用タイマー。
+        var BASE_FOV = 70;
+        var BOSS_ZOOM_FOV = 55;
+        var BOSS_ZOOM_DURATION = 1.2;
+        var bossZoomTimer = 0;
+
+        function createGroundTexture(baseColorHex) {
+          var size = 256;
+          var canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          var ctx = canvas.getContext("2d");
+          var baseColor = new THREE.Color(baseColorHex);
+          var r = Math.floor(baseColor.r * 255);
+          var g = Math.floor(baseColor.g * 255);
+          var b = Math.floor(baseColor.b * 255);
+          ctx.fillStyle =
+            "rgb(" +
+            Math.floor(r * 0.25) +
+            "," +
+            Math.floor(g * 0.25) +
+            "," +
+            Math.floor(b * 0.25) +
+            ")";
+          ctx.fillRect(0, 0, size, size);
+
+          var cell = 32;
+          for (var y = 0; y < size; y += cell) {
+            for (var x = 0; x < size; x += cell) {
+              var isAlt = (x / cell + y / cell) % 2 === 0;
+              ctx.fillStyle = isAlt
+                ? "rgb(" + r + "," + g + "," + b + ")"
+                : "rgb(" +
+                  Math.floor(r * 0.55) +
+                  "," +
+                  Math.floor(g * 0.55) +
+                  "," +
+                  Math.floor(b * 0.55) +
+                  ")";
+              ctx.fillRect(x, y, cell, cell);
+            }
+          }
+          ctx.strokeStyle = "rgba(255,255,255,0.15)";
+          ctx.lineWidth = 2;
+          for (var lx = 0; lx <= size; lx += cell) {
+            ctx.beginPath();
+            ctx.moveTo(lx, 0);
+            ctx.lineTo(lx, size);
+            ctx.stroke();
+          }
+          for (var ly = 0; ly <= size; ly += cell) {
+            ctx.beginPath();
+            ctx.moveTo(0, ly);
+            ctx.lineTo(size, ly);
+            ctx.stroke();
+          }
+
+          var texture = new THREE.CanvasTexture(canvas);
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.RepeatWrapping;
+          texture.repeat.set(16, 30);
+          return texture;
+        }
+
+        function buildSky(stage) {
+          if (skyMesh) {
+            scene.remove(skyMesh);
+          }
+          var size = 128;
+          var canvas = document.createElement("canvas");
+          canvas.width = 2;
+          canvas.height = size;
+          var ctx = canvas.getContext("2d");
+          var gradient = ctx.createLinearGradient(0, 0, 0, size);
+          gradient.addColorStop(
+            0,
+            "#" + new THREE.Color(stage.skyColorTop).getHexString(),
+          );
+          gradient.addColorStop(
+            1,
+            "#" + new THREE.Color(stage.skyColorBottom).getHexString(),
+          );
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, 2, size);
+          var texture = new THREE.CanvasTexture(canvas);
+
+          skyMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(280, 24, 16),
+            new THREE.MeshBasicMaterial({
+              map: texture,
+              side: THREE.BackSide,
+              fog: false,
+            }),
+          );
+          scene.add(skyMesh);
+        }
+
+        function buildStars() {
+          var starCount = 400;
+          var positions = new Float32Array(starCount * 3);
+          for (var i = 0; i < starCount; i++) {
+            var radius = 150 + Math.random() * 100;
+            var theta = Math.random() * Math.PI * 2;
+            var phi = Math.random() * Math.PI * 0.5;
+            positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+            positions[i * 3 + 1] = Math.abs(radius * Math.cos(phi)) * 0.6 + 10;
+            positions[i * 3 + 2] =
+              radius * Math.sin(phi) * Math.sin(theta) - 60;
+          }
+          var geo = new THREE.BufferGeometry();
+          geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+          var mat = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 1.2,
+            sizeAttenuation: true,
+          });
+          starField = new THREE.Points(geo, mat);
+          scene.add(starField);
+        }
+
+        function buildGround(stage) {
+          if (groundMesh) {
+            scene.remove(groundMesh);
+          }
+          var texture = createGroundTexture(stage.groundColor);
+          var groundGeo = new THREE.PlaneGeometry(240, 400, 4, 60);
+          var groundMat = new THREE.MeshBasicMaterial({
+            map: texture,
+            fog: true,
+          });
+          groundMesh = new THREE.Mesh(groundGeo, groundMat);
+          groundMesh.rotation.x = -Math.PI / 2;
+          groundMesh.position.y = -4;
+          groundMesh.position.z = -120;
+          groundMesh.name = "ground";
+          scene.add(groundMesh);
+        }
+
+        function init() {
+          scene = new THREE.Scene();
+          scene.fog = new THREE.Fog(0x1a0033, 50, 220);
+
+          camera = new THREE.PerspectiveCamera(
+            BASE_FOV,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            300,
+          );
+          camera.position.set(0, 2.2, 8);
+          camera.lookAt(0, 2, -40);
+
+          renderer = new THREE.WebGLRenderer({ antialias: true });
+          renderer.setSize(window.innerWidth, window.innerHeight);
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+          document
+            .getElementById("canvas-container")
+            .appendChild(renderer.domElement);
+
+          var ambient = new THREE.AmbientLight(0x8888aa, 0.9);
+          scene.add(ambient);
+          var sun = new THREE.DirectionalLight(0xffddaa, 0.8);
+          sun.position.set(10, 30, 10);
+          scene.add(sun);
+
+          buildSky(STAGES[0]);
+          buildStars();
+          buildGround(STAGES[0]);
+
+          playerGroup = new THREE.Group();
+          var playerGeo = new THREE.ConeGeometry(0.6, 1.6, 6);
+          var playerMat = new THREE.MeshStandardMaterial({
+            color: 0x33ccff,
+            emissive: 0x0033aa,
+          });
+          player = new THREE.Mesh(playerGeo, playerMat);
+          player.rotation.x = Math.PI / 2;
+          playerGroup.add(player);
+          playerGroup.position.set(0, 0, 2);
+          scene.add(playerGroup);
+
+          playerLight = new THREE.PointLight(0x66ccff, 1.2, 10);
+          playerGroup.add(playerLight);
+
+          var shieldGeo = new THREE.SphereGeometry(1.1, 12, 10);
+          var shieldMat = new THREE.MeshBasicMaterial({
+            color: 0x66ddff,
+            transparent: true,
+            opacity: 0.35,
+            wireframe: true,
+          });
+          shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+          shieldMesh.visible = false;
+          playerGroup.add(shieldMesh);
+
+          window.addEventListener("resize", onResize);
+          window.addEventListener("keydown", onKeyDown);
+          window.addEventListener("keyup", onKeyUp);
+          renderer.domElement.addEventListener("pointerdown", onPointerDown);
+          renderer.domElement.addEventListener("pointermove", onPointerMove);
+          window.addEventListener("pointerup", onPointerUp);
+          // GASのWebアプリはサンドボックス化されたiframe内で配信されるため、
+          // 環境によってはPointer Events APIのタッチ由来イベントが正しく
+          // 発火しないことがある。より互換性の高いTouch Events APIも
+          // 併用し、どちらか一方でも操作を拾えるようにする。
+          // {passive:false}+preventDefault()でスクロール等のデフォルト
+          // 挙動を止める。
+          renderer.domElement.addEventListener("touchstart", onTouchStart, {
+            passive: false,
+          });
+          renderer.domElement.addEventListener("touchmove", onTouchMove, {
+            passive: false,
+          });
+          renderer.domElement.addEventListener("touchend", onTouchEnd, {
+            passive: false,
+          });
+          renderer.domElement.addEventListener("touchcancel", onTouchEnd, {
+            passive: false,
+          });
+
+          document.getElementById("start-button").onclick = startGame;
+          document.getElementById("mute-button").onclick = toggleSound;
+          document.getElementById("pause-button").onclick = togglePause;
+          document.getElementById("pause-quit-button").onclick = quitToTitle;
+          document
+            .querySelectorAll(".stage-select-tab")
+            .forEach(function (tab) {
+              tab.onclick = function () {
+                switchStageSelectTab(tab.getAttribute("data-tab"));
+              };
+            });
+
+          refreshHighScoreDisplay();
+          requestAnimationFrame(loop);
+        }
+
+        function onResize() {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onKeyDown(e) {
+          keys[e.code] = true;
+
+          if (state === STATE_STAGE_SELECT) {
+            handleStageSelectKey(e.code);
+            return;
+          }
+
+          if (e.code === "Space" && state === STATE_PLAYING) {
+            fireBullet();
+          }
+          if (e.code === "Space" && state === STATE_READY) {
+            startGame();
+          }
+          if (
+            e.code === "Space" &&
+            state === STATE_GAMEOVER &&
+            gameOverInputLockTimer <= 0
+          ) {
+            startGame();
+          }
+          if (
+            e.code === "KeyP" &&
+            (state === STATE_PLAYING || state === STATE_PAUSED)
+          ) {
+            togglePause();
+          }
+          if (e.code === "KeyQ" && state === STATE_PAUSED) {
+            quitToTitle();
+          }
+
+          if (state === STATE_READY) {
+            updateSecretCodeProgress(e.code);
+          }
+          if (state === STATE_PLAYING || state === STATE_GAMEOVER) {
+            updateKonamiCodeProgress(e.code);
+          }
+        }
+
+        function updateSecretCodeProgress(code) {
+          if (code === SECRET_CODE[secretCodeProgress]) {
+            secretCodeProgress += 1;
+            if (secretCodeProgress === SECRET_CODE.length) {
+              secretCodeProgress = 0;
+              openStageSelect();
+            }
+          } else {
+            secretCodeProgress = code === SECRET_CODE[0] ? 1 : 0;
+          }
+        }
+
+        function updateKonamiCodeProgress(code) {
+          if (code === KONAMI_CODE[konamiCodeProgress]) {
+            konamiCodeProgress += 1;
+            if (konamiCodeProgress === KONAMI_CODE.length) {
+              konamiCodeProgress = 0;
+              if (state === STATE_PLAYING) {
+                activateInvincibleMode();
+              } else if (state === STATE_GAMEOVER) {
+                resumeFromGameOver();
+              }
+            }
+          } else {
+            konamiCodeProgress = code === KONAMI_CODE[0] ? 1 : 0;
+          }
+        }
+
+        // プレイ中にコナミコマンドを入力すると、ステージクリアまで
+        // 無敵になる(damagePlayer側でinvincibleModeActiveを見て被弾を
+        // 無効化する)。ステージクリア(loadStage)のタイミングで解除する。
+        function activateInvincibleMode() {
+          invincibleModeActive = true;
+          showStageBanner("INVINCIBLE MODE!");
+        }
+
+        // ゲームオーバー画面でコナミコマンドを入力すると、LIVESを3に戻し、
+        // ゲームオーバーになった場面(現在のステージ・敵配置の進行度)から
+        // 再開する。スコアは0にリセットする(ハイスコアへの不正な積み増し
+        // を防ぐため)。
+        function resumeFromGameOver() {
+          lives = 3;
+          score = 0;
+          invulnerableTimer = 2;
+          gameOverInputLockTimer = 0;
+          gameOverAutoReturnTimer = 0;
+          invincibleModeActive = false;
+          cameraShake = 0;
+          resetCombo();
+          // ゲームオーバー時点で画面に残っていた敵弾・障害物は復帰後に
+          // そのまま理不尽な被弾源になりうるため、敵(ボス含む)は残しつつ
+          // それ以外はクリアしてから再開する。
+          clearGroup(enemyBullets);
+          clearGroup(obstacles);
+          stopBgmAndSilence();
+          var liveBoss = enemies.find(function (en) {
+            return en.kind === "boss";
+          });
+          startBgm(liveBoss ? "boss" : "stage" + currentStage.id);
+          if (liveBoss) {
+            showBossHpBar(BOSS_NAME_BY_TYPE[liveBoss.bossType] || "BOSS");
+            updateBossHpBar(liveBoss);
+          }
+          document.getElementById("message-overlay").classList.add("hidden");
+          updateHud();
+          state = STATE_PLAYING;
+        }
+
+        function openStageSelect() {
+          stateBeforeStageSelect = state;
+          state = STATE_STAGE_SELECT;
+          selectedStageIndex = 0;
+          stageSelectTab = "stage";
+          stopBgm();
+          renderStageSelectTabs();
+          renderStageSelectList();
+          document
+            .getElementById("stage-select-overlay")
+            .classList.remove("hidden");
+        }
+
+        function closeStageSelect() {
+          state = stateBeforeStageSelect;
+          document
+            .getElementById("stage-select-overlay")
+            .classList.add("hidden");
+        }
+
+        function currentStageSelectEntries() {
+          if (stageSelectTab === "boss") return BOSS_TEST_ENTRIES;
+          if (stageSelectTab === "ending") return ENDING_ENTRIES;
+          return STAGES;
+        }
+
+        function stageSelectItemLabel(entry) {
+          if (stageSelectTab === "boss") {
+            return "BOSS: " + BOSS_NAME_BY_TYPE[entry.bossType];
+          }
+          if (stageSelectTab === "ending") {
+            return entry.label;
+          }
+          return "STAGE " + entry.id + ": " + entry.name;
+        }
+
+        function renderStageSelectTabs() {
+          var tabs = document.querySelectorAll(".stage-select-tab");
+          tabs.forEach(function (tab) {
+            tab.classList.toggle(
+              "active",
+              tab.getAttribute("data-tab") === stageSelectTab,
+            );
+          });
+          document.getElementById("stage-select-title").textContent =
+            stageSelectTab === "boss"
+              ? "BOSS TEST SELECT"
+              : stageSelectTab === "ending"
+                ? "ENDING SELECT"
+                : "STAGE SELECT";
+        }
+
+        function switchStageSelectTab(tab) {
+          if (stageSelectTab === tab) return;
+          stageSelectTab = tab;
+          selectedStageIndex = 0;
+          renderStageSelectTabs();
+          renderStageSelectList();
+        }
+
+        function renderStageSelectList() {
+          var list = document.getElementById("stage-select-list");
+          list.innerHTML = "";
+          var entries = currentStageSelectEntries();
+          for (var i = 0; i < entries.length; i++) {
+            var entry = entries[i];
+            var item = document.createElement("div");
+            item.className =
+              "stage-select-item" +
+              (i === selectedStageIndex ? " selected" : "");
+            item.textContent = stageSelectItemLabel(entry);
+            item.onclick = (function (index) {
+              return function () {
+                selectedStageIndex = index;
+                confirmStageSelectEntry();
+              };
+            })(i);
+            list.appendChild(item);
+          }
+        }
+
+        // タブの巡回順序(←→キーでの切替に使う)。
+        var STAGE_SELECT_TAB_ORDER = ["stage", "boss", "ending"];
+
+        function confirmStageSelectEntry() {
+          var entries = currentStageSelectEntries();
+          var entry = entries[selectedStageIndex];
+          if (stageSelectTab === "boss") {
+            startBossTestMode(entry.bossType, entry.stageId);
+          } else if (stageSelectTab === "ending") {
+            startEndingPreview();
+          } else {
+            startGameAtStage(entry.id);
+          }
+        }
+
+        // ステージ選択のENDINGタブから、最終ボス撃破直後のエンディング
+        // 演出を単体で確認する。通常プレイと同じくプレイヤー状態を
+        // 一旦リセットしてからエンディングシーケンスを開始する。
+        function startEndingPreview() {
+          resetPlayerRunState();
+          bossTestModeActive = false;
+          document.getElementById("message-overlay").classList.add("hidden");
+          startEndingSequence();
+        }
+
+        function handleStageSelectKey(code) {
+          var entries = currentStageSelectEntries();
+          if (code === "ArrowUp") {
+            selectedStageIndex =
+              (selectedStageIndex - 1 + entries.length) % entries.length;
+            renderStageSelectList();
+          } else if (code === "ArrowDown") {
+            selectedStageIndex = (selectedStageIndex + 1) % entries.length;
+            renderStageSelectList();
+          } else if (code === "ArrowLeft" || code === "ArrowRight") {
+            var currentIndex = STAGE_SELECT_TAB_ORDER.indexOf(stageSelectTab);
+            var delta = code === "ArrowLeft" ? -1 : 1;
+            var nextIndex =
+              (currentIndex + delta + STAGE_SELECT_TAB_ORDER.length) %
+              STAGE_SELECT_TAB_ORDER.length;
+            switchStageSelectTab(STAGE_SELECT_TAB_ORDER[nextIndex]);
+          } else if (code === "Space" || code === "Enter") {
+            confirmStageSelectEntry();
+          } else if (code === "Escape") {
+            closeStageSelect();
+          }
+        }
+
+        function togglePause() {
+          if (state === STATE_PLAYING) {
+            statePriorToPause = state;
+            state = STATE_PAUSED;
+            stopBgm();
+            document.getElementById("pause-overlay").classList.remove("hidden");
+          } else if (state === STATE_PAUSED) {
+            state = statePriorToPause;
+            startBgm();
+            document.getElementById("pause-overlay").classList.add("hidden");
+          }
+        }
+
+        // ポーズ画面のQUIT TO TITLEボタン。BOSS TESTモードのように
+        // 自然に終わらないプレイ中の状態から、タイトル画面へ強制的に
+        // 抜けるための出口。
+        function quitToTitle() {
+          bossTestModeActive = false;
+          state = STATE_READY;
+          stopBgmAndSilence();
+          hideBossHpBar();
+          clearGroup(enemies);
+          clearGroup(bullets);
+          clearGroup(enemyBullets);
+          clearGroup(explosions);
+          clearGroup(obstacles);
+          pendingBossSpawns = [];
+          stageTransitionTimer = 0;
+          stageTransitionNextId = null;
+          invincibleModeActive = false;
+          document.getElementById("boss-warning").classList.remove("visible");
+          document.getElementById("pause-overlay").classList.add("hidden");
+          document.getElementById("message-overlay").classList.remove("hidden");
+          renderTitleScreen();
+        }
+
+        function onKeyUp(e) {
+          keys[e.code] = false;
+        }
+
+        // GASのサンドボックス化されたiframe環境ではPointer Events APIの
+        // タッチ由来イベントが発火しないことがあるため、Touch Events API
+        // も並行して使う。一度でもtouchイベントを受け取った端末では
+        // Touch Events側を優先し、Pointer Events側の処理(onPointerDown
+        // 等)は無視する(重複処理による座標競合を避けるため)。
+        var usingTouchEvents = false;
+
+        // タッチ操作時は指の real 位置に自機を重ねると指で隠れて見えなくなる
+        // ため、指の少し上に自機が来るよう画面縦方向にオフセットを掛ける。
+        var TOUCH_Y_OFFSET_PX = 80;
+
+        // マルチタッチ誤爆防止: 複数指が同時に触れても最初の1本(pointerId)
+        // のみを自機操作の対象とし、2本目以降のタッチは無視する。
+        function onPointerDown(e) {
+          if (usingTouchEvents) return;
+          if (activePointerId !== null && e.pointerId !== activePointerId) {
+            return;
+          }
+          activePointerId = e.pointerId;
+          pointerActive = true;
+          var offsetY = e.pointerType === "touch" ? TOUCH_Y_OFFSET_PX : 0;
+          setPointerTargetFromClientXY(e.clientX, e.clientY, offsetY);
+          if (state === STATE_PLAYING) {
+            fireBullet();
+          }
+          if (!audioCtx) {
+            ensureAudio();
+          }
+        }
+
+        function onPointerMove(e) {
+          if (usingTouchEvents) return;
+          if (pointerActive && e.pointerId === activePointerId) {
+            var offsetY = e.pointerType === "touch" ? TOUCH_Y_OFFSET_PX : 0;
+            setPointerTargetFromClientXY(e.clientX, e.clientY, offsetY);
+          }
+        }
+
+        function onPointerUp(e) {
+          if (usingTouchEvents) return;
+          if (e.pointerId !== activePointerId) {
+            return;
+          }
+          pointerActive = false;
+          activePointerId = null;
+        }
+
+        // マルチタッチ誤爆防止: 複数指のうち最初の1本(identifier)のみを
+        // 自機操作の対象とする(Pointer Events側のactivePointerIdと同じ
+        // 考え方)。
+        var activeTouchId = null;
+
+        function onTouchStart(e) {
+          e.preventDefault();
+          usingTouchEvents = true;
+          if (activeTouchId !== null) return;
+          var touch = e.changedTouches[0];
+          activeTouchId = touch.identifier;
+          pointerActive = true;
+          setPointerTargetFromClientXY(
+            touch.clientX,
+            touch.clientY,
+            TOUCH_Y_OFFSET_PX,
+          );
+          if (state === STATE_PLAYING) {
+            fireBullet();
+          }
+          if (!audioCtx) {
+            ensureAudio();
+          }
+        }
+
+        function findTouchById(touchList, id) {
+          for (var i = 0; i < touchList.length; i++) {
+            if (touchList[i].identifier === id) return touchList[i];
+          }
+          return null;
+        }
+
+        function onTouchMove(e) {
+          e.preventDefault();
+          if (!pointerActive || activeTouchId === null) return;
+          var touch = findTouchById(e.changedTouches, activeTouchId);
+          if (!touch) return;
+          setPointerTargetFromClientXY(
+            touch.clientX,
+            touch.clientY,
+            TOUCH_Y_OFFSET_PX,
+          );
+        }
+
+        function onTouchEnd(e) {
+          e.preventDefault();
+          if (!findTouchById(e.changedTouches, activeTouchId)) return;
+          pointerActive = false;
+          activeTouchId = null;
+        }
+
+        function setPointerTargetFromClientXY(clientX, clientY, offsetY) {
+          var nx = (clientX / window.innerWidth) * 2 - 1;
+          var ny = ((clientY - offsetY) / window.innerHeight) * 2 - 1;
+          pointerTarget.x = nx * PLAYER_BOUNDS.maxX;
+          pointerTarget.y = -ny * PLAYER_BOUNDS.maxY;
+        }
+
+        function loadStage(stageId) {
+          // 無敵モードは「ステージクリアまで」の効果なので、次ステージの
+          // 読み込みで解除する。
+          invincibleModeActive = false;
+          currentStage = getStageConfig(stageId);
+          buildSky(currentStage);
+          buildGround(currentStage);
+          spawnSchedule = generateSpawnSchedule(
+            currentStage.durationSeconds,
+            currentStage.spawnIntervalSeconds,
+            currentStage.bossAtSeconds,
+            currentStage.domEnabled,
+            currentStage.tomosEnabled,
+          );
+          obstacleSchedule = generateObstacleSchedule(
+            currentStage.durationSeconds,
+            currentStage.obstacleIntervalSeconds,
+            currentStage.id * 1000 + 7,
+          );
+          nextSpawnIndex = 0;
+          pendingBossSpawns = [];
+          stageTransitionTimer = 0;
+          stageTransitionNextId = null;
+          nextObstacleIndex = 0;
+          elapsedTime = 0;
+          bossRushIndex = 0;
+          bossRushAllDefeated = false;
+
+          if (currentStage.bossSequence) {
+            // ボスラッシュステージ: 最初のボスだけ少し早めに予約する。
+            // 以降のボスは前のボスを倒したタイミングで動的に追加される
+            // (spawnNextBossRushEnemyを参照)。
+            spawnSchedule.push({
+              time: 3,
+              kind: "boss",
+              laneX: 0,
+              bossType: currentStage.bossSequence[0],
+            });
+            spawnSchedule.sort(function (a, b) {
+              return a.time - b.time;
+            });
+          }
+
+          document.getElementById("stage-display").textContent =
+            "STAGE " + currentStage.id + ": " + currentStage.name;
+          showStageBanner(
+            "STAGE " + currentStage.id + " - " + currentStage.name,
+          );
+        }
+
+        // ボスラッシュ中のボス撃破をトリガーに次のボスを出現させる。
+        // 全ボスを倒し終えたらtrueを返す(呼び出し元でクリア扱いにする)。
+        function advanceBossRush() {
+          if (!currentStage.bossSequence) return false;
+          bossRushIndex += 1;
+          if (bossRushIndex >= currentStage.bossSequence.length) {
+            return true;
+          }
+          spawnSchedule.push({
+            time: elapsedTime + 1.5,
+            kind: "boss",
+            laneX: 0,
+            bossType: currentStage.bossSequence[bossRushIndex],
+          });
+          return false;
+        }
+
+        function showStageBanner(text) {
+          var banner = document.getElementById("stage-banner");
+          banner.textContent = text;
+          banner.classList.add("visible");
+          setTimeout(function () {
+            banner.classList.remove("visible");
+          }, 2200);
+        }
+
+        // ボス出現の直前に警告音+「WARNING」+ボス名を大きく表示する。
+        function showBossWarning(bossName) {
+          playBossWarningSound();
+          var warning = document.getElementById("boss-warning");
+          document.getElementById("boss-warning-name").textContent = bossName;
+          warning.classList.add("visible");
+          cameraShake = Math.max(cameraShake, 0.2);
+          setTimeout(function () {
+            warning.classList.remove("visible");
+          }, BOSS_WARNING_DURATION_MS);
+        }
+
+        function startGame() {
+          startGameAtStage(1);
+        }
+
+        // 新しいプレイを開始する経路(通常ステージ開始/BOSS TEST開始)で
+        // 共通して必要になるプレイヤー状態・オーバーレイ・シーンのリセット
+        // をまとめる。片方の経路だけ更新されてもう片方が古いままになる
+        // 不整合を防ぐため、リセット項目はここに一本化する。
+        function resetPlayerRunState() {
+          score = 0;
+          lives = 3;
+          invulnerableTimer = 0;
+          invincibleModeActive = false;
+          resetCombo();
+          gameOverInputLockTimer = 0;
+          gameOverAutoReturnTimer = 0;
+          cameraShake = 0;
+          stats.enemiesDefeated = 0;
+          stats.bossesDefeated = 0;
+          stats.hitsTaken = 0;
+          stats.maxCombo = 0;
+          document.getElementById("pause-overlay").classList.add("hidden");
+          document
+            .getElementById("stage-select-overlay")
+            .classList.add("hidden");
+          playerPos = { x: 0, y: 0 };
+          playerGroup.position.x = 0;
+          playerGroup.position.y = 0;
+          // エンディング演出(自機が奥・上方へ飛び去る)でZ/回転が変化する
+          // ため、新しいプレイ開始時に元の定位置へ戻す。
+          playerGroup.position.z = 2;
+          playerGroup.rotation.x = 0;
+          camera.fov = BASE_FOV;
+          camera.updateProjectionMatrix();
+
+          clearGroup(enemies);
+          clearGroup(bullets);
+          clearGroup(enemyBullets);
+          clearGroup(explosions);
+          clearGroup(obstacles);
+          hideBossHpBar();
+        }
+
+        // 隠しコマンドのステージ選択から任意ステージで開始する場合と、
+        // 通常のSTARTボタンからステージ1で開始する場合の共通処理。
+        function startGameAtStage(stageId) {
+          resetPlayerRunState();
+          bossTestModeActive = false;
+
+          loadStage(stageId);
+          updateHud();
+          document.getElementById("message-overlay").classList.add("hidden");
+          state = STATE_PLAYING;
+          // ゲームオーバーBGM等、前の状態の音が一切残らないようにしてから
+          // ステージBGMを開始する。
+          stopBgmAndSilence();
+          startBgm("stage" + stageId);
+          playGetReadyVoice();
+        }
+
+        // BOSS TESTタブから、指定ボスのみと戦えるテストモードを開始する。
+        // 借用元ステージ(borrowStageId)の背景・地形色・BGMをそのまま使い、
+        // 雑魚敵と障害物の出現だけを止め、目的のボスを即座に1体出現させる。
+        // 撃破すると同じボスが再度出現し、連続で練習・検証できる。
+        function startBossTestMode(bossType, borrowStageId) {
+          resetPlayerRunState();
+          bossTestModeActive = true;
+
+          currentStage = getStageConfig(borrowStageId);
+          buildSky(currentStage);
+          buildGround(currentStage);
+          spawnSchedule = [];
+          obstacleSchedule = [];
+          nextSpawnIndex = 0;
+          pendingBossSpawns = [];
+          stageTransitionTimer = 0;
+          stageTransitionNextId = null;
+          nextObstacleIndex = 0;
+          elapsedTime = 0;
+          bossRushIndex = 0;
+          bossRushAllDefeated = false;
+          bossTestBossType = bossType;
+
+          document.getElementById("stage-display").textContent =
+            "BOSS TEST: " + BOSS_NAME_BY_TYPE[bossType];
+          showStageBanner("BOSS TEST - " + BOSS_NAME_BY_TYPE[bossType]);
+
+          spawnEnemy("boss", 0, bossType);
+
+          updateHud();
+          document.getElementById("message-overlay").classList.add("hidden");
+          state = STATE_PLAYING;
+          stopBgmAndSilence();
+          startBgm("boss");
+          playGetReadyVoice();
+        }
+
+        function clearGroup(list) {
+          for (var i = 0; i < list.length; i++) {
+            scene.remove(list[i].mesh);
+          }
+          list.length = 0;
+        }
+
+        // ゲームオーバー/全クリア共通のリザルト内訳(撃破数・被弾数・
+        // 最大コンボ)をHTML断片として組み立てる。
+        function buildStatsSummaryHtml() {
+          return (
+            '<p class="stats-summary">' +
+            "ENEMIES DEFEATED: " +
+            stats.enemiesDefeated +
+            " / BOSSES: " +
+            stats.bossesDefeated +
+            "<br>HITS TAKEN: " +
+            stats.hitsTaken +
+            " / MAX COMBO: " +
+            stats.maxCombo +
+            "</p>"
+          );
+        }
+
+        function endGame() {
+          state = STATE_GAMEOVER;
+          // ボス戦BGM等が鳴った状態のまま次のBGMへ移ると音が被って聞こえる
+          // ため、進行中のBGMループと発音中の音を確実に無音化してから、
+          // ゲームオーバー専用BGMを最初から再生する。
+          stopBgmAndSilence();
+          startBgm("gameover");
+          hideBossHpBar();
+          gameOverInputLockTimer = GAMEOVER_INPUT_LOCK_SECONDS;
+          gameOverAutoReturnTimer = GAMEOVER_AUTO_RETURN_SECONDS;
+          var previousHigh = loadHighScore();
+          var newHigh = saveHighScoreIfBeaten(score);
+          var isNewRecord = newHigh > previousHigh;
+          var overlay = document.getElementById("message-overlay");
+          overlay.innerHTML =
+            "<h1>GAME OVER</h1>" +
+            (isNewRecord
+              ? '<p style="color:#66ddff">NEW HIGH SCORE!</p>'
+              : "") +
+            "<p>SCORE: " +
+            score +
+            "</p><p>HIGH SCORE: " +
+            newHigh +
+            "</p><p>STAGE " +
+            currentStage.id +
+            ": " +
+            currentStage.name +
+            "</p>" +
+            buildStatsSummaryHtml() +
+            '<button id="start-button" type="button">RETRY</button>';
+          overlay.classList.remove("hidden");
+          document.getElementById("start-button").onclick = retryFromGameOver;
+        }
+
+        function retryFromGameOver() {
+          if (gameOverInputLockTimer > 0) return;
+          startGame();
+        }
+
+        function clearAllEnemiesAndAdvance() {
+          var next = nextStageId(currentStage.id);
+          if (next === null) {
+            startEndingSequence();
+            return;
+          }
+          // 次のステージがある場合は、ゲームを止めずに(stateはPLAYINGの
+          // まま)そのまま次ステージへ遷移する。stageTransitionTimerが
+          // 正の間は「クリア済み判定の再トリガー」だけを抑止しつつ、
+          // 自機操作・敵/弾の描画更新は継続させ、ファンファーレが鳴って
+          // いる間も画面が止まらないようにする。
+          stopBgm();
+          playStageClearSound();
+          showStageBanner("STAGE " + currentStage.id + " CLEAR!");
+          stageTransitionTimer = STAGE_TRANSITION_SECONDS;
+          stageTransitionNextId = next;
+        }
+
+        function advanceToNextStage() {
+          var next = stageTransitionNextId;
+          stageTransitionNextId = null;
+          clearGroup(enemies);
+          clearGroup(enemyBullets);
+          clearGroup(obstacles);
+          loadStage(next);
+          startBgm("stage" + next);
+        }
+
+        // 最終ボス撃破後のエンディング演出を開始する。残っていた敵・弾・
+        // 障害物を消し、晴れ渡ったクリーンな配色の空と地面に切り替えたうえ
+        // で、しばらく巡航スクロールさせた後に自機を奥・上方へ飛ばす。
+        function startEndingSequence() {
+          state = STATE_ENDING;
+          stopBgm();
+          playStageClearSound();
+          clearGroup(enemies);
+          clearGroup(bullets);
+          clearGroup(enemyBullets);
+          clearGroup(obstacles);
+          hideBossHpBar();
+          buildSky({
+            skyColorTop: ENDING_SKY_COLOR_TOP,
+            skyColorBottom: ENDING_SKY_COLOR_BOTTOM,
+          });
+          buildGround({ groundColor: ENDING_GROUND_COLOR });
+          scene.fog = new THREE.Fog(0xaee0ff, 80, 260);
+          endingPhase = "cruise";
+          endingTimer = ENDING_CRUISE_SECONDS;
+        }
+
+        function updateEnding(dt) {
+          groundOffset += GROUND_SPEED * dt;
+          if (groundMesh && groundMesh.material.map) {
+            groundMesh.material.map.offset.y = groundOffset * 0.03;
+          }
+
+          if (endingPhase === "cruise") {
+            // 飛び去るまでの間は通常プレイと同じ操作性(キーボード/マウス/
+            // タッチ)で自機を動かせるようにする。
+            updatePlayerMovement(dt);
+            endingTimer -= dt;
+            if (endingTimer <= 0) {
+              endingPhase = "flyaway";
+              endingTimer = ENDING_FLY_AWAY_SECONDS;
+              playFlyAwaySound();
+            }
+          } else if (endingPhase === "flyaway") {
+            endingTimer -= dt;
+            var progress =
+              1 - Math.max(0, endingTimer) / ENDING_FLY_AWAY_SECONDS;
+            // イーズイン(加速しながら奥・上方へ)で飛び去る挙動にする。
+            var eased = progress * progress;
+            playerGroup.position.z = 2 - eased * 140;
+            playerGroup.position.y = eased * 60;
+            playerGroup.rotation.x = -eased * 0.9;
+            playerVel.x *= 0.9;
+            playerVel.y *= 0.9;
+            camera.fov = BASE_FOV + eased * 25;
+            camera.updateProjectionMatrix();
+            if (endingTimer <= 0) {
+              camera.fov = BASE_FOV;
+              camera.updateProjectionMatrix();
+              showAllStagesClearResult();
+            }
+          }
+        }
+
+        function showAllStagesClearResult() {
+          state = STATE_STAGE_CLEAR;
+          endingPhase = null;
+          var previousHigh = loadHighScore();
+          var newHigh = saveHighScoreIfBeaten(score);
+          var isNewRecord = newHigh > previousHigh;
+          var overlay = document.getElementById("message-overlay");
+          overlay.innerHTML =
+            "<h1>ALL STAGES CLEAR!</h1>" +
+            (isNewRecord
+              ? '<p style="color:#66ddff">NEW HIGH SCORE!</p>'
+              : "") +
+            "<p>SCORE: " +
+            score +
+            "</p><p>HIGH SCORE: " +
+            newHigh +
+            "</p>" +
+            buildStatsSummaryHtml() +
+            '<button id="start-button" type="button">PLAY AGAIN</button>';
+          overlay.classList.remove("hidden");
+          document.getElementById("start-button").onclick = startGame;
+        }
+
+        function fireBullet() {
+          playShotSound();
+          var geo = new THREE.SphereGeometry(0.15, 8, 8);
+          var mat = new THREE.MeshBasicMaterial({ color: 0xffff66 });
+          var mesh = new THREE.Mesh(geo, mat);
+          mesh.position.copy(playerGroup.position);
+          mesh.position.z -= 1;
+          scene.add(mesh);
+          bullets.push({ mesh: mesh, speed: 60 });
+        }
+
+        var SCALER_SEGMENT_COUNT = 15;
+        var SCALER_SEGMENT_SPACING = 1.1;
+        // 龍(スケイラ)が画面手前側で折り返すZ座標。自機のすぐ手前ではなく
+        // 画面外に近い位置(敵の削除しきい値z>12の直前)まで迫ってから
+        // 折り返すことで、中途半端な位置での「描画ジャンプ」を防ぐ。
+        var SCALER_NEAR_TURN_Z = 10;
+        // 折り返し地点付近(自機のすぐ手前で反対側から現れて見える瞬間)は
+        // 不意打ち的な衝突を避けるため、この余裕距離ぶん手前から当たり
+        // 判定を無効化する。
+        var SCALER_TURN_SAFE_MARGIN = 6;
+        // 龍(スケイラ)が折り返す最奥のZ座標。自機の交戦距離よりもさらに
+        // 奥まで伸ばし、大胆な遊泳の演出にする。
+        var SCALER_DEEP_RETREAT_Z = -160;
+        // このZより奥にいる間は火炎(弾)の発射を休止する。
+        var SCALER_FIRE_SUSPEND_Z = -60;
+        // 龍の基準の高さ。うねりで下に振れても地面(Y=-4)に潜らないよう、
+        // 十分に高い位置をデフォルトの登場位置とする。
+        var SCALER_HOME_Y = 3;
+        // 地面(Y=-4)より高いこのY座標を、うねりの下限クランプ値とする。
+        var SCALER_GROUND_CLEARANCE_Y = -1;
+        // 火炎放射(ブレス)の連続弾数と、弾同士/ブレス間の間隔(秒)。
+        var SCALER_BREATH_SHOT_COUNT = 4;
+        var SCALER_BREATH_SHOT_INTERVAL = 0.12;
+        var SCALER_BREATH_PAUSE_INTERVAL = 1.8;
+        // 火炎(ブレス)弾の見た目の大きさ。通常弾(半径0.25)より大きくする。
+        var SCALER_BREATH_BULLET_RADIUS = 0.55;
+
+        function clamp(value, min, max) {
+          return Math.max(min, Math.min(max, value));
+        }
+
+        function buildScalerMesh() {
+          // スケイラ: 東洋の龍をイメージした細長い胴体のドラゴン。
+          // 脚は持たず、球体を連ねた蛇状の胴体+頭部の角・ひげ・たてがみで
+          // 「空を泳ぐ龍」らしさを表現する。各体節をGroupの子として連ね、
+          // 後述のupdateで大きく波打つように動かす。
+          var group = new THREE.Group();
+          var segments = [];
+          var maneMat = new THREE.MeshStandardMaterial({
+            color: 0xffcc33,
+            emissive: 0x885500,
+            emissiveIntensity: 0.4,
+          });
+          var hornMat = new THREE.MeshStandardMaterial({
+            color: 0xf5f0dd,
+            emissive: 0x554422,
+            emissiveIntensity: 0.2,
+          });
+
+          for (var i = 0; i < SCALER_SEGMENT_COUNT; i++) {
+            var isHead = i === 0;
+            // 頭を最大とし、尾に向かって滑らかに先細りさせることで
+            // 龍らしい流線形の胴体にする。
+            var taper = 1 - (i / (SCALER_SEGMENT_COUNT - 1)) * 0.6;
+            var segSize = isHead ? 1.15 : 0.85 * taper;
+            var segMat = new THREE.MeshStandardMaterial({
+              color: isHead ? 0x2255cc : 0x2299aa,
+              emissive: isHead ? 0x113377 : 0x0a4a55,
+              emissiveIntensity: 0.4,
+              metalness: 0.3,
+              roughness: 0.4,
+            });
+            var segGeo = isHead
+              ? new THREE.ConeGeometry(segSize, segSize * 1.6, 8)
+              : new THREE.SphereGeometry(segSize, 10, 8);
+            var segMesh = new THREE.Mesh(segGeo, segMat);
+            if (isHead) {
+              // 円錐の尖端(デフォルトは+Y方向)をX軸周りに90度回転させると
+              // +Z方向を向く。体節はグループの-Z方向に連なるため、これで
+              // 頭の尖端が進行方向(グループのワールドZ+方向=自機側)を
+              // 向くようになる。
+              segMesh.rotation.x = Math.PI / 2;
+
+              // 一対の角
+              var hornGeo = new THREE.ConeGeometry(0.12, 0.7, 5);
+              var hornLeft = new THREE.Mesh(hornGeo, hornMat);
+              hornLeft.position.set(-0.35, 0.5, 0.3);
+              hornLeft.rotation.x = -Math.PI / 2.6;
+              hornLeft.rotation.z = 0.3;
+              segMesh.add(hornLeft);
+              var hornRight = new THREE.Mesh(hornGeo, hornMat);
+              hornRight.position.set(0.35, 0.5, 0.3);
+              hornRight.rotation.x = -Math.PI / 2.6;
+              hornRight.rotation.z = -0.3;
+              segMesh.add(hornRight);
+
+              // 長いひげ(頬から後方へ伸びる細い円柱)
+              var whiskerGeo = new THREE.CylinderGeometry(0.04, 0.01, 1.4, 4);
+              var whiskerLeft = new THREE.Mesh(whiskerGeo, maneMat);
+              whiskerLeft.position.set(-0.5, -0.1, -0.6);
+              whiskerLeft.rotation.z = Math.PI / 2.2;
+              whiskerLeft.rotation.y = 0.4;
+              segMesh.add(whiskerLeft);
+              var whiskerRight = new THREE.Mesh(whiskerGeo, maneMat);
+              whiskerRight.position.set(0.5, -0.1, -0.6);
+              whiskerRight.rotation.z = -Math.PI / 2.2;
+              whiskerRight.rotation.y = -0.4;
+              segMesh.add(whiskerRight);
+            }
+            // 頭(i=0)をグループ原点(ローカルZ=0)に置き、体節はグループの
+            // ローカル-Z方向(接近時の進行方向と逆側)へ連ねる。これにより
+            // グループがワールドZ+方向(自機側)へ進む際、常に頭が先頭になる
+            // (体節側が後方に「尻尾」として付いてくる)。
+            segMesh.position.z = -i * SCALER_SEGMENT_SPACING;
+            group.add(segMesh);
+
+            segments.push(segMesh);
+          }
+
+          group.userData.segments = segments;
+          group.userData.head = segments[0];
+          group.scale.setScalar(SCALER_VISUAL_SCALE);
+          return group;
+        }
+
+        function buildDomEnemyMesh() {
+          // ドム: 重機動ロボット型の敵。円柱の胴体+球体の頭部+腕状のバズーカ。
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0x556655,
+            emissive: 0x223322,
+            emissiveIntensity: 0.3,
+          });
+          var body = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.7, 0.9, 1.6, 8),
+            bodyMat,
+          );
+          group.add(body);
+
+          var headMat = new THREE.MeshStandardMaterial({
+            color: 0x334433,
+            emissive: 0x112211,
+            emissiveIntensity: 0.4,
+          });
+          var head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.5, 10, 8),
+            headMat,
+          );
+          head.position.y = 1.2;
+          group.add(head);
+
+          var visorMat = new THREE.MeshStandardMaterial({
+            color: 0xff2222,
+            emissive: 0xff2222,
+            emissiveIntensity: 0.8,
+          });
+          var visor = new THREE.Mesh(
+            new THREE.BoxGeometry(0.6, 0.15, 0.2),
+            visorMat,
+          );
+          visor.position.set(0, 1.2, 0.45);
+          group.add(visor);
+
+          var bazookaMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+          var bazooka = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.15, 0.15, 1.4, 8),
+            bazookaMat,
+          );
+          bazooka.rotation.z = Math.PI / 2;
+          bazooka.position.set(0.9, 0.3, 0.3);
+          group.add(bazooka);
+
+          group.userData.muzzle = bazooka;
+          return group;
+        }
+
+        // サルペドン専用: ボス級のドム(通常ドムより一回り大きく、赤を
+        // 基調にした威圧的な配色)。3体編隊でジェットストリームアタック
+        // (縦列で連結して突撃し、順番に自機を襲う)を行う。
+        function buildBossDomMesh() {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0x663333,
+            emissive: 0x441111,
+            emissiveIntensity: 0.35,
+          });
+          var body = new THREE.Mesh(
+            new THREE.CylinderGeometry(1, 1.3, 2.4, 8),
+            bodyMat,
+          );
+          group.add(body);
+
+          var headMat = new THREE.MeshStandardMaterial({
+            color: 0x442222,
+            emissive: 0x220808,
+            emissiveIntensity: 0.4,
+          });
+          var head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.75, 10, 8),
+            headMat,
+          );
+          head.position.y = 1.8;
+          group.add(head);
+
+          var visorMat = new THREE.MeshStandardMaterial({
+            color: 0xff3333,
+            emissive: 0xff3333,
+            emissiveIntensity: 0.9,
+          });
+          var visor = new THREE.Mesh(
+            new THREE.BoxGeometry(0.9, 0.2, 0.3),
+            visorMat,
+          );
+          visor.position.set(0, 1.8, 0.65);
+          group.add(visor);
+
+          var bazookaMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+          var leftBazooka = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.22, 0.22, 2, 8),
+            bazookaMat,
+          );
+          leftBazooka.rotation.z = Math.PI / 2;
+          leftBazooka.position.set(-1.5, 0.4, 0.4);
+          group.add(leftBazooka);
+          var rightBazooka = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.22, 0.22, 2, 8),
+            bazookaMat.clone(),
+          );
+          rightBazooka.rotation.z = Math.PI / 2;
+          rightBazooka.position.set(1.5, 0.4, 0.4);
+          group.add(rightBazooka);
+
+          var thrusterMat = new THREE.MeshBasicMaterial({
+            color: 0xff6600,
+            transparent: true,
+            opacity: 0.8,
+          });
+          var thruster = new THREE.Mesh(
+            new THREE.ConeGeometry(0.5, 1, 8),
+            thrusterMat,
+          );
+          thruster.rotation.x = -Math.PI / 2;
+          thruster.position.set(0, -1, -1);
+          group.add(thruster);
+
+          group.userData.leftMuzzle = leftBazooka;
+          group.userData.rightMuzzle = rightBazooka;
+          group.userData.thruster = thruster;
+          return group;
+        }
+
+        // サルペドン: ボス級ドム3体による縦列編隊(ジェットストリーム
+        // アタック)。3体は前後に連結して現れ、交戦時は個別にうねりながら
+        // 順番に自機を狙う。3体それぞれが独立した被弾判定を持つ。
+        function buildSarpedonMesh() {
+          var group = new THREE.Group();
+          var doms = [];
+          var domOffsetsZ = [0, 3.2, 6.4];
+          for (var i = 0; i < domOffsetsZ.length; i++) {
+            var dom = buildBossDomMesh();
+            dom.position.z = domOffsetsZ[i];
+            group.add(dom);
+            doms.push(dom);
+          }
+          group.userData.doms = doms;
+          return group;
+        }
+
+        function buildGenericBossMesh() {
+          var geo = new THREE.IcosahedronGeometry(3, 0);
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0xff0000,
+            emissive: 0xff0000,
+            emissiveIntensity: 0.3,
+          });
+          return new THREE.Mesh(geo, mat);
+        }
+
+        // ゴダーニ/サルペドン共通: 双頭ドラゴン。常に正面(自機側)を向いたまま
+        // 接近するため、往路も復路も両頭が狙いやすい(スケイラとの対比)。
+        // transparentを指定するとサルペドンの「スケスケ」版として使える。
+        // ゴダーニ/サルペドンの片側の首+頭部一式を作る(角・顎・牙付きで
+        // ドラゴンらしいシルエットにする)。sideSignは-1(左)/1(右)。
+        function buildDragonHeadUnit(sideSign, transparentBody) {
+          var unit = new THREE.Group();
+          var scaleMat = new THREE.MeshStandardMaterial({
+            color: 0x557733,
+            emissive: 0x223311,
+            emissiveIntensity: 0.3,
+            transparent: !!transparentBody,
+            opacity: transparentBody ? 0.35 : 1,
+          });
+          var headMat = new THREE.MeshStandardMaterial({
+            color: 0xdd8833,
+            emissive: 0x442200,
+            emissiveIntensity: 0.4,
+            transparent: !!transparentBody,
+            opacity: transparentBody ? 0.5 : 1,
+          });
+          var hornMat = new THREE.MeshStandardMaterial({
+            color: 0x333333,
+            emissive: 0x111111,
+            emissiveIntensity: 0.2,
+            transparent: !!transparentBody,
+            opacity: transparentBody ? 0.5 : 1,
+          });
+          var eyeMat = new THREE.MeshStandardMaterial({
+            color: 0xff2222,
+            emissive: 0xff2222,
+            emissiveIntensity: 0.8,
+          });
+
+          // 首(胴体から斜め外側へ伸びるS字寄りのシルエットを、傾けた円錐で表現)。
+          // 長さを1.5倍にし、常時ゆらゆらと揺れる演出を加えるため、根本の
+          // 位置を回転の基準点(pivot)としたグループでラップする。
+          var neckPivot = new THREE.Group();
+          neckPivot.position.set(sideSign * 1.3, 0.9, 0.6);
+          neckPivot.rotation.z = sideSign * -0.5;
+          neckPivot.rotation.x = -0.3;
+          unit.add(neckPivot);
+
+          var neck = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.35, 0.6, 3.6, 8),
+            scaleMat,
+          );
+          neck.position.y = 0.6;
+          neckPivot.add(neck);
+
+          // 頭部本体(細長い顎を持つドラゴンヘッド)。首の先端に追従させる
+          // ため、neckPivotの子として配置する(neckPivotが1.2=3.6/2倍
+          // 伸びた分だけ先端側にオフセット)。
+          var headGroup = new THREE.Group();
+          headGroup.position.set(0, 2.1, 1.1);
+          // neckPivotの回転(sideSign*-0.5 z, -0.3 x)を打ち消したうえで
+          // 元のheadGroupの向き(sideSign*-0.3 z)を再現し、首の揺れに
+          // 追従しつつ見た目の向きは変更前とほぼ同じになるようにする。
+          headGroup.rotation.z = sideSign * 0.2;
+          headGroup.rotation.x = 0.3;
+          neckPivot.add(headGroup);
+
+          var skull = new THREE.Mesh(
+            new THREE.ConeGeometry(0.55, 1.4, 6),
+            headMat,
+          );
+          skull.rotation.x = Math.PI / 2;
+          headGroup.add(skull);
+
+          var jaw = new THREE.Mesh(
+            new THREE.ConeGeometry(0.35, 1, 6),
+            headMat.clone(),
+          );
+          jaw.rotation.x = Math.PI / 2;
+          jaw.position.set(0, -0.25, 0.3);
+          headGroup.add(jaw);
+
+          // 角(左右2本)でドラゴンらしさを強調。
+          var hornGeo = new THREE.ConeGeometry(0.12, 0.7, 4);
+          var hornLeft = new THREE.Mesh(hornGeo, hornMat);
+          hornLeft.position.set(-0.25, 0.5, -0.4);
+          hornLeft.rotation.x = -0.6;
+          headGroup.add(hornLeft);
+          var hornRight = new THREE.Mesh(hornGeo, hornMat.clone());
+          hornRight.position.set(0.25, 0.5, -0.4);
+          hornRight.rotation.x = -0.6;
+          headGroup.add(hornRight);
+
+          // 目(発光する赤い球)。
+          var eyeGeo = new THREE.SphereGeometry(0.13, 8, 8);
+          var eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
+          eyeLeft.position.set(-0.22, 0.1, -0.55);
+          headGroup.add(eyeLeft);
+          var eyeRight = new THREE.Mesh(eyeGeo, eyeMat.clone());
+          eyeRight.position.set(0.22, 0.1, -0.55);
+          headGroup.add(eyeRight);
+
+          unit.userData.headGroup = headGroup;
+          unit.userData.neckPivot = neckPivot;
+          unit.userData.neckBaseRotationZ = neckPivot.rotation.z;
+          unit.userData.neckBaseRotationX = neckPivot.rotation.x;
+          unit.userData.sideSign = sideSign;
+          return unit;
+        }
+
+        function buildTwinHeadDragonMesh(transparentBody) {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0x557733,
+            emissive: 0x223311,
+            emissiveIntensity: 0.3,
+            transparent: !!transparentBody,
+            opacity: transparentBody ? 0.35 : 1,
+          });
+          var body = new THREE.Mesh(
+            new THREE.IcosahedronGeometry(2, 1),
+            bodyMat,
+          );
+          // ボディを0.8倍に縮小し、双頭と首・翼の存在感が際立つ
+          // プロポーションにする。
+          body.scale.set(1 * 0.8, 0.85 * 0.8, 1.2 * 0.8);
+          group.add(body);
+
+          // 足(胴体の下に4本の脚を生やし、双頭ドラゴンらしいシルエットを
+          // 強調する)。
+          var legMat = new THREE.MeshStandardMaterial({
+            color: 0x445522,
+            emissive: 0x1a2a0e,
+            emissiveIntensity: 0.3,
+            transparent: !!transparentBody,
+            opacity: transparentBody ? 0.35 : 1,
+          });
+          var legGeo = new THREE.CylinderGeometry(0.28, 0.22, 1.3, 6);
+          var legOffsets = [
+            [-1.1, -1.1, 0.7],
+            [1.1, -1.1, 0.7],
+            [-1.1, -1.1, -0.7],
+            [1.1, -1.1, -0.7],
+          ];
+          for (var legI = 0; legI < legOffsets.length; legI++) {
+            var legOffset = legOffsets[legI];
+            var leg = new THREE.Mesh(legGeo, legMat.clone());
+            leg.position.set(legOffset[0], legOffset[1], legOffset[2]);
+            group.add(leg);
+          }
+
+          // 翼(左右に大きく張り出す平たい三角形)でシルエットに幅を持たせる。
+          // 羽ばたきアニメーションのため、根本を基準点としたpivotで包む。
+          var wingMat = new THREE.MeshStandardMaterial({
+            color: 0x336622,
+            emissive: 0x112211,
+            emissiveIntensity: 0.2,
+            transparent: !!transparentBody,
+            opacity: transparentBody ? 0.3 : 0.9,
+            side: THREE.DoubleSide,
+          });
+          var wingGeo = new THREE.ConeGeometry(1.8, 0.15, 3);
+          var wingPivotLeft = new THREE.Group();
+          wingPivotLeft.position.set(-0.4, 0.3, -0.8);
+          group.add(wingPivotLeft);
+          var wingLeft = new THREE.Mesh(wingGeo, wingMat);
+          wingLeft.rotation.z = Math.PI / 2;
+          wingLeft.position.set(-1.8, 0, 0);
+          wingPivotLeft.add(wingLeft);
+
+          var wingPivotRight = new THREE.Group();
+          wingPivotRight.position.set(0.4, 0.3, -0.8);
+          group.add(wingPivotRight);
+          var wingRight = new THREE.Mesh(wingGeo, wingMat.clone());
+          wingRight.rotation.z = -Math.PI / 2;
+          wingRight.position.set(1.8, 0, 0);
+          wingPivotRight.add(wingRight);
+
+          var leftUnit = buildDragonHeadUnit(-1, transparentBody);
+          group.add(leftUnit);
+          var rightUnit = buildDragonHeadUnit(1, transparentBody);
+          group.add(rightUnit);
+
+          group.userData.leftHead = leftUnit.userData.headGroup;
+          group.userData.rightHead = rightUnit.userData.headGroup;
+          group.userData.leftUnit = leftUnit;
+          group.userData.rightUnit = rightUnit;
+          group.userData.leftNeckPivot = leftUnit.userData.neckPivot;
+          group.userData.rightNeckPivot = rightUnit.userData.neckPivot;
+          group.userData.wingPivotLeft = wingPivotLeft;
+          group.userData.wingPivotRight = wingPivotRight;
+          group.userData.body = body;
+          return group;
+        }
+
+        // トモス: 花弁状の殻(複数の平たいパネル)が本体球を囲み、殻を全て
+        // 破壊するまで本体はダメージを受けない(原作の「ぱくぱくトモス」を
+        // 開閉する花弁として抽象化)。
+        // トモス: 巨大な花の姿をしたボス。中心の花芯(黄色く発光する球体)を
+        // 涙滴型の花弁6枚が囲んでガードし、花弁を全て破壊するまで花芯は
+        // 無敵。外側には萼(がく)状のトゲを配置して花の付け根らしさを出す。
+        function buildTomosBossMesh() {
+          var group = new THREE.Group();
+
+          // 花芯(本体)。中央が黄色く発光する球体で、花の中心らしさを出す。
+          var coreMat = new THREE.MeshStandardMaterial({
+            color: 0xffdd44,
+            emissive: 0x886600,
+            emissiveIntensity: 0.3,
+          });
+          var core = new THREE.Mesh(
+            new THREE.SphereGeometry(1.1, 12, 10),
+            coreMat,
+          );
+          group.add(core);
+          var coreDetail = new THREE.Mesh(
+            new THREE.IcosahedronGeometry(0.5, 0),
+            new THREE.MeshStandardMaterial({
+              color: 0x442200,
+              emissive: 0x221100,
+              emissiveIntensity: 0.3,
+            }),
+          );
+          group.add(coreDetail);
+
+          // 萼(がく): 花芯の下側に配置する小さな緑のトゲで、茎から咲いた
+          // 花であることを示す。
+          var sepalMat = new THREE.MeshStandardMaterial({ color: 0x336622 });
+          var sepalCount = 5;
+          for (var si = 0; si < sepalCount; si++) {
+            var sepal = new THREE.Mesh(
+              new THREE.ConeGeometry(0.25, 0.9, 4),
+              sepalMat,
+            );
+            var sepalAngle = (si / sepalCount) * Math.PI * 2;
+            sepal.position.set(
+              Math.cos(sepalAngle) * 0.9,
+              -1.4,
+              Math.sin(sepalAngle) * 0.9,
+            );
+            sepal.rotation.x = Math.PI;
+            group.add(sepal);
+          }
+
+          // 花弁: 先端が尖った涙滴型(平面を2枚貼り合わせた紡錘形)にし、
+          // 付け根から先端へグラデーションする配色で花らしさを強調する。
+          var petals = [];
+          var petalCount = 6;
+          var petalShape = new THREE.Shape();
+          petalShape.moveTo(0, 0);
+          petalShape.quadraticCurveTo(0.9, 0.6, 0, 2.6);
+          petalShape.quadraticCurveTo(-0.9, 0.6, 0, 0);
+          var petalGeo = new THREE.ShapeGeometry(petalShape);
+          for (var i = 0; i < petalCount; i++) {
+            var petalMat = new THREE.MeshStandardMaterial({
+              color: 0xff3377,
+              emissive: 0x881133,
+              emissiveIntensity: 0.4,
+              side: THREE.DoubleSide,
+            });
+            var petal = new THREE.Mesh(petalGeo, petalMat);
+            var angle = (i / petalCount) * Math.PI * 2;
+            petal.userData.baseAngle = angle;
+            petal.position.set(0, 0, 0);
+            group.add(petal);
+            petals.push(petal);
+          }
+
+          group.userData.core = core;
+          group.userData.coreDetail = coreDetail;
+          group.userData.petals = petals;
+          return group;
+        }
+
+        // ぱくぱくトモス(通常敵版): 小型で開閉しながら高速接近する編隊メンバー。
+        function buildTomosEnemyMesh() {
+          var group = new THREE.Group();
+          var coreMat = new THREE.MeshStandardMaterial({
+            color: 0x333333,
+            emissive: 0x110011,
+            emissiveIntensity: 0.3,
+          });
+          var core = new THREE.Mesh(
+            new THREE.SphereGeometry(0.5, 8, 6),
+            coreMat,
+          );
+          group.add(core);
+
+          var jawMat = new THREE.MeshStandardMaterial({
+            color: 0xff3388,
+            emissive: 0x660022,
+            emissiveIntensity: 0.4,
+          });
+          var upperJaw = new THREE.Mesh(
+            new THREE.ConeGeometry(0.5, 0.7, 4),
+            jawMat,
+          );
+          upperJaw.position.y = 0.3;
+          group.add(upperJaw);
+          var lowerJaw = new THREE.Mesh(
+            new THREE.ConeGeometry(0.5, 0.7, 4),
+            jawMat.clone(),
+          );
+          lowerJaw.position.y = -0.3;
+          lowerJaw.rotation.z = Math.PI;
+          group.add(lowerJaw);
+
+          group.userData.upperJaw = upperJaw;
+          group.userData.lowerJaw = lowerJaw;
+          return group;
+        }
+
+        // ダッシャー: 高速で直進突撃してくる小型戦闘機(SF側の雑魚)。
+        // 矢じり型の機体に後方スラスターを付け、速さを強調する。
+        function buildDasherMesh() {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0x3388ff,
+            emissive: 0x113366,
+            emissiveIntensity: 0.4,
+            metalness: 0.4,
+            roughness: 0.3,
+          });
+          var body = new THREE.Mesh(
+            new THREE.ConeGeometry(0.4, 1.6, 4),
+            bodyMat,
+          );
+          body.rotation.x = Math.PI / 2;
+          group.add(body);
+
+          var finMat = new THREE.MeshStandardMaterial({
+            color: 0x226699,
+            emissive: 0x0a2244,
+            emissiveIntensity: 0.3,
+          });
+          var finGeo = new THREE.BoxGeometry(1.1, 0.08, 0.4);
+          var finLeft = new THREE.Mesh(finGeo, finMat);
+          finLeft.position.set(-0.4, 0, -0.3);
+          finLeft.rotation.y = 0.4;
+          group.add(finLeft);
+          var finRight = new THREE.Mesh(finGeo, finMat.clone());
+          finRight.position.set(0.4, 0, -0.3);
+          finRight.rotation.y = -0.4;
+          group.add(finRight);
+
+          var thrusterMat = new THREE.MeshBasicMaterial({
+            color: 0x66ccff,
+            transparent: true,
+            opacity: 0.9,
+          });
+          var thruster = new THREE.Mesh(
+            new THREE.ConeGeometry(0.22, 0.6, 8),
+            thrusterMat,
+          );
+          thruster.rotation.x = -Math.PI / 2;
+          thruster.position.set(0, 0, -0.9);
+          group.add(thruster);
+
+          group.userData.thruster = thruster;
+          return group;
+        }
+
+        // ウィーバー: 大きく左右にうねりながら接近する小型の蛇(ファンタジー
+        // 側の雑魚)。3節の胴体で、うねり移動と合わせて生き物らしさを出す。
+        function buildWeaverMesh() {
+          var group = new THREE.Group();
+          var headMat = new THREE.MeshStandardMaterial({
+            color: 0x9933cc,
+            emissive: 0x330a55,
+            emissiveIntensity: 0.4,
+          });
+          var head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.4, 8, 8),
+            headMat,
+          );
+          group.add(head);
+
+          var eyeMat = new THREE.MeshStandardMaterial({
+            color: 0xffff00,
+            emissive: 0xffff00,
+            emissiveIntensity: 0.8,
+          });
+          var eyeGeo = new THREE.SphereGeometry(0.08, 6, 6);
+          var eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
+          eyeLeft.position.set(-0.18, 0.1, 0.32);
+          group.add(eyeLeft);
+          var eyeRight = new THREE.Mesh(eyeGeo, eyeMat.clone());
+          eyeRight.position.set(0.18, 0.1, 0.32);
+          group.add(eyeRight);
+
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0x7722aa,
+            emissive: 0x220a44,
+            emissiveIntensity: 0.3,
+          });
+          var segments = [];
+          for (var i = 1; i <= 2; i++) {
+            var seg = new THREE.Mesh(
+              new THREE.SphereGeometry(0.32 - i * 0.05, 8, 6),
+              bodyMat.clone(),
+            );
+            seg.position.z = -i * 0.5;
+            group.add(seg);
+            segments.push(seg);
+          }
+
+          group.userData.segments = segments;
+          return group;
+        }
+
+        // アイダ: 赤目の仏頂面モアイ。複数体が編隊で本体(バーバリアン)を守る。
+        function buildAidaMesh() {
+          var group = new THREE.Group();
+          var stoneMat = new THREE.MeshStandardMaterial({
+            color: 0x998866,
+            emissive: 0x332211,
+            emissiveIntensity: 0.2,
+          });
+          var head = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.6, 0.8, 1.8, 6),
+            stoneMat,
+          );
+          group.add(head);
+
+          var eyeMat = new THREE.MeshStandardMaterial({
+            color: 0xff0000,
+            emissive: 0xff0000,
+            emissiveIntensity: 0.9,
+          });
+          var eyeGeo = new THREE.SphereGeometry(0.15, 8, 8);
+          var leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+          leftEye.position.set(-0.25, 0.3, 0.7);
+          group.add(leftEye);
+          var rightEye = new THREE.Mesh(eyeGeo, eyeMat.clone());
+          rightEye.position.set(0.25, 0.3, 0.7);
+          group.add(rightEye);
+
+          return group;
+        }
+
+        // バーバリアン: アイダの編隊中央に潜む本体。ルーパー(クラゲ状の
+        // ガーディアン)を周囲に纏いながら高耐久・多弾で迎え撃つ。
+        // バーバリアン: グラディウスのモアイを意識した石像の巨大な顔。
+        // 正面を向いたまま自機に迫り、大きく開いた口からリップルミサイル
+        // (波状にうねりながら追尾する弾)を連射する。
+        // MOAIがリップルミサイルを発射してから口を開けたままにする秒数。
+        var BARBARIAN_MOUTH_OPEN_SECONDS = 0.35;
+        // 口(弱点)への命中判定に使う許容距離。
+        var BARBARIAN_MOUTH_HIT_RADIUS = 1.1;
+        // 口が開いている間に口へ命中した場合の弱点ダメージ(通常は1)。
+        var BARBARIAN_MOUTH_WEAKPOINT_DAMAGE = 3;
+        // ゴダーニ/トモスの左右ドリフトの速度・振幅。
+        var GODANI_DRIFT_SPEED = 0.5;
+        var GODANI_DRIFT_AMPLITUDE = 4;
+        var TOMOS_DRIFT_SPEED = 0.35;
+        var TOMOS_DRIFT_AMPLITUDE = 3.5;
+        // MOAIが画面内で跳ねる際の、1ジャンプあたりの速さと高さの範囲。
+        // 最大は画面外(PLAYER_BOUNDS.maxYを超える)まで跳ぶこともある。
+        var MOAI_BOUNCE_SPEED = 0.9;
+        var MOAI_BOUNCE_MIN_HEIGHT = 1;
+        var MOAI_BOUNCE_MAX_HEIGHT = 9;
+
+        function buildBarbarianMesh() {
+          var group = new THREE.Group();
+          var stoneMat = new THREE.MeshStandardMaterial({
+            color: 0x998866,
+            emissive: 0x332211,
+            emissiveIntensity: 0.3,
+          });
+          // モアイらしい縦長のシルエットにするため、高さを4.5→6.2に伸ばす。
+          var face = new THREE.Mesh(
+            new THREE.CylinderGeometry(2.2, 2.6, 6.2, 8),
+            stoneMat,
+          );
+          group.add(face);
+
+          // 耳(細長い耳タブ)とイヤリング(発光する輪)。
+          var earMat = new THREE.MeshStandardMaterial({
+            color: 0x887755,
+            emissive: 0x221100,
+            emissiveIntensity: 0.2,
+          });
+          var earringMat = new THREE.MeshStandardMaterial({
+            color: 0xffdd44,
+            emissive: 0xffaa00,
+            emissiveIntensity: 0.6,
+          });
+          var earGeo = new THREE.CapsuleGeometry(0.35, 1.8, 4, 8);
+          var earringGeo = new THREE.TorusGeometry(0.35, 0.08, 8, 12);
+          var leftEar = new THREE.Mesh(earGeo, earMat);
+          leftEar.position.set(-2.3, -0.2, 0.3);
+          group.add(leftEar);
+          var leftEarring = new THREE.Mesh(earringGeo, earringMat);
+          leftEarring.position.set(-2.3, -1.3, 0.3);
+          group.add(leftEarring);
+          var rightEar = new THREE.Mesh(earGeo, earMat.clone());
+          rightEar.position.set(2.3, -0.2, 0.3);
+          group.add(rightEar);
+          var rightEarring = new THREE.Mesh(earringGeo, earringMat.clone());
+          rightEarring.position.set(2.3, -1.3, 0.3);
+          group.add(rightEarring);
+
+          var browMat = new THREE.MeshStandardMaterial({
+            color: 0x776655,
+            emissive: 0x221100,
+            emissiveIntensity: 0.2,
+          });
+          var brow = new THREE.Mesh(
+            new THREE.BoxGeometry(3.4, 0.6, 1),
+            browMat,
+          );
+          brow.position.set(0, 1.4, 1.6);
+          group.add(brow);
+
+          var eyeMat = new THREE.MeshStandardMaterial({
+            color: 0xffcc00,
+            emissive: 0xffaa00,
+            emissiveIntensity: 0.8,
+          });
+          var eyeGeo = new THREE.SphereGeometry(0.5, 10, 10);
+          var leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+          leftEye.position.set(-1, 0.9, 1.9);
+          group.add(leftEye);
+          var rightEye = new THREE.Mesh(eyeGeo, eyeMat.clone());
+          rightEye.position.set(1, 0.9, 1.9);
+          group.add(rightEye);
+
+          var noseMat = new THREE.MeshStandardMaterial({ color: 0x776655 });
+          var nose = new THREE.Mesh(
+            new THREE.ConeGeometry(0.85, 1.9, 6),
+            noseMat,
+          );
+          nose.rotation.x = Math.PI / 2;
+          nose.position.set(0, -0.1, 2.4);
+          group.add(nose);
+
+          // 口(リップルミサイルの発射口)。開閉アニメーションのため上下2枚の
+          // 唇パーツをGroupの子として持たせ、userData経由で回転制御する。
+          var mouthMat = new THREE.MeshStandardMaterial({
+            color: 0x552211,
+            emissive: 0xff3300,
+            emissiveIntensity: 0.4,
+          });
+          // カプセル形状(円柱+半球の両端)を横向きにすることで、四角い
+          // 箱よりも唇らしい丸みのあるシルエットになる。顔の幅(直径
+          // 4.4〜5.2)に対して唇が小さすぎると赤い塊にしか見えないため、
+          // 横幅・太さを拡大して視認性を確保する。
+          var upperLip = new THREE.Mesh(
+            new THREE.CapsuleGeometry(0.45, 2.4, 4, 8),
+            mouthMat,
+          );
+          upperLip.rotation.z = Math.PI / 2;
+          upperLip.position.set(0, -1.5, 2.1);
+          group.add(upperLip);
+          // 下唇は顔(円柱)の丸みに沿ってめり込み、中央部分が隠れて
+          // 左右2つに分かれて見えることがあるため、上唇よりわずかに
+          // 手前(Z+方向)に出して顔面から浮かせ、1つの唇として見えるように
+          // する。
+          var lowerLip = new THREE.Mesh(
+            new THREE.CapsuleGeometry(0.45, 2.4, 4, 8),
+            mouthMat.clone(),
+          );
+          lowerLip.rotation.z = Math.PI / 2;
+          lowerLip.position.set(0, -2.15, 2.3);
+          group.add(lowerLip);
+          var mouthMuzzle = new THREE.Object3D();
+          mouthMuzzle.position.set(0, -1.7, 2.4);
+          group.add(mouthMuzzle);
+
+          group.userData.leftEye = leftEye;
+          group.userData.rightEye = rightEye;
+          group.userData.upperLip = upperLip;
+          group.userData.lowerLip = lowerLip;
+          group.userData.mouth = mouthMuzzle;
+          group.userData.body = face;
+          return group;
+        }
+
+        // 最終ボス ABSYMBEL: 複数形態を象徴する多層構造(コア+回転リング)。
+        function buildFinalBossMesh() {
+          var group = new THREE.Group();
+          var coreMat = new THREE.MeshStandardMaterial({
+            color: 0xffcc00,
+            emissive: 0xff8800,
+            emissiveIntensity: 0.6,
+          });
+          var core = new THREE.Mesh(
+            new THREE.OctahedronGeometry(2, 1),
+            coreMat,
+          );
+          group.add(core);
+
+          var ringMat = new THREE.MeshStandardMaterial({
+            color: 0x9933ff,
+            emissive: 0x551188,
+            emissiveIntensity: 0.5,
+            side: THREE.DoubleSide,
+          });
+          var ring1 = new THREE.Mesh(
+            new THREE.TorusGeometry(3, 0.25, 8, 20),
+            ringMat,
+          );
+          group.add(ring1);
+          var ring2 = new THREE.Mesh(
+            new THREE.TorusGeometry(3, 0.25, 8, 20),
+            ringMat.clone(),
+          );
+          ring2.rotation.x = Math.PI / 2;
+          group.add(ring2);
+
+          group.userData.core = core;
+          group.userData.ring1 = ring1;
+          group.userData.ring2 = ring2;
+          return group;
+        }
+
+        // ステージ内の経過時間に応じて敵速度・弾速を段階的に上昇させる
+        // (DIFFICULTY_RAMP_SECONDSごとに最大DIFFICULTY_RAMP_MAXまで線形増加)。
+        function getDifficultyMultiplier() {
+          // ボステストモードでは検証条件を一定に保つため、時間経過による
+          // 難易度上昇を無効化する。
+          if (bossTestModeActive) return 1;
+          var ramp = Math.min(elapsedTime / DIFFICULTY_RAMP_SECONDS / 3, 1);
+          return 1 + ramp * DIFFICULTY_RAMP_MAX;
+        }
+
+        var BOSS_HP_BY_TYPE = {
+          scaler: 15,
+          godani: 20,
+          tomos: 18,
+          sarpedon: 22,
+          barbarian: 28,
+          final: 50,
+          generic: 25,
+        };
+        var BOSS_SPEED_BY_TYPE = {
+          scaler: 12,
+          godani: 7,
+          tomos: 6,
+          sarpedon: 7,
+          barbarian: 6,
+          final: 6,
+          generic: 8,
+        };
+        var BOSS_SIZE_BY_TYPE = {
+          scaler: 2.75,
+          tomos: 2.2,
+        };
+        // スケイラ(龍)本体のビジュアルスケール。衝突判定の半径
+        // (BOSS_SIZE_BY_TYPE)とは別に、メッシュ自体を大きく見せるための
+        // 拡大率(2.5倍)。
+        var SCALER_VISUAL_SCALE = 2.5;
+        // 各ボスが接近して留まる交戦距離の範囲(手前ほど密着して危険)。
+        // 初回接近時にこの範囲からランダムに1点を抽選し、そこで往復の
+        // 折り返し地点とする(戦うたびに間合いが変わり単調にならない)。
+        var BOSS_ENGAGE_RANGE_BY_TYPE = {
+          godani: [-18, -8],
+          tomos: [-15, -5],
+          sarpedon: [-16, -6],
+          barbarian: [-12, -2],
+          final: [-10, 0],
+          generic: [-20, -10],
+        };
+        var BOSS_NAME_BY_TYPE = {
+          scaler: "SCALER",
+          godani: "GODANI",
+          tomos: "TOMOS",
+          sarpedon: "JET STREAM DOMS",
+          barbarian: "MOAI",
+          final: "ABSYMBEL",
+          generic: "BOSS",
+        };
+
+        // 隠しコマンドのBOSS TESTタブで選べるボス一覧。各ボスが登場する
+        // 本来のステージ設定(色・敵速度倍率)を借用して雰囲気を再現する。
+        var BOSS_TEST_ENTRIES = [
+          { bossType: "scaler", stageId: 1 },
+          { bossType: "godani", stageId: 2 },
+          { bossType: "tomos", stageId: 3 },
+          { bossType: "sarpedon", stageId: 4 },
+          { bossType: "barbarian", stageId: 5 },
+          { bossType: "final", stageId: 7 },
+        ];
+
+        // 隠しコマンドのENDINGタブ用。エントリーは1件のみで、選択すると
+        // 最終ボス撃破直後のエンディング演出(巡航→飛び去り→結果画面)を
+        // 単体で確認できる。
+        var ENDING_ENTRIES = [{ label: "ENDING SEQUENCE" }];
+
+        function buildBossMeshByType(bossType) {
+          switch (bossType) {
+            case "scaler":
+              return buildScalerMesh();
+            case "godani":
+              return buildTwinHeadDragonMesh(false);
+            case "sarpedon":
+              return buildSarpedonMesh();
+            case "tomos":
+              return buildTomosBossMesh();
+            case "barbarian":
+              return buildBarbarianMesh();
+            case "final":
+              return buildFinalBossMesh();
+            default:
+              return buildGenericBossMesh();
+          }
+        }
+
+        function spawnEnemy(kind, laneX, bossTypeOverride) {
+          var mesh;
+          var bossType =
+            kind === "boss" ? bossTypeOverride || currentStage.bossType : null;
+          var isTwinHead = bossType === "godani";
+          var isSarpedon = bossType === "sarpedon";
+          var isTomosBoss = bossType === "tomos";
+          var size =
+            kind === "boss"
+              ? (BOSS_SIZE_BY_TYPE[bossType] ?? 3)
+              : kind === "dom"
+                ? 0.9
+                : kind === "tomos"
+                  ? 0.6
+                  : kind === "dasher"
+                    ? 0.55
+                    : kind === "weaver"
+                      ? 0.7
+                      : 1;
+
+          if (kind === "boss") {
+            mesh = buildBossMeshByType(bossType);
+          } else if (kind === "dom") {
+            mesh = buildDomEnemyMesh();
+          } else if (kind === "tomos") {
+            mesh = buildTomosEnemyMesh();
+          } else if (kind === "dasher") {
+            mesh = buildDasherMesh();
+          } else if (kind === "weaver") {
+            mesh = buildWeaverMesh();
+          } else {
+            var color = kind === "shooter" ? 0xff8800 : 0x00ff88;
+            var geo = new THREE.IcosahedronGeometry(size, 0);
+            var mat = new THREE.MeshStandardMaterial({
+              color: color,
+              emissive: color,
+              emissiveIntensity: 0.3,
+            });
+            mesh = new THREE.Mesh(geo, mat);
+          }
+
+          mesh.position.set(laneX, Math.random() * 3, -140);
+          scene.add(mesh);
+
+          var bossHp =
+            kind === "boss" ? (BOSS_HP_BY_TYPE[bossType] ?? 25) : null;
+          var bossSpeed =
+            kind === "boss" ? (BOSS_SPEED_BY_TYPE[bossType] ?? 8) : null;
+
+          var enemy = {
+            mesh: mesh,
+            kind: kind,
+            bossType: bossType,
+            radius: size,
+            speed:
+              (kind === "boss"
+                ? bossSpeed
+                : kind === "dom"
+                  ? 14
+                  : kind === "tomos"
+                    ? 26
+                    : kind === "dasher"
+                      ? 42
+                      : kind === "weaver"
+                        ? 20
+                        : 22) *
+              currentStage.enemySpeedMultiplier *
+              getDifficultyMultiplier(),
+            hp: kind === "boss" ? bossHp : kind === "dom" ? 2 : 1,
+            maxHp: kind === "boss" ? bossHp : kind === "dom" ? 2 : 1,
+            fireTimer: Math.random() * 2,
+            baseX: laneX,
+            baseY: Math.random() * 3,
+            wavePhase: Math.random() * Math.PI * 2,
+            // ダッシャーは直線的な高速突撃が持ち味のため、うねりをほぼ
+            // 無効化する。ウィーバーは逆に大きく蛇行させ、避けにくい
+            // 軌道にする。
+            waveSpeed:
+              kind === "boss" ? 0 : kind === "weaver" ? 3 : 1.5 + Math.random(),
+            waveAmplitude:
+              kind === "boss"
+                ? 0
+                : kind === "dasher"
+                  ? 0.2
+                  : kind === "weaver"
+                    ? 5.5
+                    : 2 + Math.random() * 1.5,
+            // ステージ難易度(enemySpeedMultiplier)が高いほど上下ウェーブの
+            // 振幅・周期を大きくし、後半ステージほど回避が難しくなるようにする。
+            verticalWavePhase: Math.random() * Math.PI * 2,
+            verticalWaveSpeed: kind === "boss" ? 0 : 0.8 + Math.random() * 0.6,
+            verticalWaveAmplitude:
+              kind === "boss"
+                ? 0
+                : Math.max(0, currentStage.enemySpeedMultiplier - 1) * 6 + 0.5,
+            swoopDir: 1,
+          };
+
+          if (bossType === "scaler") {
+            // 画面いっぱいを使った大きな8の字遊泳になるよう振幅を拡大
+            // (kind==="boss"はwaveAmplitudeが既定で0になるため明示設定)。
+            enemy.waveAmplitude = 8;
+            // うねりで大きく下に振れても地面に潜らないよう、基準の高さを
+            // 高めに設定する(地面Y=-4、下振れ幅は最大でwaveAmplitude*0.55)。
+            enemy.homeY = SCALER_HOME_Y;
+            mesh.position.y = SCALER_HOME_Y;
+          }
+          if (isTwinHead) {
+            enemy.leftHp = Math.ceil(bossHp / 2);
+            enemy.rightHp = Math.ceil(bossHp / 2);
+            // 交互ホーミング弾: 左右どちらの頭から撃つかを毎回切り替える
+            // ためのトグルフラグ。
+            enemy.nextFiringHeadIsLeft = true;
+          }
+          if (isSarpedon) {
+            // 3体のドムそれぞれが独立したHPを持ち、1体ずつ撃破していく。
+            var perDomHp = Math.ceil(bossHp / 3);
+            enemy.domHp = [perDomHp, perDomHp, perDomHp];
+            // ジャンプアタック: 通常は左右にうねるだけだが、時々予兆の後、
+            // 縦方向に放物線を描きながら自機の位置へジャンプして着地し、
+            // その後また奥へ戻る演出のための状態。
+            enemy.dashState = "idle";
+            enemy.dashTimer = 2 + Math.random() * 2;
+            enemy.jumpOrigin = new THREE.Vector3();
+            enemy.jumpTarget = new THREE.Vector3();
+            enemy.dashProgress = 0;
+            enemy.homeY = mesh.position.y;
+          }
+          if (isTomosBoss) {
+            enemy.petalHp = [3, 3, 3, 3, 3, 3];
+            enemy.coreVulnerable = false;
+          }
+          if (bossType === "barbarian") {
+            enemy.escortCount = 4;
+            // 画面内で跳ねる動作の基準の高さ。
+            enemy.homeY = mesh.position.y;
+          }
+
+          enemies.push(enemy);
+          if (kind === "boss") {
+            showBossHpBar(BOSS_NAME_BY_TYPE[bossType] || "BOSS");
+            startBgm("boss");
+            bossZoomTimer = BOSS_ZOOM_DURATION;
+          }
+        }
+
+        function showBossHpBar(bossName) {
+          document.getElementById("boss-hp-label").textContent =
+            bossName || "BOSS";
+          document.getElementById("boss-hp-container").classList.add("visible");
+          document.getElementById("boss-hp-bar-inner").style.width = "100%";
+        }
+
+        function updateBossHpBar(boss) {
+          var ratio = Math.max(0, boss.hp / boss.maxHp);
+          document.getElementById("boss-hp-bar-inner").style.width =
+            ratio * 100 + "%";
+        }
+
+        function hideBossHpBar() {
+          document
+            .getElementById("boss-hp-container")
+            .classList.remove("visible");
+        }
+
+        // 遺跡風の崩れた石柱群(原作のファンタジー的な地形装飾を意識)。
+        // 高さの異なる3本の柱を寄せ集め、廃墟らしいシルエットにする。
+        function buildRuinsMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({ color: 0x776655 });
+          var heights = [6, 8, 4.5];
+          var offsets = [-1.2, 0, 1.3];
+          for (var i = 0; i < heights.length; i++) {
+            var pillar = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.5, 0.6, heights[i], 6),
+              mat,
+            );
+            pillar.position.set(offsets[i], heights[i] / 2 - 4, 0);
+            pillar.rotation.z = (Math.random() - 0.5) * 0.15;
+            group.add(pillar);
+          }
+          return group;
+        }
+
+        // 浮遊島: 岩の塊の上に緑地が乗った、ファンタジー世界観を象徴する
+        // 装飾オブジェクト(スペースハリアーらしい非現実的な浮遊感を演出)。
+        function buildFloatingIslandMesh() {
+          var group = new THREE.Group();
+          var rockMat = new THREE.MeshStandardMaterial({ color: 0x554433 });
+          var rock = new THREE.Mesh(new THREE.ConeGeometry(2.2, 2, 6), rockMat);
+          rock.rotation.x = Math.PI;
+          group.add(rock);
+
+          var grassMat = new THREE.MeshStandardMaterial({ color: 0x66bb44 });
+          var grass = new THREE.Mesh(
+            new THREE.CylinderGeometry(2.3, 2.3, 0.4, 8),
+            grassMat,
+          );
+          grass.position.y = 1;
+          group.add(grass);
+
+          return group;
+        }
+
+        function spawnObstacle(kind, laneX) {
+          var mesh;
+          if (kind === "pillar") {
+            var geo = new THREE.CylinderGeometry(0.8, 0.8, 10, 8);
+            var mat = new THREE.MeshStandardMaterial({ color: 0x888899 });
+            mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(laneX, 1, -160);
+          } else if (kind === "ruins") {
+            mesh = buildRuinsMesh();
+            mesh.position.set(laneX, 0, -160);
+          } else if (kind === "floating_island") {
+            mesh = buildFloatingIslandMesh();
+            mesh.position.set(laneX, Math.random() * 2 + 1, -160);
+          } else {
+            var rockGeo = new THREE.DodecahedronGeometry(1.4, 0);
+            var rockMat = new THREE.MeshStandardMaterial({ color: 0x664433 });
+            mesh = new THREE.Mesh(rockGeo, rockMat);
+            mesh.position.set(laneX, -3.5, -160);
+          }
+          scene.add(mesh);
+          obstacles.push({
+            mesh: mesh,
+            radius: kind === "pillar" || kind === "ruins" ? 1.2 : 1.4,
+            hitHeight:
+              kind === "pillar" || kind === "ruins"
+                ? 999
+                : kind === "floating_island"
+                  ? 2.5
+                  : 1.6,
+            speed: 26,
+          });
+        }
+
+        function spawnEnemyBulletAt(sourcePosition, dir, homingTarget, radius) {
+          var geo = new THREE.SphereGeometry(radius || 0.25, 8, 8);
+          var mat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+          var mesh = new THREE.Mesh(geo, mat);
+          mesh.position.copy(sourcePosition);
+          scene.add(mesh);
+          var bullet = {
+            mesh: mesh,
+            dir: dir,
+            speed: 30,
+            nearMissPlayed: false,
+          };
+          if (homingTarget) {
+            // 発射時点の自機位置(固定目標)へ、進行方向を徐々に収束させる。
+            // 完全追尾(現在の自機位置を常に追う)とは異なり、発射後に自機が
+            // 動けば普通に避けられるが、初速の直進弾よりも軌道が曲がる分
+            // 見切りにくく緊張感が出る。
+            bullet.isHomingToFixedTarget = true;
+            bullet.homingTarget = homingTarget.clone();
+            // 初速は扇状に広がった方向のまま飛び出し、その後急旋回で
+            // ホーミング先へ大きく軌道を曲げる(極端に曲がる弾道にする)。
+            bullet.homingTurnRate = 4.5;
+          }
+          enemyBullets.push(bullet);
+        }
+
+        function firePlayerDirected(sourcePosition, radius) {
+          var dir = new THREE.Vector3()
+            .subVectors(playerGroup.position, sourcePosition)
+            .normalize();
+          spawnEnemyBulletAt(sourcePosition, dir, null, radius);
+        }
+
+        // ホーミング弾(ゴダーニ専用): 発射直後は発射元の頭部の向きに飛ぶが、
+        // 飛行中は少しずつ自機方向へ軌道修正する。直進弾よりは避けにくいが
+        // 完全追尾ではないため、左右に大きく動けば振り切れる。
+        function spawnHomingMissile(sourcePosition) {
+          var dir = new THREE.Vector3()
+            .subVectors(playerGroup.position, sourcePosition)
+            .normalize();
+          var geo = new THREE.ConeGeometry(0.22, 0.6, 8);
+          var mat = new THREE.MeshBasicMaterial({ color: 0xffaa22 });
+          var mesh = new THREE.Mesh(geo, mat);
+          mesh.position.copy(sourcePosition);
+          mesh.lookAt(playerGroup.position);
+          mesh.rotateX(Math.PI / 2);
+          scene.add(mesh);
+          enemyBullets.push({
+            mesh: mesh,
+            dir: dir,
+            speed: 26,
+            nearMissPlayed: false,
+            isHoming: true,
+            homingTurnRate: 1.8,
+          });
+        }
+
+        // リップルミサイル(バーバリアン専用): グラディウスのリップルレーザー
+        // を意識し、自機へ向かう基本方向を保ちつつ左右にサインカーブで
+        // 波打ちながら進む誘導弾。直進弾より避けにくいが、波の分だけ
+        // 到達が遅く見切りやすい。
+        function spawnRippleMissile(sourcePosition) {
+          var dir = new THREE.Vector3()
+            .subVectors(playerGroup.position, sourcePosition)
+            .normalize();
+          // リップル(波紋)らしくドーナツ型(トーラス)にし、進行方向を
+          // 軸として見えるよう向きを合わせる。
+          var geo = new THREE.TorusGeometry(0.32, 0.13, 8, 16);
+          var mat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
+          var mesh = new THREE.Mesh(geo, mat);
+          mesh.position.copy(sourcePosition);
+          mesh.lookAt(sourcePosition.clone().add(dir));
+          scene.add(mesh);
+          // 進行方向に直交する横ベクトル(Y軸との外積)を波のうねり方向に使う。
+          var lateral = new THREE.Vector3()
+            .crossVectors(dir, new THREE.Vector3(0, 1, 0))
+            .normalize();
+          enemyBullets.push({
+            mesh: mesh,
+            dir: dir,
+            speed: 22,
+            nearMissPlayed: false,
+            isRipple: true,
+            lateral: lateral,
+            wavePhase: 0,
+            basePosition: mesh.position.clone(),
+            travelDistance: 0,
+          });
+        }
+
+        // 見た目は扇状に広がって発射しつつ、実際に命中させるため各弾は
+        // 発射時点の自機位置(固定目標)へホーミングで収束させる。
+        // 初速の方向だけをXY平面上の角度で扇状に広げ(spawnEnemyBulletAtの
+        // dir引数)、ホーミング先(homingTarget)は「自機位置を中心に横方向
+        // へオフセットした着弾目標点」にすることで、見た目の扇形はそのまま
+        // 保ちつつ、直進のみでは画面外に逸れてしまう問題を回避する。
+        function fireFan(sourcePosition, count, spreadRadians) {
+          var toPlayer = new THREE.Vector3().subVectors(
+            playerGroup.position,
+            sourcePosition,
+          );
+          var baseAngle = Math.atan2(toPlayer.y, toPlayer.x);
+          var lateral = new THREE.Vector3()
+            .crossVectors(toPlayer, new THREE.Vector3(0, 1, 0))
+            .normalize();
+          // spreadRadiansをホーミング先の横方向オフセット幅にも変換し、
+          // 扇の見た目の広さとホーミング先の広がりを一致させる。
+          var maxLateralOffset = spreadRadians * 2.2;
+
+          for (var i = 0; i < count; i++) {
+            var t = count === 1 ? 0.5 : i / (count - 1);
+            var angle = baseAngle + (t - 0.5) * spreadRadians;
+            var initialDir = new THREE.Vector3(
+              Math.cos(angle),
+              Math.sin(angle),
+              toPlayer.z >= 0 ? 0.5 : -0.5,
+            ).normalize();
+
+            var offset = (t - 0.5) * 2 * maxLateralOffset;
+            var target = playerGroup.position
+              .clone()
+              .addScaledVector(lateral, offset);
+
+            spawnEnemyBulletAt(sourcePosition, initialDir, target);
+          }
+        }
+
+        function fireAtPlayer(enemy) {
+          if (enemy.kind === "dom") {
+            var muzzleWorldPos = new THREE.Vector3();
+            enemy.mesh.userData.muzzle.getWorldPosition(muzzleWorldPos);
+            firePlayerDirected(muzzleWorldPos);
+            return;
+          }
+
+          if (enemy.kind === "weaver") {
+            // ウィーバーは大蛇行しながら接近する分、弾も直進ではなく
+            // ホーミング弾にすることで回避難度を保つ。
+            spawnHomingMissile(enemy.mesh.position);
+            return;
+          }
+
+          if (enemy.kind !== "boss") {
+            var dir = new THREE.Vector3()
+              .subVectors(playerGroup.position, enemy.mesh.position)
+              .normalize();
+            spawnEnemyBulletAt(enemy.mesh.position, dir);
+            return;
+          }
+
+          if (enemy.bossType === "scaler") {
+            var headWorldPos = new THREE.Vector3();
+            enemy.mesh.userData.head.getWorldPosition(headWorldPos);
+            // 火炎放射のイメージなので、通常弾より大きめの弾にする。
+            firePlayerDirected(headWorldPos, SCALER_BREATH_BULLET_RADIUS);
+          } else if (enemy.bossType === "godani") {
+            // 交互ホーミング弾: 左右どちらか一方の頭(生存している方)から
+            // 1発ずつ、毎回発射元を切り替えながらホーミング弾を放つ。
+            // 希望する側の頭が既に破壊されていれば、生存側にフォールバック。
+            var preferLeft = enemy.nextFiringHeadIsLeft;
+            var useLeftHead = preferLeft
+              ? enemy.leftHp > 0 || !(enemy.rightHp > 0)
+              : !(enemy.rightHp > 0) && enemy.leftHp > 0;
+            var firingHeadName = useLeftHead ? "leftHead" : "rightHead";
+            var firingHeadPos = new THREE.Vector3();
+            enemy.mesh.userData[firingHeadName].getWorldPosition(firingHeadPos);
+            spawnHomingMissile(firingHeadPos);
+            enemy.nextFiringHeadIsLeft = !enemy.nextFiringHeadIsLeft;
+          } else if (enemy.bossType === "sarpedon") {
+            // ジェットストリームアタック: 生存しているドムが両バレルから
+            // 同時にバズーカ弾を発射する(3体編隊で最大6発の弾幕になる)。
+            var doms = enemy.mesh.userData.doms;
+            for (var sdi = 0; sdi < doms.length; sdi++) {
+              if (enemy.domHp[sdi] <= 0) continue;
+              var leftMuzzlePos = new THREE.Vector3();
+              var rightMuzzlePos = new THREE.Vector3();
+              doms[sdi].userData.leftMuzzle.getWorldPosition(leftMuzzlePos);
+              doms[sdi].userData.rightMuzzle.getWorldPosition(rightMuzzlePos);
+              firePlayerDirected(leftMuzzlePos);
+              firePlayerDirected(rightMuzzlePos);
+            }
+          } else if (enemy.bossType === "tomos") {
+            fireFan(enemy.mesh.position, 8, Math.PI * 0.7);
+          } else if (enemy.bossType === "barbarian") {
+            var mouthWorldPos = new THREE.Vector3();
+            enemy.mesh.userData.mouth.getWorldPosition(mouthWorldPos);
+            spawnRippleMissile(mouthWorldPos);
+            // リップル発射の瞬間だけ口を大きく開ける。この間に開いた口へ
+            // 命中すると弱点扱いで大ダメージになる。
+            enemy.mouthOpenTimer = BARBARIAN_MOUTH_OPEN_SECONDS;
+          } else if (enemy.bossType === "final") {
+            // 第2形態(HP50%以下)ではリング全体が高速回転しており、
+            // 弾数を増やしほぼ全方位の扇状弾幕に強化する(ラスボスらしい
+            // 圧力を出すため、第1形態よりも明確に苛烈にする)。
+            var hpRatio = enemy.hp / enemy.maxHp;
+            if (hpRatio <= 0.5) {
+              fireFan(enemy.mesh.position, 16, Math.PI * 1.4);
+            } else {
+              fireFan(enemy.mesh.position, 10, Math.PI * 0.9);
+            }
+          } else {
+            fireFan(enemy.mesh.position, 5, Math.PI / 3);
+          }
+        }
+
+        function spawnExplosion(position, scale) {
+          playExplosionSound();
+          var particleCount = 12;
+          for (var i = 0; i < particleCount; i++) {
+            var geo = new THREE.SphereGeometry(0.12 * (scale || 1), 6, 6);
+            var mat = new THREE.MeshBasicMaterial({
+              color: i % 2 === 0 ? 0xffaa00 : 0xff4400,
+              transparent: true,
+              opacity: 1,
+            });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(position);
+            scene.add(mesh);
+            var angle = (i / particleCount) * Math.PI * 2;
+            var speed = 3 + Math.random() * 4;
+            explosions.push({
+              mesh: mesh,
+              life: 0.5 + Math.random() * 0.3,
+              maxLife: 0.8,
+              vel: new THREE.Vector3(
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed,
+                (Math.random() - 0.5) * speed,
+              ),
+            });
+          }
+          cameraShake = Math.max(cameraShake, 0.3 * (scale || 1));
+        }
+
+        // ボス撃破は原作同様の派手さを出すため、位置をランダムにずらしながら
+        // 多段で爆発させる(単発より画面映えする)。
+        function spawnBossDefeatExplosions(position) {
+          var burstCount = 6;
+          for (var i = 0; i < burstCount; i++) {
+            (function (index) {
+              setTimeout(function () {
+                var offset = new THREE.Vector3(
+                  (Math.random() - 0.5) * 4,
+                  (Math.random() - 0.5) * 4,
+                  (Math.random() - 0.5) * 2,
+                );
+                spawnExplosion(position.clone().add(offset), 2 + index * 0.3);
+              }, index * 120);
+            })(i);
+          }
+        }
+
+        function loadHighScore() {
+          try {
+            var raw = window.localStorage.getItem(HIGH_SCORE_STORAGE_KEY);
+            var value = raw ? parseInt(raw, 10) : 0;
+            return isNaN(value) ? 0 : value;
+          } catch (e) {
+            return 0;
+          }
+        }
+
+        function saveHighScoreIfBeaten(candidateScore) {
+          var current = loadHighScore();
+          if (candidateScore > current) {
+            try {
+              window.localStorage.setItem(
+                HIGH_SCORE_STORAGE_KEY,
+                String(candidateScore),
+              );
+            } catch (e) {
+              // localStorageが使用できない環境では保存をスキップする
+            }
+            return candidateScore;
+          }
+          return current;
+        }
+
+        function refreshHighScoreDisplay() {
+          document.getElementById("high-score-display").textContent =
+            "HIGH SCORE: " + loadHighScore();
+        }
+
+        function registerKillForCombo() {
+          comboCount += 1;
+          comboResetTimer = COMBO_WINDOW_SECONDS;
+          var comboDisplay = document.getElementById("combo-display");
+          if (comboCount >= 2) {
+            comboDisplay.textContent = comboCount + " HIT COMBO!";
+            comboDisplay.classList.add("visible");
+          }
+        }
+
+        function resetCombo() {
+          comboCount = 0;
+          comboResetTimer = 0;
+          document.getElementById("combo-display").classList.remove("visible");
+        }
+
+        function showScorePopup(worldPosition, amount, isBossDefeat) {
+          var projected = worldPosition.clone().project(camera);
+          var screenX = ((projected.x + 1) / 2) * window.innerWidth;
+          var screenY = ((1 - projected.y) / 2) * window.innerHeight;
+
+          var popup = document.createElement("div");
+          popup.className = isBossDefeat
+            ? "score-popup boss-defeat"
+            : "score-popup";
+          popup.textContent = "+" + amount;
+          popup.style.left = screenX + "px";
+          popup.style.top = screenY + "px";
+          document.getElementById("canvas-container").appendChild(popup);
+          setTimeout(function () {
+            popup.remove();
+          }, 1000);
+        }
+
+        function updateHud() {
+          document.getElementById("score-display").textContent =
+            "SCORE: " + score;
+          document.getElementById("lives-display").textContent =
+            "LIVES: " + lives;
+        }
+
+        function flashDamage() {
+          var flash = document.getElementById("flash-overlay");
+          flash.style.transition = "none";
+          flash.style.opacity = "0.6";
+          requestAnimationFrame(function () {
+            flash.style.transition = "opacity 0.3s ease";
+            flash.style.opacity = "0";
+          });
+        }
+
+        var clock = new THREE.Clock();
+
+        var titleAnimTime = 0;
+
+        function updateGameOverTimers(dt) {
+          if (gameOverInputLockTimer > 0) {
+            gameOverInputLockTimer -= dt;
+          }
+          if (gameOverAutoReturnTimer > 0) {
+            gameOverAutoReturnTimer -= dt;
+            if (gameOverAutoReturnTimer <= 0) {
+              returnToTitleFromGameOver();
+            }
+          }
+        }
+
+        function renderTitleScreen() {
+          document.getElementById("message-overlay").innerHTML =
+            '<h1>STELLAR HARRIER</h1><div id="high-score-display">HIGH SCORE: ' +
+            loadHighScore() +
+            "</div><p>移動: [矢印キー] or [WASD] or [テンキー] or [マウスドラッグ]</p>" +
+            "<p>ショット: [スペースキー] or [マウスクリック]</p>" +
+            '<button id="start-button" type="button">START</button>';
+          document.getElementById("start-button").onclick = startGame;
+        }
+
+        function returnToTitleFromGameOver() {
+          state = STATE_READY;
+          stopBgmAndSilence();
+          renderTitleScreen();
+        }
+
+        function loop() {
+          requestAnimationFrame(loop);
+          var dt = Math.min(clock.getDelta(), 0.05);
+
+          if (state === STATE_PLAYING) {
+            update(dt);
+          }
+
+          if (state === STATE_ENDING) {
+            updateEnding(dt);
+          }
+
+          if (state === STATE_GAMEOVER) {
+            updateGameOverTimers(dt);
+          }
+
+          if (state === STATE_READY || state === STATE_STAGE_SELECT) {
+            titleAnimTime += dt;
+            camera.position.x = Math.sin(titleAnimTime * 0.3) * 3;
+            camera.position.y = 2.2 + Math.sin(titleAnimTime * 0.5) * 0.5;
+            camera.lookAt(0, 2, -40);
+            if (starField) {
+              starField.rotation.y += dt * 0.05;
+            }
+          } else if (starField) {
+            starField.rotation.y += dt * 0.01;
+          }
+
+          applyCameraShake(dt);
+          applyBossZoom(dt);
+          renderer.render(scene, camera);
+        }
+
+        function applyCameraShake(dt) {
+          if (state === STATE_READY || state === STATE_STAGE_SELECT) return;
+          if (cameraShake > 0) {
+            cameraShake = Math.max(0, cameraShake - dt * 1.5);
+            camera.position.x = (Math.random() - 0.5) * cameraShake;
+            camera.position.y = 2.2 + (Math.random() - 0.5) * cameraShake;
+          } else {
+            camera.position.x = 0;
+            camera.position.y = 2.2;
+          }
+        }
+
+        // ボス登場時、FOVを素早く狭めてからゆっくり元に戻す疑似ズームイン。
+        // 前半40%でズームイン、残りでズームアウトする単純なイーズ。
+        function applyBossZoom(dt) {
+          if (bossZoomTimer <= 0) return;
+          bossZoomTimer = Math.max(0, bossZoomTimer - dt);
+          var progress = 1 - bossZoomTimer / BOSS_ZOOM_DURATION;
+          var zoomAmount;
+          if (progress < 0.4) {
+            zoomAmount = progress / 0.4;
+          } else {
+            zoomAmount = 1 - (progress - 0.4) / 0.6;
+          }
+          camera.fov = BASE_FOV - (BASE_FOV - BOSS_ZOOM_FOV) * zoomAmount;
+          camera.updateProjectionMatrix();
+          if (bossZoomTimer <= 0) {
+            camera.fov = BASE_FOV;
+            camera.updateProjectionMatrix();
+          }
+        }
+
+        // キーボード/マウス/タッチによる自機のXY移動を反映する。通常の
+        // プレイ中(update)だけでなく、エンディングの巡航フェーズでも
+        // 同じ操作性を使うため共通関数として切り出す。
+        function updatePlayerMovement(dt) {
+          var accel = 26;
+          // テンキー(8:上 4:左 6:右 2:下)にも対応する。
+          if (keys["ArrowLeft"] || keys["KeyA"] || keys["Numpad4"]) {
+            playerVel.x -= accel * dt;
+          }
+          if (keys["ArrowRight"] || keys["KeyD"] || keys["Numpad6"]) {
+            playerVel.x += accel * dt;
+          }
+          if (keys["ArrowUp"] || keys["KeyW"] || keys["Numpad8"]) {
+            playerVel.y += accel * dt;
+          }
+          if (keys["ArrowDown"] || keys["KeyS"] || keys["Numpad2"]) {
+            playerVel.y -= accel * dt;
+          }
+          playerVel.x *= 0.9;
+          playerVel.y *= 0.9;
+
+          if (pointerActive) {
+            playerPos.x +=
+              (pointerTarget.x - playerPos.x) * Math.min(1, dt * 6);
+            playerPos.y +=
+              (pointerTarget.y - playerPos.y) * Math.min(1, dt * 6);
+          } else {
+            playerPos.x += playerVel.x * dt;
+            playerPos.y += playerVel.y * dt;
+          }
+
+          playerPos = clampPosition(playerPos, PLAYER_BOUNDS);
+          playerGroup.position.x = playerPos.x;
+          playerGroup.position.y = playerPos.y;
+          playerGroup.rotation.z = -playerVel.x * 0.06;
+          playerGroup.rotation.x = playerVel.y * 0.03;
+        }
+
+        function update(dt) {
+          elapsedTime += dt;
+          if (invulnerableTimer > 0) {
+            invulnerableTimer -= dt;
+            player.visible = Math.floor(elapsedTime * 12) % 2 === 0;
+            shieldMesh.visible = true;
+            shieldMesh.rotation.y += dt * 4;
+            shieldMesh.rotation.x += dt * 2;
+          } else {
+            player.visible = true;
+            shieldMesh.visible = false;
+          }
+
+          if (comboResetTimer > 0) {
+            comboResetTimer -= dt;
+            if (comboResetTimer <= 0) {
+              resetCombo();
+            }
+          }
+
+          updatePlayerMovement(dt);
+
+          groundOffset += GROUND_SPEED * dt;
+          if (groundMesh && groundMesh.material.map) {
+            groundMesh.material.map.offset.y = groundOffset * 0.03;
+          }
+
+          while (
+            nextSpawnIndex < spawnSchedule.length &&
+            spawnSchedule[nextSpawnIndex].time <= elapsedTime
+          ) {
+            var ev = spawnSchedule[nextSpawnIndex];
+            if (ev.kind === "boss") {
+              // ボスは即座に出現させず、警告演出(音+WARNING表示+ボス名)を
+              // 挟んでから少し遅れて出現させる。ゲーム内時間(elapsedTime)
+              // 基準で遅延させることで、ポーズ中は演出も止まる。
+              // 通常ステージのボスイベントはbossTypeを持たず、spawnEnemy
+              // 側と同じくcurrentStage.bossTypeにフォールバックする
+              // (このフォールバックをしないとボス名が常に既定値"BOSS"に
+              // なってしまう)。
+              var warningBossType = ev.bossType || currentStage.bossType;
+              showBossWarning(BOSS_NAME_BY_TYPE[warningBossType] || "BOSS");
+              pendingBossSpawns.push({
+                time: elapsedTime + BOSS_WARNING_DURATION_MS / 1000,
+                laneX: ev.laneX,
+                bossType: warningBossType,
+              });
+            } else {
+              spawnEnemy(ev.kind, ev.laneX, ev.bossType);
+            }
+            nextSpawnIndex += 1;
+          }
+
+          for (var pbi = pendingBossSpawns.length - 1; pbi >= 0; pbi--) {
+            var pending = pendingBossSpawns[pbi];
+            if (pending.time <= elapsedTime) {
+              spawnEnemy("boss", pending.laneX, pending.bossType);
+              pendingBossSpawns.splice(pbi, 1);
+            }
+          }
+
+          while (
+            nextObstacleIndex < obstacleSchedule.length &&
+            obstacleSchedule[nextObstacleIndex].time <= elapsedTime
+          ) {
+            var ob = obstacleSchedule[nextObstacleIndex];
+            spawnObstacle(ob.kind, ob.laneX);
+            nextObstacleIndex += 1;
+          }
+
+          updateBullets(dt);
+          updateEnemies(dt);
+          updateObstacles(dt);
+          updateEnemyBullets(dt);
+          updateExplosions(dt);
+
+          if (stageTransitionTimer > 0) {
+            // 次ステージへの遷移待ち(ファンファーレ演出中)。この間も
+            // ゲームを止めずに現ステージの描画・自機操作を続けさせるため、
+            // stageCompleteの再判定はスキップする。
+            stageTransitionTimer -= dt;
+            if (stageTransitionTimer <= 0) {
+              advanceToNextStage();
+            }
+          } else {
+            var stageComplete =
+              !bossTestModeActive &&
+              (currentStage.bossSequence
+                ? bossRushAllDefeated && enemies.length === 0
+                : elapsedTime >= currentStage.durationSeconds &&
+                  enemies.length === 0);
+            if (stageComplete && state === STATE_PLAYING) {
+              clearAllEnemiesAndAdvance();
+            }
+          }
+        }
+
+        function updateBullets(dt) {
+          for (var bi = bullets.length - 1; bi >= 0; bi--) {
+            var b = bullets[bi];
+            b.mesh.position.z -= b.speed * dt;
+            if (b.mesh.position.z < -160) {
+              scene.remove(b.mesh);
+              bullets.splice(bi, 1);
+            }
+          }
+        }
+
+        // JET STREAM DOMS(サルペドン)専用: 通常は左右にうねりながら飛行
+        // するが、一定間隔で「素早い左右横移動→静止→予兆(赤く点滅)→
+        // 縦方向に放物線を描きながら自機の位置へジャンプして着地→また
+        // 奥へ戻る」演出を挟む。ジャンプ先(X/Y/Z)は予兆終了時点の自機
+        // 位置で固定するため、予兆中に自機が動けば着地点がズレて避けられる。
+        var SARPEDON_SLIDE_DURATION_SECONDS = 0.35;
+        var SARPEDON_JUMP_CHARGE_SECONDS = 0.6;
+        var SARPEDON_JUMP_DURATION_SECONDS = 0.7;
+        var SARPEDON_JUMP_HEIGHT = 6;
+        var SARPEDON_RETURN_DURATION_SECONDS = 0.8;
+
+        function updateSarpedonPerformance(en, dt) {
+          var doms = en.mesh.userData.doms;
+
+          if (en.dashState === "idle") {
+            en.dashTimer -= dt;
+            for (var i = 0; i < doms.length; i++) {
+              var domMesh = doms[i];
+              if (en.domHp[i] <= 0) continue;
+              domMesh.position.x = Math.sin(elapsedTime * 2.4 - i * 0.6) * 3;
+              domMesh.rotation.z = Math.sin(elapsedTime * 2.4 - i * 0.6) * 0.2;
+              var thrusterFlicker =
+                0.6 + Math.abs(Math.sin(elapsedTime * 12 + i)) * 0.4;
+              domMesh.userData.thruster.material.opacity = thrusterFlicker;
+            }
+            if (en.dashTimer <= 0) {
+              en.dashState = "sliding";
+              en.dashTimer = SARPEDON_SLIDE_DURATION_SECONDS;
+              en.dashProgress = 0;
+              en.jumpOrigin.copy(en.mesh.position);
+              // 編隊ごと画面内のランダムなX位置へ素早く横移動する
+              // (ジャンプ前の予備動作として、回避のリズムを崩す)。
+              en.jumpTarget.set(
+                PLAYER_BOUNDS.minX +
+                  Math.random() * (PLAYER_BOUNDS.maxX - PLAYER_BOUNDS.minX),
+                en.mesh.position.y,
+                en.mesh.position.z,
+              );
+            }
+          } else if (en.dashState === "sliding") {
+            en.dashProgress = Math.min(
+              1,
+              en.dashProgress + dt / SARPEDON_SLIDE_DURATION_SECONDS,
+            );
+            var slideP = en.dashProgress;
+            // 急加速→急停止のイージングで「素早い」横移動感を出す。
+            var easedSlide = 1 - Math.pow(1 - slideP, 3);
+            en.mesh.position.x =
+              en.jumpOrigin.x +
+              (en.jumpTarget.x - en.jumpOrigin.x) * easedSlide;
+            for (var si = 0; si < doms.length; si++) {
+              if (en.domHp[si] <= 0) continue;
+              doms[si].rotation.z =
+                Math.sign(en.jumpTarget.x - en.jumpOrigin.x) * -0.4;
+              doms[si].userData.thruster.material.opacity = 1;
+            }
+            if (en.dashProgress >= 1) {
+              en.baseX = en.mesh.position.x;
+              en.dashState = "charging";
+              en.dashTimer = SARPEDON_JUMP_CHARGE_SECONDS;
+            }
+          } else if (en.dashState === "charging") {
+            en.dashTimer -= dt;
+            // 予兆演出: スラスターを激しく明滅させ、ジャンプ直前であることを
+            // 示す(この間に自機が動けば着地点もそれに応じて変わる)。
+            var chargeFlicker =
+              Math.abs(Math.sin(elapsedTime * 25)) * 0.5 + 0.5;
+            for (var ci = 0; ci < doms.length; ci++) {
+              if (en.domHp[ci] <= 0) continue;
+              doms[ci].userData.thruster.material.opacity = chargeFlicker;
+            }
+            if (en.dashTimer <= 0) {
+              en.dashState = "jumping";
+              en.dashTimer = SARPEDON_JUMP_DURATION_SECONDS;
+              en.dashProgress = 0;
+              en.jumpOrigin.copy(en.mesh.position);
+              // 着地点は予兆終了時点の自機位置(この後自機が動けば避けられる)。
+              // Zは自機のすぐ奥側に着地させ、自機と重ならないようにする。
+              en.jumpTarget.set(
+                Math.max(
+                  PLAYER_BOUNDS.minX,
+                  Math.min(PLAYER_BOUNDS.maxX, playerGroup.position.x),
+                ),
+                Math.max(
+                  PLAYER_BOUNDS.minY,
+                  Math.min(PLAYER_BOUNDS.maxY, playerGroup.position.y),
+                ),
+                playerGroup.position.z - 4,
+              );
+            }
+          } else if (en.dashState === "jumping") {
+            en.dashProgress = Math.min(
+              1,
+              en.dashProgress + dt / SARPEDON_JUMP_DURATION_SECONDS,
+            );
+            var p = en.dashProgress;
+            // XZは線形補間、Yは放物線(sin波で山なりの弧を描く)。
+            en.mesh.position.lerpVectors(en.jumpOrigin, en.jumpTarget, p);
+            var arc = Math.sin(p * Math.PI) * SARPEDON_JUMP_HEIGHT;
+            en.mesh.position.y = en.jumpOrigin.y + arc;
+            for (var di = 0; di < doms.length; di++) {
+              if (en.domHp[di] <= 0) continue;
+              doms[di].position.x = 0;
+              doms[di].rotation.z = 0;
+              // 上昇中は前傾、下降中は後傾させ、ジャンプの勢いを表現する。
+              doms[di].rotation.x = Math.cos(p * Math.PI) * 0.5;
+              doms[di].userData.thruster.material.opacity = 1;
+            }
+            if (en.dashProgress >= 1) {
+              en.dashState = "landed";
+              en.dashTimer = 0.3;
+              spawnExplosion(en.mesh.position, 1.2);
+              cameraShake = Math.max(cameraShake, 0.4);
+            }
+          } else if (en.dashState === "landed") {
+            en.dashTimer -= dt;
+            if (en.dashTimer <= 0) {
+              en.dashState = "returning";
+              en.dashTimer = SARPEDON_RETURN_DURATION_SECONDS;
+              en.dashProgress = 0;
+              en.jumpOrigin.copy(en.mesh.position);
+              var returnZ = en.engageZ !== undefined ? en.engageZ : -20;
+              en.jumpTarget.set(en.baseX, en.homeY, returnZ);
+            }
+          } else if (en.dashState === "returning") {
+            en.dashProgress = Math.min(
+              1,
+              en.dashProgress + dt / SARPEDON_RETURN_DURATION_SECONDS,
+            );
+            var pr = en.dashProgress;
+            var easedBack = pr * pr * (3 - 2 * pr);
+            en.mesh.position.lerpVectors(
+              en.jumpOrigin,
+              en.jumpTarget,
+              easedBack,
+            );
+            for (var ri = 0; ri < doms.length; ri++) {
+              if (en.domHp[ri] <= 0) continue;
+              doms[ri].rotation.x = 0;
+              var backFlicker =
+                0.6 + Math.abs(Math.sin(elapsedTime * 12 + ri)) * 0.4;
+              doms[ri].userData.thruster.material.opacity = backFlicker;
+            }
+            if (en.dashProgress >= 1) {
+              en.dashState = "idle";
+              en.dashTimer = 3 + Math.random() * 3;
+            }
+          }
+        }
+
+        // ボス種別ごとの固有演出(頭部の生死表現・花弁開閉・リング回転など)。
+        // ゴダーニ/サルペドンは原作同様「常に正面(自機側)を向く」ため、
+        // スケイラのようなZ往復や横回転は行わない。
+        function updateBossPerformance(en, dt) {
+          if (en.bossType === "godani") {
+            // 頭部だけでなく首(neck)ごと非表示にすることで、撃破した側の
+            // 首がちぎれて丸ごと無くなったように見せる。
+            en.mesh.userData.leftUnit.visible = en.leftHp > 0;
+            en.mesh.userData.rightUnit.visible = en.rightHp > 0;
+            en.mesh.rotation.y = Math.sin(elapsedTime * 1.2) * 0.15;
+
+            // 左右それぞれの首を、互いに位相をずらしてゆらゆらと揺らす
+            // (伸びた首が生き物らしく揺れる演出)。
+            var leftUnit = en.mesh.userData.leftUnit;
+            var leftNeck = leftUnit.userData.neckPivot;
+            leftNeck.rotation.z =
+              leftUnit.userData.neckBaseRotationZ +
+              Math.sin(elapsedTime * 1.6) * 0.18;
+            leftNeck.rotation.x =
+              leftUnit.userData.neckBaseRotationX +
+              Math.sin(elapsedTime * 1.3 + 1) * 0.12;
+
+            var rightUnit = en.mesh.userData.rightUnit;
+            var rightNeck = rightUnit.userData.neckPivot;
+            rightNeck.rotation.z =
+              rightUnit.userData.neckBaseRotationZ +
+              Math.sin(elapsedTime * 1.6 + Math.PI) * 0.18;
+            rightNeck.rotation.x =
+              rightUnit.userData.neckBaseRotationX +
+              Math.sin(elapsedTime * 1.3 + 1 + Math.PI) * 0.12;
+
+            // 翼を上下にゆっくり羽ばたかせる。
+            var wingFlap = Math.sin(elapsedTime * 2.2) * 0.35;
+            en.mesh.userData.wingPivotLeft.rotation.x = wingFlap;
+            en.mesh.userData.wingPivotRight.rotation.x = wingFlap;
+
+            // 本体は完全静止だと首・翼だけが浮いて動いているように
+            // 見えてしまうため、左右にゆっくりドリフトさせる。
+            en.wavePhase += dt * GODANI_DRIFT_SPEED;
+            en.mesh.position.x = clamp(
+              en.baseX + Math.sin(en.wavePhase) * GODANI_DRIFT_AMPLITUDE,
+              PLAYER_BOUNDS.minX,
+              PLAYER_BOUNDS.maxX,
+            );
+          } else if (en.bossType === "sarpedon") {
+            updateSarpedonPerformance(en, dt);
+          } else if (en.bossType === "tomos") {
+            var petals = en.mesh.userData.petals;
+            for (var pi = 0; pi < petals.length; pi++) {
+              var petal = petals[pi];
+              var alive = en.petalHp[pi] > 0;
+              petal.visible = alive;
+              if (alive) {
+                // 花弁の根本(ローカルY=0)を花芯の球面上に置き、先端
+                // (ローカルY=2.6)が中心から放射状外向きを向くようにする。
+                // rotation.zで放射方向へ向け、開閉演出はrotation.x(手前/
+                // 奥への反り)で表現することで「垂れ下がる」向きを避ける。
+                // 花全体をゆっくり回転させるため、baseAngleに時間経過分の
+                // オフセットを加える。
+                var rotationOffset = elapsedTime * 0.6;
+                var baseAngle = petal.userData.baseAngle + rotationOffset;
+                petal.position.set(
+                  Math.cos(baseAngle) * 1.1,
+                  Math.sin(baseAngle) * 1.1,
+                  0,
+                );
+                petal.rotation.z = baseAngle - Math.PI / 2;
+                petal.rotation.x = Math.sin(elapsedTime * 3 + pi) * 0.25;
+              }
+            }
+            var coreGlow = en.coreVulnerable ? 0.8 : 0.1;
+            en.mesh.userData.core.material.emissiveIntensity = coreGlow;
+            en.mesh.userData.coreDetail.rotation.y += dt * 2;
+
+            // 花全体が完全静止だと回避パターンが単調になるため、茎が
+            // 揺れるようなゆったりした左右ドリフトを加える。
+            en.wavePhase += dt * TOMOS_DRIFT_SPEED;
+            en.mesh.position.x = clamp(
+              en.baseX + Math.sin(en.wavePhase) * TOMOS_DRIFT_AMPLITUDE,
+              PLAYER_BOUNDS.minX,
+              PLAYER_BOUNDS.maxX,
+            );
+          } else if (en.bossType === "barbarian") {
+            // モアイは原作同様に常に正面(自機側)を向いたまま迫る。
+            // 目は常時明滅させ、口はリップルミサイルを発射した瞬間だけ
+            // 大きく開き、それ以外は軽く閉じた状態にする(発射タイミング
+            // = 弱点が露出するタイミング、とわかりやすくする)。
+            var pulse = 0.6 + Math.abs(Math.sin(elapsedTime * 3)) * 0.4;
+            en.mesh.userData.leftEye.material.emissiveIntensity = pulse;
+            en.mesh.userData.rightEye.material.emissiveIntensity = pulse;
+            en.mouthOpenTimer = Math.max(0, (en.mouthOpenTimer || 0) - dt);
+            en.mouthOpen = en.mouthOpenTimer > 0;
+            var mouthOpenAmount = en.mouthOpen ? 1 : 0;
+            en.mesh.userData.upperLip.position.y = -1.5 - mouthOpenAmount * 0.5;
+            en.mesh.userData.lowerLip.position.y =
+              -2.15 + mouthOpenAmount * 0.5;
+            // 画面内で跳ねる動作。1回ごとにジャンプの高さをランダムに
+            // 決め、放物線(sin波)で1サイクル分の跳躍を描く。着地したら
+            // 次のジャンプの高さを再抽選する。最大は画面外に出るほどの
+            // 大跳躍になることもある。
+            en.bouncePhase = (en.bouncePhase || 0) + dt * MOAI_BOUNCE_SPEED;
+            if (en.bouncePhase >= 1) {
+              en.bouncePhase -= 1;
+              en.bounceHeight =
+                MOAI_BOUNCE_MIN_HEIGHT +
+                Math.random() *
+                  (MOAI_BOUNCE_MAX_HEIGHT - MOAI_BOUNCE_MIN_HEIGHT);
+            }
+            if (en.bounceHeight === undefined) {
+              en.bounceHeight = MOAI_BOUNCE_MIN_HEIGHT;
+            }
+            var bounce = Math.sin(en.bouncePhase * Math.PI) * en.bounceHeight;
+            en.mesh.position.y = (en.homeY || 0) + bounce;
+          } else if (en.bossType === "final") {
+            // 第2形態(HP50%以下)はリングの回転速度とコアの発光が増し、
+            // 弾幕強化(fireAtPlayer側)と連動して見た目にも「怒り状態」が
+            // わかるようにする。
+            var enraged = en.hp / en.maxHp <= 0.5;
+            var ringSpeedMul = enraged ? 2.5 : 1;
+            en.mesh.userData.ring1.rotation.z += dt * 1.5 * ringSpeedMul;
+            en.mesh.userData.ring2.rotation.z += dt * -1.2 * ringSpeedMul;
+            en.mesh.userData.core.rotation.y += dt * 2 * ringSpeedMul;
+            en.mesh.userData.core.material.emissiveIntensity = enraged
+              ? 0.9 + Math.abs(Math.sin(elapsedTime * 8)) * 0.3
+              : 0.6;
+          } else {
+            en.mesh.rotation.y += dt * 1.5;
+          }
+        }
+
+        function updateEnemies(dt) {
+          for (var ei = enemies.length - 1; ei >= 0; ei--) {
+            var en = enemies[ei];
+            var isScaler = en.kind === "boss" && en.bossType === "scaler";
+
+            if (isScaler) {
+              // スケイラ(龍): 画面手前(-10)と、自機よりもさらに奥(-160)の
+              // 間を大きくZ方向に往復しながら、頭を中心に画面いっぱいを
+              // 使う8の字(無限大マーク)を描いて空を泳ぐように動く。
+              en.mesh.position.z += en.speed * en.swoopDir * dt;
+              if (en.mesh.position.z > SCALER_NEAR_TURN_Z) {
+                // 位置をぴったり折り返し地点にクランプし、1フレームの
+                // 移動量ぶんオーバーシュートして描画が飛んで見える現象を防ぐ。
+                en.mesh.position.z = SCALER_NEAR_TURN_Z;
+                en.swoopDir = -1;
+                // 奥へ戻る(後退)ときは体がグループの-Z方向に連なった
+                // ままだと尻尾が先頭になってしまうため、グループ全体を
+                // 180度反転させ、常に頭が進行方向を向くようにする。
+                en.mesh.rotation.y = Math.PI;
+              } else if (en.mesh.position.z < SCALER_DEEP_RETREAT_Z) {
+                en.mesh.position.z = SCALER_DEEP_RETREAT_Z;
+                en.swoopDir = 1;
+                en.mesh.rotation.y = 0;
+              }
+              // 遠く奥まで潜っている間(深い後退中)は火炎(弾)を休止し、
+              // 大胆な遊泳演出に専念させる。
+              en.scalerFireSuspended =
+                en.mesh.position.z < SCALER_FIRE_SUSPEND_Z;
+              en.wavePhase += dt * 1.1;
+              // 横8の字(リサージュ曲線): X方向はsin(θ)、Y方向はsin(2θ)にする
+              // ことで、左右に揺れながら上下にも複合的に動く画面いっぱいの
+              // 軌道になる。
+              en.mesh.position.x = clamp(
+                en.baseX + Math.sin(en.wavePhase) * en.waveAmplitude,
+                PLAYER_BOUNDS.minX - 4,
+                PLAYER_BOUNDS.maxX + 4,
+              );
+              en.mesh.position.y = clamp(
+                (en.homeY || 0) +
+                  Math.sin(en.wavePhase * 2) * (en.waveAmplitude * 0.55),
+                // 地面(Y=-4)に胴体が潜らないよう、下限は地面より高い位置に
+                // クランプする。
+                SCALER_GROUND_CLEARANCE_Y,
+                PLAYER_BOUNDS.maxY + 4,
+              );
+              var segments = en.mesh.userData.segments;
+              for (var si = 0; si < segments.length; si++) {
+                // 体節ごとの位相ずれを緩やかにし、うねりの振幅も拡大する
+                // ことで、蛇行が「くねくねと流れてくる」ように見える大胆な
+                // 動きにする。
+                segments[si].position.x =
+                  Math.sin(en.wavePhase - si * 0.35) * 2.6;
+                segments[si].position.y =
+                  Math.sin((en.wavePhase - si * 0.35) * 2) * 1.3;
+              }
+            } else if (en.kind === "boss") {
+              // スケイラ以外のボスも、画面奥と交戦距離の間をZ方向に往復
+              // させることで回避の間合いを生む。交戦距離(手前側の折り返し
+              // 地点)はボスごとに異なる範囲からランダムに選び、初回接近時に
+              // 一度だけ決定する(en.engageZが未設定の初回のみ抽選)。
+              // ただしJET STREAM DOMSのジャンプ演出中(charging/jumping/
+              // landed/returning)は、ジャンプ側がZ/Y位置を専有するため
+              // 通常のZ往復を止める。
+              var isSarpedonJumping =
+                en.bossType === "sarpedon" && en.dashState !== "idle";
+              if (!isSarpedonJumping) {
+                if (en.engageZ === undefined) {
+                  var range = BOSS_ENGAGE_RANGE_BY_TYPE[en.bossType] || [
+                    -20, -20,
+                  ];
+                  en.engageZ = range[0] + Math.random() * (range[1] - range[0]);
+                }
+                var BOSS_RETREAT_Z = -90;
+                en.mesh.position.z += en.speed * en.swoopDir * dt;
+                if (en.mesh.position.z > en.engageZ) {
+                  en.mesh.position.z = en.engageZ;
+                  en.swoopDir = -1;
+                } else if (en.mesh.position.z < BOSS_RETREAT_Z) {
+                  en.mesh.position.z = BOSS_RETREAT_Z;
+                  en.swoopDir = 1;
+                }
+              }
+              updateBossPerformance(en, dt);
+            } else {
+              en.mesh.position.z += en.speed * dt;
+              en.wavePhase += en.waveSpeed * dt;
+              en.verticalWavePhase += en.verticalWaveSpeed * dt;
+              en.mesh.position.x =
+                en.baseX + Math.sin(en.wavePhase) * en.waveAmplitude;
+              en.mesh.position.y =
+                en.baseY +
+                Math.sin(en.verticalWavePhase) * en.verticalWaveAmplitude;
+            }
+
+            if (en.kind === "dom") {
+              en.mesh.rotation.y = Math.sin(elapsedTime * 1.5) * 0.3;
+            } else if (en.kind === "tomos") {
+              var jawAngle = Math.abs(Math.sin(elapsedTime * 10)) * 0.6;
+              en.mesh.userData.upperJaw.rotation.x = jawAngle;
+              en.mesh.userData.lowerJaw.rotation.x = -jawAngle;
+            } else if (en.kind === "dasher") {
+              // 速さを強調するため、機体をわずかに傾けつつスラスターを
+              // 激しく明滅させる。
+              en.mesh.rotation.z = Math.sin(elapsedTime * 8) * 0.15;
+              en.mesh.userData.thruster.material.opacity =
+                0.6 + Math.abs(Math.sin(elapsedTime * 20)) * 0.4;
+            } else if (en.kind === "weaver") {
+              // 頭の後ろに続く体節を、頭の蛇行より少し遅れた位相で揺らし、
+              // 蛇がうねりながら泳ぐような動きにする。
+              var weaverSegments = en.mesh.userData.segments;
+              for (var wi = 0; wi < weaverSegments.length; wi++) {
+                weaverSegments[wi].position.x =
+                  Math.sin(en.wavePhase - (wi + 1) * 0.8) * 0.6;
+              }
+            } else if (!isScaler && en.kind !== "boss") {
+              en.mesh.rotation.y += dt * 2;
+            }
+            en.fireTimer -= dt;
+            var canFire =
+              en.kind === "dom" ||
+              en.kind === "boss" ||
+              en.kind === "shooter" ||
+              en.kind === "weaver";
+            var zThreshold = isScaler ? SCALER_DEEP_RETREAT_Z : -100;
+            if (
+              canFire &&
+              en.fireTimer <= 0 &&
+              en.mesh.position.z > zThreshold &&
+              !en.scalerFireSuspended
+            ) {
+              fireAtPlayer(en);
+              var isFinalBossEnraged =
+                en.bossType === "final" && en.hp / en.maxHp <= 0.5;
+              var baseInterval;
+              if (isScaler) {
+                // 火炎放射のイメージ: 短い間隔の連続弾(ブレス)を数発放った
+                // 後、長めの休止を挟んでまた次のブレスを吐く、という
+                // 「常時発射ではない断続的な炎」のパターンにする。
+                en.scalerBreathShotsLeft =
+                  en.scalerBreathShotsLeft === undefined
+                    ? 0
+                    : en.scalerBreathShotsLeft;
+                if (en.scalerBreathShotsLeft > 0) {
+                  en.scalerBreathShotsLeft -= 1;
+                  baseInterval = SCALER_BREATH_SHOT_INTERVAL;
+                } else {
+                  en.scalerBreathShotsLeft = SCALER_BREATH_SHOT_COUNT - 1;
+                  baseInterval = SCALER_BREATH_PAUSE_INTERVAL;
+                }
+              } else {
+                baseInterval =
+                  en.bossType === "sarpedon"
+                    ? 2.2
+                    : en.bossType === "barbarian"
+                      ? 1.6
+                      : isFinalBossEnraged
+                        ? 0.9
+                        : en.kind === "boss"
+                          ? 1.4
+                          : 2.5;
+              }
+              en.fireTimer = baseInterval / getDifficultyMultiplier();
+            }
+
+            if (en.mesh.position.z > 12) {
+              scene.remove(en.mesh);
+              enemies.splice(ei, 1);
+              continue;
+            }
+
+            var scalerTurnaroundInvuln =
+              isScaler &&
+              en.mesh.position.z > SCALER_NEAR_TURN_Z - SCALER_TURN_SAFE_MARGIN;
+            if (invulnerableTimer <= 0 && !scalerTurnaroundInvuln) {
+              var hitPlayer = circlesIntersect(
+                {
+                  x: en.mesh.position.x,
+                  y: en.mesh.position.y,
+                  radius: en.radius,
+                },
+                {
+                  x: playerGroup.position.x,
+                  y: playerGroup.position.y,
+                  radius: 0.6,
+                },
+              );
+              var withinCollisionZ =
+                Math.abs(en.mesh.position.z - playerGroup.position.z) <
+                en.radius + 1;
+              if (hitPlayer && withinCollisionZ) {
+                if (en.kind === "boss") {
+                  // ボスは体当たりで倒せない(原作同様、撃破は自弾のみ)。
+                  // 自機はダメージを受けるが、ボスは消滅させない。
+                  damagePlayer();
+                } else {
+                  spawnExplosion(en.mesh.position, 1.5);
+                  scene.remove(en.mesh);
+                  enemies.splice(ei, 1);
+                  damagePlayer();
+                  continue;
+                }
+              }
+            }
+
+            for (var bj = bullets.length - 1; bj >= 0; bj--) {
+              var bullet = bullets[bj];
+              var hitBullet = circlesIntersect(
+                {
+                  x: en.mesh.position.x,
+                  y: en.mesh.position.y,
+                  radius: en.radius,
+                },
+                {
+                  x: bullet.mesh.position.x,
+                  y: bullet.mesh.position.y,
+                  radius: 0.15,
+                },
+              );
+              if (
+                hitBullet &&
+                Math.abs(en.mesh.position.z - bullet.mesh.position.z) <
+                  en.radius + 1
+              ) {
+                if (!applyBulletDamage(en, bullet)) {
+                  // トモスの花弁ガードに阻まれた等、本体無効ヒットの場合は
+                  // 弾を消費するが敵は倒れない
+                  scene.remove(bullet.mesh);
+                  bullets.splice(bj, 1);
+                  break;
+                }
+                scene.remove(bullet.mesh);
+                bullets.splice(bj, 1);
+                playHitSound();
+                if (en.kind === "boss") {
+                  updateBossHpBar(en);
+                }
+                if (isBossDefeated(en)) {
+                  registerKillForCombo();
+                  stats.enemiesDefeated += 1;
+                  if (en.kind === "boss") {
+                    stats.bossesDefeated += 1;
+                  }
+                  stats.maxCombo = Math.max(stats.maxCombo, comboCount);
+                  var comboMultiplier = 1 + Math.min(comboCount - 1, 9) * 0.1;
+                  var gainedScore = Math.round(
+                    scoreForEnemy(en.kind) * comboMultiplier,
+                  );
+                  score += gainedScore;
+                  updateHud();
+                  showScorePopup(
+                    en.mesh.position,
+                    gainedScore,
+                    en.kind === "boss",
+                  );
+                  if (en.kind === "boss") {
+                    spawnBossDefeatExplosions(en.mesh.position);
+                  } else {
+                    spawnExplosion(en.mesh.position, 1);
+                  }
+                  scene.remove(en.mesh);
+                  enemies.splice(ei, 1);
+                  if (en.kind === "boss") {
+                    hideBossHpBar();
+                    if (bossTestModeActive) {
+                      // ボステストモードでは撃破直後に同じボスを再出現させ、
+                      // 何度でも連続で練習・検証できるようにする。警告演出
+                      // も本編と同じ流れで確認できるよう挟む。
+                      setTimeout(function () {
+                        if (bossTestModeActive) {
+                          showBossWarning(
+                            BOSS_NAME_BY_TYPE[bossTestBossType] || "BOSS",
+                          );
+                          setTimeout(function () {
+                            if (bossTestModeActive) {
+                              spawnEnemy("boss", 0, bossTestBossType);
+                            }
+                          }, BOSS_WARNING_DURATION_MS);
+                        }
+                      }, 1500);
+                    } else if (currentStage.bossSequence) {
+                      var bossRushCleared = advanceBossRush();
+                      if (bossRushCleared) {
+                        bossRushAllDefeated = true;
+                      }
+                    }
+                  }
+                }
+                break;
+              }
+            }
+          }
+        }
+
+        // 弾のヒットをenemyのHP構造(通常/左右独立/花弁ガード)に応じて適用する。
+        // 戻り値はダメージが有効に通ったか(falseなら本体無効ヒット)。
+        // 命中判定でワールド座標を取得する際に使い回すスクラッチ用
+        // ベクトル(毎回newせず、GCプレッシャーを避けるため)。
+        var scratchVector3 = new THREE.Vector3();
+
+        function applyBulletDamage(en, bullet) {
+          if (en.domHp !== undefined) {
+            // サルペドン: 縦列に並ぶ3体のドムのうち、弾のワールドZ座標に
+            // 最も近い(かつ生存している)個体にダメージを与える。
+            var doms = en.mesh.userData.doms;
+            var closestIndex = -1;
+            var closestDist = Infinity;
+            for (var di = 0; di < doms.length; di++) {
+              if (en.domHp[di] <= 0) continue;
+              doms[di].getWorldPosition(scratchVector3);
+              var dist = Math.abs(scratchVector3.z - bullet.mesh.position.z);
+              if (dist < closestDist) {
+                closestDist = dist;
+                closestIndex = di;
+              }
+            }
+            if (closestIndex === -1) {
+              return false;
+            }
+            en.domHp[closestIndex] -= 1;
+            en.hp = en.domHp.reduce(function (sum, hp) {
+              return sum + Math.max(0, hp);
+            }, 0);
+            return true;
+          }
+
+          if (en.leftHp !== undefined) {
+            var isLeftSide = bullet.mesh.position.x < en.mesh.position.x;
+            if (isLeftSide && en.leftHp > 0) {
+              en.leftHp -= 1;
+            } else if (!isLeftSide && en.rightHp > 0) {
+              en.rightHp -= 1;
+            } else if (en.leftHp > 0) {
+              en.leftHp -= 1;
+            } else {
+              en.rightHp -= 1;
+            }
+            en.hp = en.leftHp + en.rightHp;
+            return true;
+          }
+
+          if (en.petalHp !== undefined) {
+            var remainingPetals = en.petalHp.filter(function (hp) {
+              return hp > 0;
+            }).length;
+            if (remainingPetals > 0) {
+              for (var pi = 0; pi < en.petalHp.length; pi++) {
+                if (en.petalHp[pi] > 0) {
+                  en.petalHp[pi] -= 1;
+                  break;
+                }
+              }
+              en.coreVulnerable = en.petalHp.every(function (hp) {
+                return hp <= 0;
+              });
+              return false;
+            }
+            if (!en.coreVulnerable) {
+              return false;
+            }
+            en.hp -= 1;
+            return true;
+          }
+
+          if (en.bossType === "barbarian") {
+            // 口が開いている(=リップル発射直後)タイミングで、かつ口の
+            // 位置に着弾した場合のみ弱点ヒットとして大ダメージにする。
+            // それ以外(口が閉じている、または顔の他の部位への着弾)は
+            // 通常ダメージにとどめる。
+            en.mesh.userData.mouth.getWorldPosition(scratchVector3);
+            var hitDist = scratchVector3.distanceTo(bullet.mesh.position);
+            var isMouthHit = hitDist < BARBARIAN_MOUTH_HIT_RADIUS;
+            if (en.mouthOpen && isMouthHit) {
+              en.hp -= BARBARIAN_MOUTH_WEAKPOINT_DAMAGE;
+            } else {
+              en.hp -= 1;
+            }
+            return true;
+          }
+
+          en.hp -= 1;
+          return true;
+        }
+
+        function isBossDefeated(en) {
+          return en.hp <= 0;
+        }
+
+        function updateObstacles(dt) {
+          for (var oi = obstacles.length - 1; oi >= 0; oi--) {
+            var ob = obstacles[oi];
+            ob.mesh.position.z += ob.speed * dt;
+            if (ob.mesh.position.z > 12) {
+              scene.remove(ob.mesh);
+              obstacles.splice(oi, 1);
+              continue;
+            }
+            if (invulnerableTimer <= 0) {
+              var hitX =
+                Math.abs(ob.mesh.position.x - playerGroup.position.x) <
+                ob.radius + 0.6;
+              var hitY =
+                Math.abs(ob.mesh.position.y - playerGroup.position.y) <
+                ob.hitHeight + 0.6;
+              var hitZ =
+                Math.abs(ob.mesh.position.z - playerGroup.position.z) <
+                ob.radius + 1;
+              if (hitX && hitY && hitZ) {
+                spawnExplosion(ob.mesh.position, 1.2);
+                scene.remove(ob.mesh);
+                obstacles.splice(oi, 1);
+                damagePlayer();
+                continue;
+              }
+            }
+
+            // 自機のビーム(自弾)は障害物を貫通せず、命中した位置で消える。
+            for (var bj = bullets.length - 1; bj >= 0; bj--) {
+              var bullet = bullets[bj];
+              var bulletHitX =
+                Math.abs(ob.mesh.position.x - bullet.mesh.position.x) <
+                ob.radius + 0.15;
+              var bulletHitY =
+                Math.abs(ob.mesh.position.y - bullet.mesh.position.y) <
+                ob.hitHeight + 0.15;
+              var bulletHitZ =
+                Math.abs(ob.mesh.position.z - bullet.mesh.position.z) <
+                ob.radius + 1;
+              if (bulletHitX && bulletHitY && bulletHitZ) {
+                spawnExplosion(bullet.mesh.position, 0.5);
+                scene.remove(bullet.mesh);
+                bullets.splice(bj, 1);
+              }
+            }
+          }
+        }
+
+        function updateEnemyBullets(dt) {
+          for (var ebi = enemyBullets.length - 1; ebi >= 0; ebi--) {
+            var eb = enemyBullets[ebi];
+            if (eb.isRipple) {
+              eb.travelDistance += eb.speed * dt;
+              eb.basePosition.addScaledVector(eb.dir, eb.speed * dt);
+              eb.wavePhase += dt * 4;
+              var waveOffset = Math.sin(eb.wavePhase) * 1.8;
+              eb.mesh.position
+                .copy(eb.basePosition)
+                .addScaledVector(eb.lateral, waveOffset);
+            } else if (eb.isHoming) {
+              var toPlayer = new THREE.Vector3()
+                .subVectors(playerGroup.position, eb.mesh.position)
+                .normalize();
+              eb.dir.lerp(toPlayer, eb.homingTurnRate * dt).normalize();
+              eb.mesh.position.addScaledVector(eb.dir, eb.speed * dt);
+              eb.mesh.lookAt(eb.mesh.position.clone().add(eb.dir));
+              eb.mesh.rotateX(Math.PI / 2);
+            } else if (eb.isHomingToFixedTarget) {
+              // 扇状弾のホーミング演出: 発射時点の自機位置(固定目標)へ
+              // 進行方向を徐々に収束させる。現在の自機位置は追わないため、
+              // 発射後に自機が動けば普通に避けられる。目標を通過した後は
+              // 直進弾になる(距離が近すぎると方向ベクトルが不安定になる
+              // ため、ごく近距離ではホーミングを止める)。
+              var toTargetVec = new THREE.Vector3().subVectors(
+                eb.homingTarget,
+                eb.mesh.position,
+              );
+              if (toTargetVec.lengthSq() > 0.01) {
+                eb.dir
+                  .lerp(toTargetVec.normalize(), eb.homingTurnRate * dt)
+                  .normalize();
+              }
+              eb.mesh.position.addScaledVector(eb.dir, eb.speed * dt);
+            } else {
+              eb.mesh.position.addScaledVector(eb.dir, eb.speed * dt);
+            }
+            if (
+              eb.mesh.position.z > 12 ||
+              eb.mesh.position.z < -160 ||
+              eb.mesh.position.y < -6 ||
+              eb.mesh.position.y > 8
+            ) {
+              // Z方向の到達判定だけでは、ホーミング弾が地面(Y=-4付近)の
+              // 下に沈み込んでも消えずに残り続け、後から軌道修正で地面の
+              // 下から突然現れるように見えてしまう。Y方向にも妥当な範囲を
+              // 超えたら削除する。
+              scene.remove(eb.mesh);
+              enemyBullets.splice(ebi, 1);
+              continue;
+            }
+            if (invulnerableTimer <= 0) {
+              var hitByEnemyBullet = circlesIntersect(
+                { x: eb.mesh.position.x, y: eb.mesh.position.y, radius: 0.25 },
+                {
+                  x: playerGroup.position.x,
+                  y: playerGroup.position.y,
+                  radius: 0.6,
+                },
+              );
+              var withinZRange =
+                Math.abs(eb.mesh.position.z - playerGroup.position.z) < 1.2;
+              if (hitByEnemyBullet && withinZRange) {
+                scene.remove(eb.mesh);
+                enemyBullets.splice(ebi, 1);
+                damagePlayer();
+                continue;
+              }
+              // ニアミス演出: 命中はしないが自機のすぐそば(命中判定より
+              // 広い半径)を弾が通過した瞬間に一度だけ効果音を鳴らす。
+              if (!eb.nearMissPlayed && withinZRange) {
+                var nearMiss = circlesIntersect(
+                  {
+                    x: eb.mesh.position.x,
+                    y: eb.mesh.position.y,
+                    radius: 0.25,
+                  },
+                  {
+                    x: playerGroup.position.x,
+                    y: playerGroup.position.y,
+                    radius: 1.4,
+                  },
+                );
+                if (nearMiss) {
+                  eb.nearMissPlayed = true;
+                  playNearMissSound();
+                }
+              }
+            }
+          }
+        }
+
+        function updateExplosions(dt) {
+          for (var xi = explosions.length - 1; xi >= 0; xi--) {
+            var ex = explosions[xi];
+            ex.life -= dt;
+            ex.mesh.position.addScaledVector(ex.vel, dt);
+            ex.vel.multiplyScalar(0.94);
+            ex.mesh.material.opacity = Math.max(0, ex.life / ex.maxLife);
+            if (ex.life <= 0) {
+              scene.remove(ex.mesh);
+              explosions.splice(xi, 1);
+            }
+          }
+        }
+
+        function damagePlayer() {
+          if (invulnerableTimer > 0 || invincibleModeActive) return;
+          lives = Math.max(0, lives - 1);
+          invulnerableTimer = 2;
+          stats.hitsTaken += 1;
+          resetCombo();
+          flashDamage();
+          playPlayerDamageSound();
+          updateHud();
+          if (lives <= 0) {
+            endGame();
+          }
+        }
+
+        init();
+      })();
+    </script>
+  </body>
+</html>
