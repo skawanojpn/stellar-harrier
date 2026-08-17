@@ -16,7 +16,9 @@
         height: 100%;
         background: #000;
         overflow: hidden;
-        font-family: "Courier New", monospace;
+        font-family:
+          "Courier New", "Hiragino Kaku Gothic ProN", "Hiragino Sans",
+          "Yu Gothic", "Meiryo", monospace;
         /* body側にtouch-actionが指定されていないと、ブラウザがタッチを
            スクロール/ズームジェスチャーの候補として解釈し続けることが
            あり、1回目のタッチ後に以降の入力がスクロール扱いになる
@@ -173,6 +175,21 @@
         background: rgba(0, 0, 0, 0.55);
       }
       #message-overlay.hidden {
+        display: none;
+      }
+      #webgl-error {
+        margin-top: 20px;
+        max-width: 560px;
+        padding: 14px 20px;
+        border: 1px solid #ff5555;
+        color: #ff8888;
+        text-shadow: none;
+        font-size: 14px;
+        line-height: 1.6;
+        text-align: center;
+        background: rgba(80, 0, 0, 0.35);
+      }
+      #webgl-error.hidden {
         display: none;
       }
       #message-overlay h1 {
@@ -465,6 +482,10 @@
         <p>移動: [矢印キー] or [WASD] or [テンキー] or [マウスドラッグ]</p>
         <p>ショット: [スペースキー] or [マウスクリック]</p>
         <button id="start-button" type="button">START</button>
+        <div id="webgl-error" class="hidden">
+          お使いのブラウザ/環境ではWebGLが無効になっているため、このゲームを起動できません。<br />
+          ブラウザの設定でハードウェアアクセラレーション/WebGLを有効にするか、別のブラウザでお試しください。
+        </div>
       </div>
     </div>
 
@@ -5028,7 +5049,15 @@
           }
         }
 
-        init();
+        try {
+          init();
+        } catch (err) {
+          console.error("STELLAR HARRIER: failed to initialize WebGL", err);
+          var startButton = document.getElementById("start-button");
+          if (startButton) startButton.disabled = true;
+          var webglError = document.getElementById("webgl-error");
+          if (webglError) webglError.classList.remove("hidden");
+        }
       })();
     </script>
   </body>
