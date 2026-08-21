@@ -2,3 +2,9 @@ node_modules/
 dist/
 coverage/
 .DS_Store
+
+# 開発時の参考資料・メモ(ゲーム実行には使わない)
+assets/
+STAGE_LIST.md
+ARCHITECTURE.md
+music/

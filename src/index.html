@@ -520,9 +520,12 @@
           bossAtSeconds,
           domEnabled,
           tomosEnabled,
+          stageKinds,
         ) {
           var lanes = [-6, -3, 0, 3, 6];
-          var kinds = ["grunt", "grunt", "shooter", "dasher", "weaver"];
+          var kinds = stageKinds
+            ? stageKinds.slice()
+            : ["grunt", "grunt", "shooter", "dasher", "weaver"];
           if (domEnabled) kinds.push("dom");
           if (tomosEnabled) kinds.push("tomos");
           var events = [];
@@ -575,9 +578,11 @@
           durationSeconds,
           intervalSeconds,
           seed,
+          stageObstacleKinds,
         ) {
           var lanes = [-8, -4, 4, 8];
           var random = createPrng(seed);
+          var obstacleKinds = stageObstacleKinds || OBSTACLE_KINDS;
           var events = [];
           for (
             var t = intervalSeconds;
@@ -585,11 +590,11 @@
             t += intervalSeconds
           ) {
             var laneIndex = Math.floor(random() * lanes.length);
-            var kindIndex = Math.floor(random() * OBSTACLE_KINDS.length);
+            var kindIndex = Math.floor(random() * obstacleKinds.length);
             events.push({
               time: t,
               laneX: lanes[laneIndex],
-              kind: OBSTACLE_KINDS[kindIndex],
+              kind: obstacleKinds[kindIndex],
             });
           }
           return events;
@@ -601,6 +606,14 @@
           if (kind === "dasher") return 150;
           if (kind === "weaver") return 250;
           if (kind === "dom") return 400;
+          if (kind === "princess") return 300;
+          if (kind === "yoshitsune") return 220;
+          if (kind === "frog") return 120;
+          if (kind === "biwa_hoshi") return 280;
+          if (kind === "fairy") return 260;
+          if (kind === "pixie") return 180;
+          if (kind === "cupid") return 320;
+          if (kind === "imp") return 150;
           return 5000;
         }
 
@@ -611,6 +624,16 @@
           var r = a.radius + b.radius;
           return distSq <= r * r;
         }
+
+        var YOKAI_ENEMY_KINDS = [
+          "princess",
+          "yoshitsune",
+          "frog",
+          "biwa_hoshi",
+        ];
+        var YOKAI_OBSTACLE_KINDS = ["sotoba", "gravestone", "bamboo"];
+        var FAIRY_ENEMY_KINDS = ["fairy", "pixie", "cupid", "imp"];
+        var FAIRY_OBSTACLE_KINDS = ["heart_pillar", "lollipop", "flower_arch"];
 
         var STAGES = [
           {
@@ -631,19 +654,19 @@
           },
           {
             id: 2,
-            name: "CRYSTAL CANYON",
+            name: "VOID GARDEN",
             durationSeconds: 65,
             spawnIntervalSeconds: 1.9,
             obstacleIntervalSeconds: 3.5,
             bossAtSeconds: 60,
-            // 結晶の谷: FROZEN NEBULA(氷/水色)と混同しないよう、紫〜
-            // マゼンタを基調にした幻想的な結晶色にする。
-            groundColor: 0xaa55ff,
-            skyColorTop: 0x1a0033,
-            skyColorBottom: 0x6622aa,
+            // 幻想世界(FANTASY ZONE)に到着したと思ったら虚無だった、という
+            // 肩透かしの庭園。深緑を基調にした静かで空虚な色調にする。
+            groundColor: 0x99ff66,
+            skyColorTop: 0x0a1a00,
+            skyColorBottom: 0x335500,
             enemySpeedMultiplier: 1.1,
-            bossType: "godani",
-            bossName: "GODANI",
+            bossType: "tomos",
+            bossName: "TOMOS",
             domEnabled: true,
             tomosEnabled: false,
           },
@@ -654,49 +677,113 @@
             spawnIntervalSeconds: 1.8,
             obstacleIntervalSeconds: 3.3,
             bossAtSeconds: 62,
+            // 氷の世界に棲む双頭クリスタルドラゴン。氷の水色〜青の
+            // カラーリングを維持する。
             groundColor: 0x88ddff,
             skyColorTop: 0x001a33,
             skyColorBottom: 0x2266aa,
             enemySpeedMultiplier: 1.18,
-            bossType: "tomos",
-            bossName: "TOMOS",
+            bossType: "godani",
+            bossName: "GODANI",
             domEnabled: true,
-            tomosEnabled: true,
+            tomosEnabled: false,
           },
           {
             id: 4,
+            name: "CRYSTAL CANYON",
+            durationSeconds: 72,
+            spawnIntervalSeconds: 1.6,
+            obstacleIntervalSeconds: 3,
+            bossAtSeconds: 65,
+            // 結晶の谷: デジタルで未来的な世界(ネオン風・データ結晶の
+            // イメージ)。シアン〜青みがかったネオン系カラーにする。
+            groundColor: 0x00ddff,
+            skyColorTop: 0x000c22,
+            skyColorBottom: 0x0044aa,
+            enemySpeedMultiplier: 1.25,
+            bossType: "sarpedon",
+            bossName: "ASSAULT TRIAD",
+            domEnabled: true,
+            tomosEnabled: false,
+          },
+          {
+            id: 5,
+            name: "YOZAKURA",
+            durationSeconds: 68,
+            spawnIntervalSeconds: 1.85,
+            obstacleIntervalSeconds: 3.4,
+            bossAtSeconds: 62,
+            // 逢魔が時の宵闇: 富士のシルエットと桜吹雪に映える、
+            // ピンク〜オレンジ〜紫の黄昏グラデーション。
+            groundColor: 0x774488,
+            skyColorTop: 0x2a0e33,
+            skyColorBottom: 0xdd5588,
+            enemySpeedMultiplier: 1.3,
+            bossType: "sumo",
+            bossName: "ONIMARU",
+            domEnabled: false,
+            tomosEnabled: false,
+            enemyKinds: YOKAI_ENEMY_KINDS,
+            obstacleKinds: YOKAI_OBSTACLE_KINDS,
+            theme: "yokai",
+          },
+          {
+            id: 6,
             name: "INFERNO CORE",
             durationSeconds: 72,
             spawnIntervalSeconds: 1.6,
             obstacleIntervalSeconds: 3,
             bossAtSeconds: 65,
+            // 地獄の中心。炎を吐く三頭の地獄の犬(CERBERUS)が待ち構える。
             groundColor: 0xff6600,
             skyColorTop: 0x220000,
             skyColorBottom: 0x881100,
-            enemySpeedMultiplier: 1.25,
-            bossType: "sarpedon",
-            bossName: "JET STREAM DOMS",
+            enemySpeedMultiplier: 1.35,
+            bossType: "cerberus",
+            bossName: "CERBERUS",
             domEnabled: true,
-            tomosEnabled: true,
+            tomosEnabled: false,
           },
           {
-            id: 5,
-            name: "VOID GARDEN",
+            id: 7,
+            name: "SWEETHEART GROVE",
+            durationSeconds: 70,
+            spawnIntervalSeconds: 1.7,
+            obstacleIntervalSeconds: 3.1,
+            bossAtSeconds: 64,
+            // パステルな花畑ステージ: 既存ステージと混同しないよう、
+            // 明るいピンク〜黄〜紫のキャンディカラーでまとめる。
+            groundColor: 0xff99cc,
+            skyColorTop: 0xffccee,
+            skyColorBottom: 0xffee99,
+            enemySpeedMultiplier: 1.4,
+            bossType: "fairy_queen",
+            bossName: "QUEEN TITANIA",
+            domEnabled: false,
+            tomosEnabled: false,
+            enemyKinds: FAIRY_ENEMY_KINDS,
+            obstacleKinds: FAIRY_OBSTACLE_KINDS,
+            theme: "fairy",
+          },
+          {
+            id: 8,
+            name: "ABSYMBEL",
             durationSeconds: 75,
             spawnIntervalSeconds: 1.5,
             obstacleIntervalSeconds: 2.8,
             bossAtSeconds: 68,
-            groundColor: 0x99ff66,
-            skyColorTop: 0x0a1a00,
-            skyColorBottom: 0x335500,
-            enemySpeedMultiplier: 1.35,
+            // 失われた古代文明の遺跡。モアイ像が守護する神殿。
+            groundColor: 0x998866,
+            skyColorTop: 0x1a1400,
+            skyColorBottom: 0x554411,
+            enemySpeedMultiplier: 1.45,
             bossType: "barbarian",
             bossName: "MOAI",
             domEnabled: true,
             tomosEnabled: true,
           },
           {
-            id: 6,
+            id: 9,
             name: "HALL OF LEGENDS",
             durationSeconds: 20,
             spawnIntervalSeconds: 2.5,
@@ -706,9 +793,12 @@
             bossAtSeconds: undefined,
             bossSequence: [
               "scaler",
-              "godani",
               "tomos",
+              "godani",
               "sarpedon",
+              "sumo",
+              "cerberus",
+              "fairy_queen",
               "barbarian",
             ],
             groundColor: 0x9955ff,
@@ -721,18 +811,20 @@
             tomosEnabled: false,
           },
           {
-            id: 7,
-            name: "ABSYMBEL",
+            id: 10,
+            name: "ABYSS ZERO",
             durationSeconds: 90,
             spawnIntervalSeconds: 1.3,
             obstacleIntervalSeconds: 2.5,
             bossAtSeconds: 80,
-            groundColor: 0xffcc00,
-            skyColorTop: 0x1a0011,
-            skyColorBottom: 0x550022,
+            // 太古の神殿が崩れ闇に堕ちた。既存カラーよりわずかに一段暗く
+            // 禍々しい配色に調整する。
+            groundColor: 0xe6b800,
+            skyColorTop: 0x14000d,
+            skyColorBottom: 0x440019,
             enemySpeedMultiplier: 1.5,
             bossType: "final",
-            bossName: "ABSYMBEL",
+            bossName: "ABYSS ZERO",
             domEnabled: true,
             tomosEnabled: true,
           },
@@ -904,6 +996,45 @@
               playTone(freq * 2, 0.9, "triangle", 0.05);
             });
           }, chordStartMs);
+        }
+
+        // クイーン・ティターニア被弾時のボイス: 「んっ♥」のような艶めいた
+        // 一声を、サイン波の短いピッチベンド(急上昇→ゆるやかに下降)で
+        // 表現する。既存SFXと同じくオシレーター合成のみで作り、録音音声は
+        // 使わない(アーケード風の記号的な演出に留める)。
+        function playFairyQueenHitVoice() {
+          if (!soundEnabled) return;
+          var ctx = ensureAudio();
+          if (!ctx) return;
+          var osc = ctx.createOscillator();
+          var gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(520, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(
+            880,
+            ctx.currentTime + 0.08,
+          );
+          osc.frequency.exponentialRampToValueAtTime(
+            600,
+            ctx.currentTime + 0.32,
+          );
+          gain.gain.setValueAtTime(0, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.38);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.38);
+        }
+
+        // 1UP(ライフ増加)の効果音: 短く軽快な上昇アルペジオ。
+        function play1upSound() {
+          var notes = [659, 784, 988, 1318];
+          notes.forEach(function (freq, i) {
+            setTimeout(function () {
+              playTone(freq, 0.14, "square", 0.14);
+            }, i * 70);
+          });
         }
 
         // エンディング演出: 自機が奥・上方へ飛び去る瞬間の効果音。
@@ -1104,51 +1235,10 @@
               196, 196, 196,
             ],
           },
-          // CRYSTAL CANYON: 結晶の谷。硬質で反響するような高めの旋律に、
-          // FROZEN NEBULA(氷の宇宙)よりやや速いテンポを当て、切り立った
-          // 渓谷を疾走する緊張感を出す。
+          // VOID GARDEN: 幻想世界に到着したと思ったら虚無だった庭園。
+          // 浮遊感のある魔法的な旋律で、マイナー7th的な浮遊和音を意識し、
+          // 疾走感を保ちつつ神秘性と静けさを出す(旧VOID GARDENの曲を流用)。
           stage2: {
-            stepMs: 115,
-            melody: [
-              587, 0, 659, 0, 698, 0, 659, 587, 523, 0, 587, 0, 523, 0, 466, 0,
-              587, 0, 659, 0, 698, 0, 784, 698, 659, 0, 587, 0, 523, 0, 0, 0,
-            ],
-            bass: [
-              294, 0, 0, 0, 294, 0, 0, 0, 262, 0, 0, 0, 233, 0, 0, 0, 294, 0, 0,
-              0, 294, 0, 0, 0, 330, 0, 0, 0, 294, 0, 0, 0,
-            ],
-          },
-          // FROZEN NEBULA: 冷たく神秘的な氷の宇宙空間。テンポは中庸、
-          // 音域は高めで金属的な響き(square波)を活かした澄んだ旋律。
-          stage3: {
-            stepMs: 108,
-            melody: [
-              880, 0, 988, 0, 1047, 0, 988, 880, 784, 0, 880, 0, 784, 0, 698, 0,
-              880, 0, 988, 0, 1047, 0, 1175, 1047, 988, 0, 880, 0, 784, 0, 0, 0,
-            ],
-            bass: [
-              440, 0, 0, 0, 440, 0, 0, 0, 392, 0, 0, 0, 349, 0, 0, 0, 440, 0, 0,
-              0, 440, 0, 0, 0, 494, 0, 0, 0, 440, 0, 0, 0,
-            ],
-          },
-          // INFERNO CORE: 火山地帯のコア。不協和寄りの音使いとやや速めの
-          // テンポで、灼熱と機械的な圧迫感(JET STREAM DOMSの重機動兵器感)
-          // を両立させる。
-          stage4: {
-            stepMs: 100,
-            melody: [
-              466, 0, 554, 466, 415, 0, 466, 0, 349, 0, 415, 349, 311, 0, 349,
-              0, 466, 0, 554, 466, 622, 0, 554, 466, 415, 0, 466, 415, 349, 0,
-              0, 0,
-            ],
-            bass: [
-              233, 0, 0, 233, 208, 0, 0, 208, 175, 0, 0, 175, 156, 0, 0, 156,
-              233, 0, 0, 233, 311, 0, 0, 311, 233, 0, 0, 233, 175, 0, 0, 0,
-            ],
-          },
-          // VOID GARDEN: 浮遊感のある魔法的な庭園。マイナー7th的な浮遊和音を
-          // 意識した旋律で、疾走感を保ちつつ神秘性を出す。
-          stage5: {
             stepMs: 92,
             melody: [
               622, 0, 698, 622, 587, 0, 622, 0, 494, 0, 587, 494, 440, 0, 494,
@@ -1160,10 +1250,97 @@
               311, 0, 0, 311, 392, 0, 0, 392, 311, 0, 0, 311, 247, 0, 0, 0,
             ],
           },
+          // FROZEN NEBULA: 冷たく神秘的な氷の宇宙空間。テンポは中庸、
+          // 音域は高めで金属的な響き(square波)を活かした澄んだ旋律
+          // (旧CRYSTAL CANYONの曲を流用)。
+          stage3: {
+            stepMs: 115,
+            melody: [
+              587, 0, 659, 0, 698, 0, 659, 587, 523, 0, 587, 0, 523, 0, 466, 0,
+              587, 0, 659, 0, 698, 0, 784, 698, 659, 0, 587, 0, 523, 0, 0, 0,
+            ],
+            bass: [
+              294, 0, 0, 0, 294, 0, 0, 0, 262, 0, 0, 0, 233, 0, 0, 0, 294, 0, 0,
+              0, 294, 0, 0, 0, 330, 0, 0, 0, 294, 0, 0, 0,
+            ],
+          },
+          // CRYSTAL CANYON: デジタルで未来的な結晶の谷。硬質で反響する
+          // ような高めの旋律で疾走感を出す(旧FROZEN NEBULAの曲を流用)。
+          stage4: {
+            stepMs: 108,
+            melody: [
+              880, 0, 988, 0, 1047, 0, 988, 880, 784, 0, 880, 0, 784, 0, 698, 0,
+              880, 0, 988, 0, 1047, 0, 1175, 1047, 988, 0, 880, 0, 784, 0, 0, 0,
+            ],
+            bass: [
+              440, 0, 0, 0, 440, 0, 0, 0, 392, 0, 0, 0, 349, 0, 0, 0, 440, 0, 0,
+              0, 440, 0, 0, 0, 494, 0, 0, 0, 440, 0, 0, 0,
+            ],
+          },
+          // YOZAKURA: 逢魔が時の黄昏、和風の土俵。和のペンタトニック
+          // (呂旋法寄り)を意識した旋律に、相撲の緊張感を出す中庸の
+          // テンポを当てる。
+          stage5: {
+            stepMs: 110,
+            melody: [
+              523, 0, 587, 523, 466, 0, 392, 0, 440, 0, 523, 440, 392, 0, 349,
+              0, 523, 0, 587, 523, 622, 0, 523, 466, 440, 0, 392, 349, 330, 0,
+              0, 0,
+            ],
+            bass: [
+              262, 0, 0, 262, 233, 0, 0, 233, 220, 0, 0, 220, 196, 0, 0, 196,
+              262, 0, 0, 262, 311, 0, 0, 311, 262, 0, 0, 262, 220, 0, 0, 0,
+            ],
+          },
+          // INFERNO CORE: 地獄の中心、炎を吐く三頭の番犬。不協和寄りの
+          // 音使いとやや速めのテンポで、灼熱と獣めいた圧迫感を出す
+          // (旧INFERNO COREの曲を流用)。
+          stage6: {
+            stepMs: 100,
+            melody: [
+              466, 0, 554, 466, 415, 0, 466, 0, 349, 0, 415, 349, 311, 0, 349,
+              0, 466, 0, 554, 466, 622, 0, 554, 466, 415, 0, 466, 415, 349, 0,
+              0, 0,
+            ],
+            bass: [
+              233, 0, 0, 233, 208, 0, 0, 208, 175, 0, 0, 175, 156, 0, 0, 156,
+              233, 0, 0, 233, 311, 0, 0, 311, 233, 0, 0, 233, 175, 0, 0, 0,
+            ],
+          },
+          // SWEETHEART GROVE: パステルな花畑、妖精の女王の楽園。明るい
+          // 長調寄りの跳ねるような旋律で、キャンディカラーの可愛らしさと
+          // 疾走感を両立させる。
+          stage7: {
+            stepMs: 88,
+            melody: [
+              784, 0, 880, 784, 698, 0, 784, 0, 659, 0, 784, 659, 587, 0, 659,
+              0, 784, 0, 880, 784, 988, 0, 880, 784, 698, 0, 784, 698, 659, 0,
+              0, 0,
+            ],
+            bass: [
+              392, 0, 0, 392, 349, 0, 0, 349, 330, 0, 0, 330, 294, 0, 0, 294,
+              392, 0, 0, 392, 494, 0, 0, 494, 392, 0, 0, 392, 330, 0, 0, 0,
+            ],
+          },
+          // ABSYMBEL: 失われた古代文明の遺跡、モアイ像の神殿。浮遊感の
+          // ある魔法的な庭園の曲想を、より荘厳な古代遺跡の雰囲気で流用
+          // する(旧VOID GARDENの曲想を再構成)。
+          stage8: {
+            stepMs: 96,
+            melody: [
+              440, 0, 494, 440, 392, 0, 440, 0, 349, 0, 392, 349, 330, 0, 349,
+              0, 440, 0, 494, 440, 523, 0, 494, 440, 392, 0, 440, 392, 349, 0,
+              0, 0,
+            ],
+            bass: [
+              220, 0, 0, 220, 196, 0, 0, 196, 175, 0, 0, 175, 165, 0, 0, 165,
+              220, 0, 0, 220, 262, 0, 0, 262, 220, 0, 0, 220, 175, 0, 0, 0,
+            ],
+          },
           // HALL OF LEGENDS: これまでのボスが勢揃いするボスラッシュの
           // 前哨ステージ。荘厳で回顧的な雰囲気を、低めのテンポと
           // オクターブを跨ぐ旋律の跳躍で表現する。
-          stage6: {
+          stage9: {
             stepMs: 120,
             melody: [
               440, 0, 587, 0, 523, 0, 440, 0, 392, 0, 523, 0, 466, 0, 392, 0,
@@ -1175,9 +1352,9 @@
               220, 0, 0, 220, 247, 0, 0, 247, 220, 0, 0, 220, 196, 0, 0, 0,
             ],
           },
-          // ABSYMBEL: 最終ステージ。全曲中最速テンポで壮大かつ緊迫した
+          // ABYSS ZERO: 最終ステージ。全曲中最速テンポで壮大かつ緊迫した
           // 旋律。半音を交えて原作終盤の緊張感を演出する。
-          stage7: {
+          stage10: {
             stepMs: 85,
             melody: [
               698, 0, 831, 698, 622, 0, 698, 0, 554, 0, 622, 554, 494, 0, 554,
@@ -1296,6 +1473,7 @@
         var player, playerLight, playerGroup, shieldMesh;
         var skyMesh, starField;
         var groundMesh;
+        var mtFujiMesh, petalField;
         var bullets = [];
         var enemyBullets = [];
         var enemies = [];
@@ -1371,6 +1549,14 @@
 
         var score = 0;
         var lives = 3;
+        // 1UP: SCORE_1UP_INTERVALごとにライフが1つ増える。ボス撃破が
+        // おおよそ5000〜9500点(コンボ倍率込み)程度になるバランスを踏まえ、
+        // ボス2体分+道中の雑魚撃破でちょうど届く程度の20000点区切りにする。
+        // nextScoreForLifeは「次にライフが増えるスコアのライン」で、1UP
+        // するたびにこの値へさらにSCORE_1UP_INTERVALを足して更新する
+        // (resumeFromGameOverでスコアが0に戻った場合はここも再初期化する)。
+        var SCORE_1UP_INTERVAL = 20000;
+        var nextScoreForLife = SCORE_1UP_INTERVAL;
         var elapsedTime = 0;
         var spawnSchedule = [];
         var nextSpawnIndex = 0;
@@ -1574,6 +1760,81 @@
           scene.add(groundMesh);
         }
 
+        // 富士山: 遠景に静止させる低ポリのシルエット。裾野の広い円錐+
+        // 山頂の雪冠(小さめの白い円錐を重ねる)で富士山らしいシルエットにする。
+        function buildMtFujiMesh() {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshBasicMaterial({
+            color: 0x5a4a66,
+            fog: true,
+          });
+          var body = new THREE.Mesh(new THREE.ConeGeometry(60, 34, 4), bodyMat);
+          body.rotation.y = Math.PI / 4;
+          group.add(body);
+          var snowMat = new THREE.MeshBasicMaterial({
+            color: 0xfff5fa,
+            fog: true,
+          });
+          var snow = new THREE.Mesh(new THREE.ConeGeometry(20, 11, 4), snowMat);
+          snow.rotation.y = Math.PI / 4;
+          snow.position.y = 13;
+          group.add(snow);
+          group.position.set(-40, 13, -260);
+          return group;
+        }
+
+        // 桜吹雪: 常に画面上を舞い散る花びらのアンビエントパーティクル。
+        // buildStars()と同じPoints+BufferGeometryの手法で、位置バッファを
+        // 毎フレーム更新し地面より下に落ちたら上から降らせ直す。
+        var PETAL_COUNT = 150;
+        var PETAL_FALL_SPEED = 3.5;
+        var petalVelocities;
+
+        function buildPetalField() {
+          var positions = new Float32Array(PETAL_COUNT * 3);
+          petalVelocities = new Float32Array(PETAL_COUNT * 2);
+          for (var i = 0; i < PETAL_COUNT; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 90;
+            positions[i * 3 + 1] = Math.random() * 50 - 4;
+            positions[i * 3 + 2] = -140 + Math.random() * 160;
+            petalVelocities[i * 2] = (Math.random() - 0.5) * 1.5;
+            petalVelocities[i * 2 + 1] = 0.6 + Math.random() * 0.8;
+          }
+          var geo = new THREE.BufferGeometry();
+          geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+          var mat = new THREE.PointsMaterial({
+            color: 0xffb7d5,
+            size: 0.55,
+            sizeAttenuation: true,
+            transparent: true,
+            opacity: 0.85,
+          });
+          petalField = new THREE.Points(geo, mat);
+          petalField.visible = false;
+          scene.add(petalField);
+        }
+
+        function setYokaiSceneryVisible(visible) {
+          if (mtFujiMesh) mtFujiMesh.visible = visible;
+          if (petalField) petalField.visible = visible;
+        }
+
+        function updatePetals(dt) {
+          if (!petalField || !petalField.visible) return;
+          var positions = petalField.geometry.attributes.position.array;
+          for (var i = 0; i < PETAL_COUNT; i++) {
+            positions[i * 3] += petalVelocities[i * 2] * dt;
+            positions[i * 3 + 1] -=
+              petalVelocities[i * 2 + 1] * PETAL_FALL_SPEED * dt;
+            if (positions[i * 3 + 1] < -4) {
+              positions[i * 3] = (Math.random() - 0.5) * 90;
+              positions[i * 3 + 1] = 46 + Math.random() * 4;
+              positions[i * 3 + 2] = -140 + Math.random() * 160;
+            }
+          }
+          petalField.geometry.attributes.position.needsUpdate = true;
+        }
+
         function init() {
           scene = new THREE.Scene();
           scene.fog = new THREE.Fog(0x1a0033, 50, 220);
@@ -1603,6 +1864,10 @@
           buildSky(STAGES[0]);
           buildStars();
           buildGround(STAGES[0]);
+          mtFujiMesh = buildMtFujiMesh();
+          mtFujiMesh.visible = false;
+          scene.add(mtFujiMesh);
+          buildPetalField();
 
           playerGroup = new THREE.Group();
           var playerGeo = new THREE.ConeGeometry(0.6, 1.6, 6);
@@ -1708,6 +1973,20 @@
             quitToTitle();
           }
 
+          // 検証用の数字キーショートカット(暫定): 本来はタイトル画面での
+          // 上上上上上上左左左左右右右(SECRET_CODE)や、プレイ中/ゲーム
+          // オーバー画面でのコナミコマンド(KONAMI_CODE)の入力が必要だが、
+          // 動作確認を素早く行えるよう1キーで直接発動できるようにする。
+          if (e.code === "Digit1" && state === STATE_READY) {
+            openStageSelect();
+          }
+          if (e.code === "Digit2" && state === STATE_PLAYING) {
+            activateInvincibleMode();
+          }
+          if (e.code === "Digit3" && state === STATE_GAMEOVER) {
+            resumeFromGameOver();
+          }
+
           if (state === STATE_READY) {
             updateSecretCodeProgress(e.code);
           }
@@ -1759,6 +2038,7 @@
         function resumeFromGameOver() {
           lives = 3;
           score = 0;
+          nextScoreForLife = SCORE_1UP_INTERVAL;
           invulnerableTimer = 2;
           gameOverInputLockTimer = 0;
           gameOverAutoReturnTimer = 0;
@@ -2065,17 +2345,20 @@
           currentStage = getStageConfig(stageId);
           buildSky(currentStage);
           buildGround(currentStage);
+          setYokaiSceneryVisible(currentStage.theme === "yokai");
           spawnSchedule = generateSpawnSchedule(
             currentStage.durationSeconds,
             currentStage.spawnIntervalSeconds,
             currentStage.bossAtSeconds,
             currentStage.domEnabled,
             currentStage.tomosEnabled,
+            currentStage.enemyKinds,
           );
           obstacleSchedule = generateObstacleSchedule(
             currentStage.durationSeconds,
             currentStage.obstacleIntervalSeconds,
             currentStage.id * 1000 + 7,
+            currentStage.obstacleKinds,
           );
           nextSpawnIndex = 0;
           pendingBossSpawns = [];
@@ -2157,6 +2440,7 @@
         function resetPlayerRunState() {
           score = 0;
           lives = 3;
+          nextScoreForLife = SCORE_1UP_INTERVAL;
           invulnerableTimer = 0;
           invincibleModeActive = false;
           resetCombo();
@@ -2217,6 +2501,7 @@
           currentStage = getStageConfig(borrowStageId);
           buildSky(currentStage);
           buildGround(currentStage);
+          setYokaiSceneryVisible(currentStage.theme === "yokai");
           spawnSchedule = [];
           obstacleSchedule = [];
           nextSpawnIndex = 0;
@@ -2391,6 +2676,7 @@
             skyColorBottom: ENDING_SKY_COLOR_BOTTOM,
           });
           buildGround({ groundColor: ENDING_GROUND_COLOR });
+          setYokaiSceneryVisible(false);
           scene.fog = new THREE.Fog(0xaee0ff, 80, 260);
           endingPhase = "cruise";
           endingTimer = ENDING_CRUISE_SECONDS;
@@ -2497,27 +2783,58 @@
         var SCALER_BREATH_PAUSE_INTERVAL = 1.8;
         // 火炎(ブレス)弾の見た目の大きさ。通常弾(半径0.25)より大きくする。
         var SCALER_BREATH_BULLET_RADIUS = 0.55;
+        // CERBERUS(三頭犬)のブレス弾の大きさ。スケイラの火炎放射に近い
+        // 規模だが、頭が3つに分散する分1発ずつはやや小さめにする。
+        var CERBERUS_BREATH_BULLET_RADIUS = 0.45;
+        // 三頭交互ブレスの間隔。他ボス(1.4秒前後)よりかなり短くし、
+        // 絶え間なく炎が飛んでくる「休みなく攻める番犬」の迫力を出す。
+        var CERBERUS_FIRE_INTERVAL = 0.5;
 
         function clamp(value, min, max) {
           return Math.max(min, Math.min(max, value));
         }
 
         function buildScalerMesh() {
-          // スケイラ: 東洋の龍をイメージした細長い胴体のドラゴン。
-          // 脚は持たず、球体を連ねた蛇状の胴体+頭部の角・ひげ・たてがみで
-          // 「空を泳ぐ龍」らしさを表現する。各体節をGroupの子として連ね、
-          // 後述のupdateで大きく波打つように動かす。
+          // スケイラ: 東洋の龍をイメージした細長い胴体のドラゴン。参考
+          // ビジュアル(assets/boss_images/01_FANTASY_ZONE_SCALER)に合わせ、
+          // 緑〜ターコイズの鱗+金の縁取り、燃えるような赤いたてがみ、
+          // 金の角の冠、白い羽状の飾り、開いた口に牙、というディテールを
+          // 頭部に集中させる。脚は持たず、球体を連ねた蛇状の胴体で
+          // 「空を泳ぐ龍」らしさを表現し、後述のupdateで大きく波打たせる。
           var group = new THREE.Group();
           var segments = [];
           var maneMat = new THREE.MeshStandardMaterial({
             color: 0xffcc33,
-            emissive: 0x885500,
-            emissiveIntensity: 0.4,
+            emissive: 0xff5500,
+            emissiveIntensity: 0.5,
           });
           var hornMat = new THREE.MeshStandardMaterial({
-            color: 0xf5f0dd,
-            emissive: 0x554422,
-            emissiveIntensity: 0.2,
+            color: 0xffdd66,
+            emissive: 0x996600,
+            emissiveIntensity: 0.4,
+            metalness: 0.6,
+            roughness: 0.3,
+          });
+          var finMat = new THREE.MeshStandardMaterial({
+            color: 0xf5f0e8,
+            emissive: 0x887766,
+            emissiveIntensity: 0.15,
+            side: THREE.DoubleSide,
+          });
+          var jawMat = new THREE.MeshStandardMaterial({
+            color: 0xffdd66,
+            emissive: 0x996600,
+            emissiveIntensity: 0.3,
+          });
+          var toothMat = new THREE.MeshStandardMaterial({
+            color: 0xfff8ee,
+            emissive: 0x554433,
+            emissiveIntensity: 0.1,
+          });
+          var eyeMat = new THREE.MeshStandardMaterial({
+            color: 0xff3300,
+            emissive: 0xff2200,
+            emissiveIntensity: 1,
           });
 
           for (var i = 0; i < SCALER_SEGMENT_COUNT; i++) {
@@ -2527,11 +2844,11 @@
             var taper = 1 - (i / (SCALER_SEGMENT_COUNT - 1)) * 0.6;
             var segSize = isHead ? 1.15 : 0.85 * taper;
             var segMat = new THREE.MeshStandardMaterial({
-              color: isHead ? 0x2255cc : 0x2299aa,
-              emissive: isHead ? 0x113377 : 0x0a4a55,
-              emissiveIntensity: 0.4,
-              metalness: 0.3,
-              roughness: 0.4,
+              color: isHead ? 0x1e8855 : 0x2ea86e,
+              emissive: isHead ? 0x0a3d22 : 0x0d5c33,
+              emissiveIntensity: 0.35,
+              metalness: 0.4,
+              roughness: 0.35,
             });
             var segGeo = isHead
               ? new THREE.ConeGeometry(segSize, segSize * 1.6, 8)
@@ -2544,18 +2861,83 @@
               // 向くようになる。
               segMesh.rotation.x = Math.PI / 2;
 
-              // 一対の角
-              var hornGeo = new THREE.ConeGeometry(0.12, 0.7, 5);
-              var hornLeft = new THREE.Mesh(hornGeo, hornMat);
-              hornLeft.position.set(-0.35, 0.5, 0.3);
-              hornLeft.rotation.x = -Math.PI / 2.6;
-              hornLeft.rotation.z = 0.3;
-              segMesh.add(hornLeft);
-              var hornRight = new THREE.Mesh(hornGeo, hornMat);
-              hornRight.position.set(0.35, 0.5, 0.3);
-              hornRight.rotation.x = -Math.PI / 2.6;
-              hornRight.rotation.z = -0.3;
-              segMesh.add(hornRight);
+              // 金の角の冠: 中央の大きな角1本+左右に広がる小さめの角2対
+              // (参考画像の「王冠のように広がる金の角」を再現)。
+              var mainHornGeo = new THREE.ConeGeometry(0.14, 0.9, 5);
+              var mainHorn = new THREE.Mesh(mainHornGeo, hornMat);
+              mainHorn.position.set(0, 0.55, 0.15);
+              mainHorn.rotation.x = -Math.PI / 2.8;
+              segMesh.add(mainHorn);
+
+              var hornGeo = new THREE.ConeGeometry(0.11, 0.7, 5);
+              var hornOffsets = [
+                [-0.32, 0.5, 0.25, 0.35],
+                [0.32, 0.5, 0.25, -0.35],
+                [-0.5, 0.35, -0.05, 0.55],
+                [0.5, 0.35, -0.05, -0.55],
+              ];
+              for (var hi = 0; hi < hornOffsets.length; hi++) {
+                var ho = hornOffsets[hi];
+                var horn = new THREE.Mesh(hornGeo, hornMat);
+                horn.position.set(ho[0], ho[1], ho[2]);
+                horn.rotation.x = -Math.PI / 2.6;
+                horn.rotation.z = ho[3];
+                segMesh.add(horn);
+              }
+
+              // 燃えるようなたてがみ(赤〜金、頭部後方から複数枚放射状に
+              // 広げた薄い三角形の板で「炎のヒレ」らしさを出す)。
+              var maneGeo = new THREE.ConeGeometry(0.1, 0.85, 3);
+              var maneAngles = [-0.9, -0.55, -0.2, 0.2, 0.55, 0.9];
+              for (var mi = 0; mi < maneAngles.length; mi++) {
+                var mane = new THREE.Mesh(maneGeo, maneMat.clone());
+                mane.position.set(
+                  Math.sin(maneAngles[mi]) * 0.45,
+                  0.25 + Math.abs(maneAngles[mi]) * 0.15,
+                  -0.35,
+                );
+                mane.rotation.x = -Math.PI / 2.4;
+                mane.rotation.z = maneAngles[mi] * 0.6;
+                segMesh.add(mane);
+              }
+
+              // 白い羽状の耳飾り(左右、参考画像の頬から広がる白い房)。
+              var finGeo = new THREE.ConeGeometry(0.35, 0.55, 3);
+              var finLeft = new THREE.Mesh(finGeo, finMat);
+              finLeft.position.set(-0.55, 0.05, 0.05);
+              finLeft.rotation.z = Math.PI / 2.3;
+              finLeft.rotation.y = 0.3;
+              segMesh.add(finLeft);
+              var finRight = new THREE.Mesh(finGeo, finMat);
+              finRight.position.set(0.55, 0.05, 0.05);
+              finRight.rotation.z = -Math.PI / 2.3;
+              finRight.rotation.y = -0.3;
+              segMesh.add(finRight);
+
+              // 下顎(開いた口を表現する小さな円錐)+牙2本。
+              var jawGeo = new THREE.ConeGeometry(0.4, 0.5, 6);
+              var jaw = new THREE.Mesh(jawGeo, jawMat);
+              jaw.position.set(0, -0.5, 0.55);
+              jaw.rotation.x = Math.PI / 1.6;
+              segMesh.add(jaw);
+              var toothGeo = new THREE.ConeGeometry(0.05, 0.22, 4);
+              var toothLeft = new THREE.Mesh(toothGeo, toothMat);
+              toothLeft.position.set(-0.14, -0.28, 0.75);
+              toothLeft.rotation.x = Math.PI;
+              segMesh.add(toothLeft);
+              var toothRight = new THREE.Mesh(toothGeo, toothMat);
+              toothRight.position.set(0.14, -0.28, 0.75);
+              toothRight.rotation.x = Math.PI;
+              segMesh.add(toothRight);
+
+              // 発光する赤い目。
+              var eyeGeo = new THREE.SphereGeometry(0.09, 8, 8);
+              var eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
+              eyeLeft.position.set(-0.28, 0.08, 0.65);
+              segMesh.add(eyeLeft);
+              var eyeRight = new THREE.Mesh(eyeGeo, eyeMat);
+              eyeRight.position.set(0.28, 0.08, 0.65);
+              segMesh.add(eyeRight);
 
               // 長いひげ(頬から後方へ伸びる細い円柱)
               var whiskerGeo = new THREE.CylinderGeometry(0.04, 0.01, 1.4, 4);
@@ -2569,6 +2951,17 @@
               whiskerRight.rotation.z = -Math.PI / 2.2;
               whiskerRight.rotation.y = -0.4;
               segMesh.add(whiskerRight);
+            } else {
+              // 胴体の背びれ: 各体節の背に金の小さな棘を1本立て、参考画像の
+              // 「鱗の背に沿って並ぶ金のスパイク」を簡易的に表現する。
+              var spineGeo = new THREE.ConeGeometry(
+                segSize * 0.22,
+                segSize * 0.6,
+                4,
+              );
+              var spine = new THREE.Mesh(spineGeo, hornMat);
+              spine.position.set(0, segSize * 0.85, 0);
+              segMesh.add(spine);
             }
             // 頭(i=0)をグループ原点(ローカルZ=0)に置き、体節はグループの
             // ローカル-Z方向(接近時の進行方向と逆側)へ連ねる。これにより
@@ -3144,6 +3537,358 @@
           return group;
         }
 
+        // 姫: 妖怪ステージの雑魚(遠距離型)。扇で妖術弾を放つ。
+        function buildPrincessMesh() {
+          var group = new THREE.Group();
+          var robeMat = new THREE.MeshStandardMaterial({
+            color: 0xaa2255,
+            emissive: 0x440a22,
+            emissiveIntensity: 0.35,
+          });
+          var robe = new THREE.Mesh(
+            new THREE.ConeGeometry(0.55, 1.4, 8),
+            robeMat,
+          );
+          group.add(robe);
+
+          var headMat = new THREE.MeshStandardMaterial({
+            color: 0xffe4cc,
+            emissive: 0x442211,
+            emissiveIntensity: 0.2,
+          });
+          var head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 10, 8),
+            headMat,
+          );
+          head.position.y = 0.95;
+          group.add(head);
+
+          var hairMat = new THREE.MeshStandardMaterial({ color: 0x110811 });
+          var hair = new THREE.Mesh(
+            new THREE.SphereGeometry(
+              0.33,
+              10,
+              8,
+              0,
+              Math.PI * 2,
+              0,
+              Math.PI * 0.55,
+            ),
+            hairMat,
+          );
+          hair.position.y = 1.05;
+          group.add(hair);
+
+          var fanMat = new THREE.MeshStandardMaterial({
+            color: 0xffd700,
+            emissive: 0xaa8800,
+            emissiveIntensity: 0.4,
+          });
+          var fan = new THREE.Mesh(
+            new THREE.ConeGeometry(0.35, 0.1, 6),
+            fanMat,
+          );
+          fan.rotation.z = Math.PI / 2;
+          fan.position.set(0.45, 0.7, 0.1);
+          group.add(fan);
+
+          group.userData.muzzle = fan;
+          return group;
+        }
+
+        // 義経: 妖怪ステージの雑魚(近接高速型)。甲冑姿で刀を構え突進する。
+        function buildYoshitsuneMesh() {
+          var group = new THREE.Group();
+          var armorMat = new THREE.MeshStandardMaterial({
+            color: 0x223377,
+            emissive: 0x0a1144,
+            emissiveIntensity: 0.35,
+            metalness: 0.3,
+          });
+          var body = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.4, 1.1, 6),
+            armorMat,
+          );
+          group.add(body);
+
+          var helmetMat = new THREE.MeshStandardMaterial({
+            color: 0x111133,
+            emissive: 0x000022,
+            emissiveIntensity: 0.3,
+            metalness: 0.5,
+          });
+          var helmet = new THREE.Mesh(
+            new THREE.ConeGeometry(0.32, 0.4, 6),
+            helmetMat,
+          );
+          helmet.position.y = 0.75;
+          group.add(helmet);
+
+          var swordMat = new THREE.MeshStandardMaterial({
+            color: 0xdddddd,
+            emissive: 0x666666,
+            emissiveIntensity: 0.4,
+            metalness: 0.7,
+          });
+          var sword = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 0.9, 0.08),
+            swordMat,
+          );
+          sword.rotation.z = Math.PI / 4;
+          sword.position.set(0.5, 0.3, 0.2);
+          group.add(sword);
+
+          return group;
+        }
+
+        // 河童: 妖怪ステージの雑魚(近接跳躍型)。緑の体に皿を頂く。
+        function buildFrogMesh() {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0x33aa44,
+            emissive: 0x114411,
+            emissiveIntensity: 0.3,
+          });
+          var body = new THREE.Mesh(
+            new THREE.SphereGeometry(0.42, 10, 8),
+            bodyMat,
+          );
+          group.add(body);
+
+          var plateMat = new THREE.MeshStandardMaterial({
+            color: 0x99ccaa,
+            emissive: 0x224422,
+            emissiveIntensity: 0.3,
+          });
+          var plate = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.22, 0.22, 0.05, 10),
+            plateMat,
+          );
+          plate.position.y = 0.42;
+          group.add(plate);
+
+          var eyeMat = new THREE.MeshStandardMaterial({
+            color: 0xffff00,
+            emissive: 0xffff00,
+            emissiveIntensity: 0.8,
+          });
+          var eyeGeo = new THREE.SphereGeometry(0.09, 6, 6);
+          var eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
+          eyeLeft.position.set(-0.18, 0.18, 0.34);
+          group.add(eyeLeft);
+          var eyeRight = new THREE.Mesh(eyeGeo, eyeMat.clone());
+          eyeRight.position.set(0.18, 0.18, 0.34);
+          group.add(eyeRight);
+
+          return group;
+        }
+
+        // 琵琶法師: 妖怪ステージの雑魚(遠距離型)。琵琶を奏でて音撃を放つ。
+        function buildBiwaHoshiMesh() {
+          var group = new THREE.Group();
+          var robeMat = new THREE.MeshStandardMaterial({
+            color: 0x443322,
+            emissive: 0x221100,
+            emissiveIntensity: 0.25,
+          });
+          var robe = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.5, 1.2, 8),
+            robeMat,
+          );
+          group.add(robe);
+
+          var headMat = new THREE.MeshStandardMaterial({
+            color: 0xddbb99,
+            emissive: 0x221100,
+            emissiveIntensity: 0.2,
+          });
+          var head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.28, 10, 8),
+            headMat,
+          );
+          head.position.y = 0.85;
+          group.add(head);
+
+          var biwaMat = new THREE.MeshStandardMaterial({
+            color: 0x996633,
+            emissive: 0x442200,
+            emissiveIntensity: 0.35,
+          });
+          var biwa = new THREE.Mesh(
+            new THREE.SphereGeometry(0.35, 10, 8),
+            biwaMat,
+          );
+          biwa.scale.set(0.5, 1, 0.25);
+          biwa.rotation.z = Math.PI / 3;
+          biwa.position.set(0.4, 0.5, 0.2);
+          group.add(biwa);
+
+          group.userData.muzzle = biwa;
+          return group;
+        }
+
+        // フェアリー: フェアリーステージの雑魚(遠距離型)。羽を持つ小妖精。
+        function buildFairyMesh() {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0xff88cc,
+            emissive: 0x881144,
+            emissiveIntensity: 0.4,
+          });
+          var body = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 10, 8),
+            bodyMat,
+          );
+          group.add(body);
+
+          var wingMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            emissive: 0xaaccff,
+            emissiveIntensity: 0.5,
+            transparent: true,
+            opacity: 0.7,
+          });
+          var wingGeo = new THREE.CircleGeometry(0.35, 8);
+          var wingLeft = new THREE.Mesh(wingGeo, wingMat);
+          wingLeft.position.set(-0.35, 0.1, -0.1);
+          wingLeft.rotation.y = 0.6;
+          group.add(wingLeft);
+          var wingRight = new THREE.Mesh(wingGeo, wingMat.clone());
+          wingRight.position.set(0.35, 0.1, -0.1);
+          wingRight.rotation.y = -0.6;
+          group.add(wingRight);
+
+          var wandMat = new THREE.MeshStandardMaterial({
+            color: 0xffee44,
+            emissive: 0xffcc00,
+            emissiveIntensity: 0.7,
+          });
+          var wand = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 8, 8),
+            wandMat,
+          );
+          wand.position.set(0.35, -0.1, 0.25);
+          group.add(wand);
+
+          group.userData.muzzle = wand;
+          group.userData.wings = [wingLeft, wingRight];
+          return group;
+        }
+
+        // ピクシー: フェアリーステージの雑魚(近接高速型)。小柄で素早い。
+        function buildPixieMesh() {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0x88ffcc,
+            emissive: 0x228855,
+            emissiveIntensity: 0.4,
+          });
+          var body = new THREE.Mesh(
+            new THREE.SphereGeometry(0.24, 10, 8),
+            bodyMat,
+          );
+          group.add(body);
+
+          var wingMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            emissive: 0xccffee,
+            emissiveIntensity: 0.6,
+            transparent: true,
+            opacity: 0.6,
+          });
+          var wingGeo = new THREE.CircleGeometry(0.26, 6);
+          var wingLeft = new THREE.Mesh(wingGeo, wingMat);
+          wingLeft.position.set(-0.26, 0.05, -0.08);
+          group.add(wingLeft);
+          var wingRight = new THREE.Mesh(wingGeo, wingMat.clone());
+          wingRight.position.set(0.26, 0.05, -0.08);
+          group.add(wingRight);
+
+          group.userData.wings = [wingLeft, wingRight];
+          return group;
+        }
+
+        // キューピッド: フェアリーステージの雑魚(遠距離型)。弓矢を構える。
+        function buildCupidMesh() {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0xffccaa,
+            emissive: 0x664422,
+            emissiveIntensity: 0.3,
+          });
+          var body = new THREE.Mesh(
+            new THREE.SphereGeometry(0.32, 10, 8),
+            bodyMat,
+          );
+          group.add(body);
+
+          var wingMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            emissive: 0xffddee,
+            emissiveIntensity: 0.5,
+            transparent: true,
+            opacity: 0.75,
+          });
+          var wingGeo = new THREE.CircleGeometry(0.4, 8);
+          var wingLeft = new THREE.Mesh(wingGeo, wingMat);
+          wingLeft.position.set(-0.4, 0.15, -0.12);
+          wingLeft.rotation.y = 0.5;
+          group.add(wingLeft);
+          var wingRight = new THREE.Mesh(wingGeo, wingMat.clone());
+          wingRight.position.set(0.4, 0.15, -0.12);
+          wingRight.rotation.y = -0.5;
+          group.add(wingRight);
+
+          var bowMat = new THREE.MeshStandardMaterial({
+            color: 0xffdd66,
+            emissive: 0xcc9900,
+            emissiveIntensity: 0.6,
+          });
+          var bow = new THREE.Mesh(
+            new THREE.TorusGeometry(0.28, 0.03, 6, 12, Math.PI),
+            bowMat,
+          );
+          bow.rotation.y = Math.PI / 2;
+          bow.position.set(0, 0, 0.35);
+          group.add(bow);
+
+          group.userData.muzzle = bow;
+          group.userData.wings = [wingLeft, wingRight];
+          return group;
+        }
+
+        // インプ: フェアリーステージの雑魚(近接型)。小さな悪戯妖精。
+        function buildImpMesh() {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0xcc3355,
+            emissive: 0x550011,
+            emissiveIntensity: 0.4,
+          });
+          var body = new THREE.Mesh(
+            new THREE.ConeGeometry(0.3, 0.7, 6),
+            bodyMat,
+          );
+          group.add(body);
+
+          var hornMat = new THREE.MeshStandardMaterial({
+            color: 0x220000,
+            emissive: 0x440000,
+            emissiveIntensity: 0.3,
+          });
+          var hornGeo = new THREE.ConeGeometry(0.06, 0.25, 5);
+          var hornLeft = new THREE.Mesh(hornGeo, hornMat);
+          hornLeft.position.set(-0.12, 0.45, 0);
+          hornLeft.rotation.z = 0.3;
+          group.add(hornLeft);
+          var hornRight = new THREE.Mesh(hornGeo, hornMat.clone());
+          hornRight.position.set(0.12, 0.45, 0);
+          hornRight.rotation.z = -0.3;
+          group.add(hornRight);
+
+          return group;
+        }
+
         // アイダ: 赤目の仏頂面モアイ。複数体が編隊で本体(バーバリアン)を守る。
         function buildAidaMesh() {
           var group = new THREE.Group();
@@ -3312,6 +4057,299 @@
           return group;
         }
 
+        // 相撲ボス ONIMARU: 土俵で構える力士。塩をまく仕草(左右の手から
+        // 交互に塩粒を放物線で散らす)と、張り手ラッシュの突進を持つ。
+        function buildSumoMesh() {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0xcc9966,
+            emissive: 0x442211,
+            emissiveIntensity: 0.25,
+          });
+          var body = new THREE.Mesh(
+            new THREE.SphereGeometry(1.8, 14, 12),
+            bodyMat,
+          );
+          body.scale.set(1, 1.15, 0.9);
+          group.add(body);
+
+          var mawashiMat = new THREE.MeshStandardMaterial({
+            color: 0x883322,
+            emissive: 0x441100,
+            emissiveIntensity: 0.3,
+          });
+          var mawashi = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.85, 1.85, 0.7, 12),
+            mawashiMat,
+          );
+          mawashi.position.y = -0.3;
+          group.add(mawashi);
+
+          var headMat = new THREE.MeshStandardMaterial({
+            color: 0xddaa88,
+            emissive: 0x442200,
+            emissiveIntensity: 0.2,
+          });
+          var head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.75, 12, 10),
+            headMat,
+          );
+          head.position.y = 2.2;
+          group.add(head);
+
+          var eyeMat = new THREE.MeshStandardMaterial({
+            color: 0xff2222,
+            emissive: 0xff2222,
+            emissiveIntensity: 0.9,
+          });
+          var eyeGeo = new THREE.SphereGeometry(0.14, 8, 8);
+          var eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
+          eyeLeft.position.set(-0.3, 2.25, 0.6);
+          group.add(eyeLeft);
+          var eyeRight = new THREE.Mesh(eyeGeo, eyeMat.clone());
+          eyeRight.position.set(0.3, 2.25, 0.6);
+          group.add(eyeRight);
+
+          var armMat = new THREE.MeshStandardMaterial({
+            color: 0xcc9966,
+            emissive: 0x442211,
+            emissiveIntensity: 0.25,
+          });
+          var armGeo = new THREE.CapsuleGeometry(0.5, 1.6, 4, 8);
+          var armLeft = new THREE.Mesh(armGeo, armMat);
+          armLeft.position.set(-2, 0.6, 0.3);
+          armLeft.rotation.z = 0.5;
+          group.add(armLeft);
+          var armRight = new THREE.Mesh(armGeo, armMat.clone());
+          armRight.position.set(2, 0.6, 0.3);
+          armRight.rotation.z = -0.5;
+          group.add(armRight);
+
+          group.userData.leftHand = armLeft;
+          group.userData.rightHand = armRight;
+          return group;
+        }
+
+        // クイーン・ティターニア(フェアリーボス): フェアリーステージのボス。
+        // 巨大な花冠と羽を持つ妖精の女王で、輝く杖から光弾をばら撒く。
+        function buildFairyQueenMesh() {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0xffaadd,
+            emissive: 0x992266,
+            emissiveIntensity: 0.4,
+          });
+          var body = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.6, 1.1, 2.4, 10),
+            bodyMat,
+          );
+          group.add(body);
+
+          var fqHeadMat = new THREE.MeshStandardMaterial({
+            color: 0xffe4cc,
+            emissive: 0x442211,
+            emissiveIntensity: 0.2,
+          });
+          var fqHead = new THREE.Mesh(
+            new THREE.SphereGeometry(0.55, 12, 10),
+            fqHeadMat,
+          );
+          fqHead.position.y = 1.7;
+          group.add(fqHead);
+
+          var crownMat = new THREE.MeshStandardMaterial({
+            color: 0xffdd44,
+            emissive: 0xffbb00,
+            emissiveIntensity: 0.7,
+          });
+          var crown = new THREE.Mesh(
+            new THREE.TorusGeometry(0.5, 0.12, 8, 12),
+            crownMat,
+          );
+          crown.rotation.x = Math.PI / 2;
+          crown.position.y = 2.15;
+          group.add(crown);
+
+          // 蝶のような4枚羽: 上翅(大きい)+下翅(小さい)を左右に配置する。
+          var wingMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            emissive: 0xffccee,
+            emissiveIntensity: 0.6,
+            transparent: true,
+            opacity: 0.75,
+          });
+          var upperWingGeo = new THREE.CircleGeometry(1.5, 10);
+          var lowerWingGeo = new THREE.CircleGeometry(0.9, 10);
+          var upperWingLeft = new THREE.Mesh(upperWingGeo, wingMat);
+          upperWingLeft.position.set(-1.2, 1, -0.6);
+          upperWingLeft.rotation.y = 0.7;
+          group.add(upperWingLeft);
+          var upperWingRight = new THREE.Mesh(upperWingGeo, wingMat.clone());
+          upperWingRight.position.set(1.2, 1, -0.6);
+          upperWingRight.rotation.y = -0.7;
+          group.add(upperWingRight);
+          var lowerWingLeft = new THREE.Mesh(lowerWingGeo, wingMat.clone());
+          lowerWingLeft.position.set(-1, 0.1, -0.5);
+          lowerWingLeft.rotation.y = 0.7;
+          group.add(lowerWingLeft);
+          var lowerWingRight = new THREE.Mesh(lowerWingGeo, wingMat.clone());
+          lowerWingRight.position.set(1, 0.1, -0.5);
+          lowerWingRight.rotation.y = -0.7;
+          group.add(lowerWingRight);
+
+          var wandMat = new THREE.MeshStandardMaterial({
+            color: 0xffee88,
+            emissive: 0xffcc00,
+            emissiveIntensity: 0.8,
+          });
+          var wand = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 10, 10),
+            wandMat,
+          );
+          wand.position.set(1.2, 0.8, 0.6);
+          group.add(wand);
+
+          group.userData.muzzle = wand;
+          group.userData.wings = [
+            upperWingLeft,
+            upperWingRight,
+            lowerWingLeft,
+            lowerWingRight,
+          ];
+          return group;
+        }
+
+        // CERBERUS: 地獄の中心に棲む三頭の炎の番犬。左・中央・右の頭部
+        // それぞれから交互に炎のブレスを吐く単体ボス(GODANIの複数頭部
+        // 構造に近いが、本体は1体)。
+        function buildCerberusMesh() {
+          var group = new THREE.Group();
+          var furMat = new THREE.MeshStandardMaterial({
+            color: 0x552211,
+            emissive: 0x441100,
+            emissiveIntensity: 0.3,
+          });
+          var body = new THREE.Mesh(
+            new THREE.BoxGeometry(3.6, 1.8, 2.6),
+            furMat,
+          );
+          body.position.y = 0.2;
+          group.add(body);
+
+          var legMat = new THREE.MeshStandardMaterial({
+            color: 0x3a1608,
+            emissive: 0x220800,
+            emissiveIntensity: 0.25,
+          });
+          var legGeo = new THREE.CylinderGeometry(0.32, 0.32, 1.4, 8);
+          var legOffsets = [
+            [-1.4, -1.1, 1],
+            [1.4, -1.1, 1],
+            [-1.4, -1.1, -1],
+            [1.4, -1.1, -1],
+          ];
+          for (var li = 0; li < legOffsets.length; li++) {
+            var leg = new THREE.Mesh(legGeo, legMat.clone());
+            leg.position.set(
+              legOffsets[li][0],
+              legOffsets[li][1],
+              legOffsets[li][2],
+            );
+            group.add(leg);
+          }
+
+          var tailMat = new THREE.MeshStandardMaterial({
+            color: 0x552211,
+            emissive: 0xff4400,
+            emissiveIntensity: 0.4,
+          });
+          var tail = new THREE.Mesh(
+            new THREE.ConeGeometry(0.3, 1.6, 8),
+            tailMat,
+          );
+          tail.rotation.x = Math.PI / 2.4;
+          tail.position.set(0, 0.6, -2.1);
+          group.add(tail);
+
+          // 頭部生成の共通ヘルパー: 炎を纏う犬の頭(球体+顎+耳+目)を作り、
+          // 指定位置に配置する。中央の頭はやや大きめにして主格を示す。
+          function buildHead(offsetX, scale) {
+            var headGroup = new THREE.Group();
+            var headMat = new THREE.MeshStandardMaterial({
+              color: 0x663322,
+              emissive: 0xff3300,
+              emissiveIntensity: 0.35,
+            });
+            var head = new THREE.Mesh(
+              new THREE.SphereGeometry(0.62 * scale, 12, 10),
+              headMat,
+            );
+            headGroup.add(head);
+
+            var jawMat = new THREE.MeshStandardMaterial({
+              color: 0x2a0f08,
+              emissive: 0xff2200,
+              emissiveIntensity: 0.5,
+            });
+            var jaw = new THREE.Mesh(
+              new THREE.ConeGeometry(0.32 * scale, 0.7 * scale, 8),
+              jawMat,
+            );
+            jaw.rotation.x = Math.PI / 2;
+            jaw.position.set(0, -0.18 * scale, 0.55 * scale);
+            headGroup.add(jaw);
+
+            var earMat = new THREE.MeshStandardMaterial({
+              color: 0x3a1608,
+              emissive: 0x220800,
+              emissiveIntensity: 0.2,
+            });
+            var earGeo = new THREE.ConeGeometry(0.22 * scale, 0.55 * scale, 6);
+            var earLeft = new THREE.Mesh(earGeo, earMat);
+            earLeft.position.set(-0.42 * scale, 0.55 * scale, -0.05);
+            earLeft.rotation.z = 0.3;
+            headGroup.add(earLeft);
+            var earRight = new THREE.Mesh(earGeo, earMat.clone());
+            earRight.position.set(0.42 * scale, 0.55 * scale, -0.05);
+            earRight.rotation.z = -0.3;
+            headGroup.add(earRight);
+
+            var eyeMat = new THREE.MeshStandardMaterial({
+              color: 0xffcc00,
+              emissive: 0xffaa00,
+              emissiveIntensity: 0.9,
+            });
+            var eyeGeo = new THREE.SphereGeometry(0.09 * scale, 8, 8);
+            var eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeLeft.position.set(-0.22 * scale, 0.12 * scale, 0.5 * scale);
+            headGroup.add(eyeLeft);
+            var eyeRight = new THREE.Mesh(eyeGeo, eyeMat.clone());
+            eyeRight.position.set(0.22 * scale, 0.12 * scale, 0.5 * scale);
+            headGroup.add(eyeRight);
+
+            var muzzle = new THREE.Object3D();
+            muzzle.position.set(0, -0.18 * scale, 0.9 * scale);
+            headGroup.add(muzzle);
+            headGroup.userData.muzzle = muzzle;
+
+            headGroup.position.set(offsetX, 1.35, 0.4);
+            return headGroup;
+          }
+
+          var leftHead = buildHead(-1.15, 0.85);
+          var centerHead = buildHead(0, 1);
+          var rightHead = buildHead(1.15, 0.85);
+          group.add(leftHead);
+          group.add(centerHead);
+          group.add(rightHead);
+
+          group.userData.leftHead = leftHead;
+          group.userData.centerHead = centerHead;
+          group.userData.rightHead = rightHead;
+          group.userData.body = body;
+          return group;
+        }
+
         // 最終ボス ABSYMBEL: 複数形態を象徴する多層構造(コア+回転リング)。
         function buildFinalBossMesh() {
           var group = new THREE.Group();
@@ -3362,9 +4400,12 @@
 
         var BOSS_HP_BY_TYPE = {
           scaler: 15,
-          godani: 20,
+          godani: 34,
           tomos: 18,
           sarpedon: 22,
+          sumo: 24,
+          cerberus: 30,
+          fairy_queen: 26,
           barbarian: 28,
           final: 50,
           generic: 25,
@@ -3374,6 +4415,9 @@
           godani: 7,
           tomos: 6,
           sarpedon: 7,
+          sumo: 5,
+          cerberus: 7,
+          fairy_queen: 8,
           barbarian: 6,
           final: 6,
           generic: 8,
@@ -3381,6 +4425,7 @@
         var BOSS_SIZE_BY_TYPE = {
           scaler: 2.75,
           tomos: 2.2,
+          cerberus: 2.6,
         };
         // スケイラ(龍)本体のビジュアルスケール。衝突判定の半径
         // (BOSS_SIZE_BY_TYPE)とは別に、メッシュ自体を大きく見せるための
@@ -3393,6 +4438,9 @@
           godani: [-18, -8],
           tomos: [-15, -5],
           sarpedon: [-16, -6],
+          sumo: [-14, -4],
+          cerberus: [-16, -6],
+          fairy_queen: [-15, -5],
           barbarian: [-12, -2],
           final: [-10, 0],
           generic: [-20, -10],
@@ -3401,9 +4449,12 @@
           scaler: "SCALER",
           godani: "GODANI",
           tomos: "TOMOS",
-          sarpedon: "JET STREAM DOMS",
+          sarpedon: "ASSAULT TRIAD",
+          sumo: "ONIMARU",
+          cerberus: "CERBERUS",
+          fairy_queen: "QUEEN TITANIA",
           barbarian: "MOAI",
-          final: "ABSYMBEL",
+          final: "ABYSS ZERO",
           generic: "BOSS",
         };
 
@@ -3411,11 +4462,14 @@
         // 本来のステージ設定(色・敵速度倍率)を借用して雰囲気を再現する。
         var BOSS_TEST_ENTRIES = [
           { bossType: "scaler", stageId: 1 },
-          { bossType: "godani", stageId: 2 },
-          { bossType: "tomos", stageId: 3 },
+          { bossType: "tomos", stageId: 2 },
+          { bossType: "godani", stageId: 3 },
           { bossType: "sarpedon", stageId: 4 },
-          { bossType: "barbarian", stageId: 5 },
-          { bossType: "final", stageId: 7 },
+          { bossType: "sumo", stageId: 5 },
+          { bossType: "cerberus", stageId: 6 },
+          { bossType: "fairy_queen", stageId: 7 },
+          { bossType: "barbarian", stageId: 8 },
+          { bossType: "final", stageId: 10 },
         ];
 
         // 隠しコマンドのENDINGタブ用。エントリーは1件のみで、選択すると
@@ -3435,6 +4489,12 @@
               return buildTomosBossMesh();
             case "barbarian":
               return buildBarbarianMesh();
+            case "sumo":
+              return buildSumoMesh();
+            case "fairy_queen":
+              return buildFairyQueenMesh();
+            case "cerberus":
+              return buildCerberusMesh();
             case "final":
               return buildFinalBossMesh();
             default:
@@ -3472,6 +4532,22 @@
             mesh = buildDasherMesh();
           } else if (kind === "weaver") {
             mesh = buildWeaverMesh();
+          } else if (kind === "princess") {
+            mesh = buildPrincessMesh();
+          } else if (kind === "yoshitsune") {
+            mesh = buildYoshitsuneMesh();
+          } else if (kind === "frog") {
+            mesh = buildFrogMesh();
+          } else if (kind === "biwa_hoshi") {
+            mesh = buildBiwaHoshiMesh();
+          } else if (kind === "fairy") {
+            mesh = buildFairyMesh();
+          } else if (kind === "pixie") {
+            mesh = buildPixieMesh();
+          } else if (kind === "cupid") {
+            mesh = buildCupidMesh();
+          } else if (kind === "imp") {
+            mesh = buildImpMesh();
           } else {
             var color = kind === "shooter" ? 0xff8800 : 0x00ff88;
             var geo = new THREE.IcosahedronGeometry(size, 0);
@@ -3579,6 +4655,49 @@
             // 画面内で跳ねる動作の基準の高さ。
             enemy.homeY = mesh.position.y;
           }
+          if (bossType === "sumo") {
+            // 左右移動(pacing)→静止して塩をまく(salting、白い塩ビーム)→
+            // 四股を踏み構える(ready、「よーい」の間)→突進(はたき込み)→
+            // 張り手ラッシュ→奥の元の場所に戻る、のサイクルで攻撃する。
+            // sarpedonのdashStateと同じ考え方の専用ステートマシン。
+            enemy.dashState = "pacing";
+            enemy.dashTimer = SUMO_PACING_SECONDS;
+            enemy.jumpOrigin = new THREE.Vector3();
+            enemy.jumpTarget = new THREE.Vector3();
+            enemy.dashProgress = 0;
+            enemy.homeY = mesh.position.y;
+            enemy.slapCount = 0;
+            enemy.nextFiringHeadIsLeft = true;
+          }
+          if (bossType === "fairy_queen") {
+            // 杖攻撃(星形ビーム)→投げキッス(ハート爆弾)→上空飛来(演出)を
+            // 順に繰り出す。
+            enemy.patternIndex = 0;
+            enemy.attackPattern = FAIRY_QUEEN_PATTERN_ORDER[0];
+            enemy.patternTimer = FAIRY_QUEEN_PATTERN_SECONDS.wand;
+            enemy.homeY = mesh.position.y;
+            enemy.starVolleyRemaining = 0;
+            enemy.starVolleyTimer = 0;
+          }
+          if (bossType === "cerberus") {
+            // 左・中央・右の3頭それぞれが独立したHPを持ち、1頭ずつ
+            // 撃破していく(godaniの左右2頭構造を3頭に拡張したもの)。
+            var perHeadHp = Math.ceil(bossHp / 3);
+            enemy.leftHp = perHeadHp;
+            enemy.centerHp = perHeadHp;
+            enemy.rightHp = perHeadHp;
+            // 交互ブレス: 左→中央→右の順に発射元を巡回させるための
+            // インデックス。
+            enemy.firingHeadIndex = 0;
+            // 前後左右へは一切移動させないため、通常のZ往復による接近を
+            // 待たず、交戦距離(BOSS_ENGAGE_RANGE_BY_TYPE)の範囲内で
+            // 最初からZ位置を確定させ、その場に居座らせる。
+            var cerberusRange = BOSS_ENGAGE_RANGE_BY_TYPE.cerberus || [-16, -6];
+            enemy.engageZ =
+              cerberusRange[0] +
+              Math.random() * (cerberusRange[1] - cerberusRange[0]);
+            mesh.position.z = enemy.engageZ;
+          }
 
           enemies.push(enemy);
           if (kind === "boss") {
@@ -3646,6 +4765,162 @@
           return group;
         }
 
+        // 卒塔婆: 妖怪ステージの障害物。木製の細長い板塔婆。
+        function buildSotobaMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({ color: 0x998866 });
+          var board = new THREE.Mesh(new THREE.BoxGeometry(0.9, 8, 0.2), mat);
+          group.add(board);
+
+          var inkMat = new THREE.MeshStandardMaterial({
+            color: 0x111111,
+            emissive: 0x220000,
+            emissiveIntensity: 0.2,
+          });
+          var ink = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3, 0.05), inkMat);
+          ink.position.set(0, 2, 0.13);
+          group.add(ink);
+
+          return group;
+        }
+
+        // 墓石: 妖怪ステージの障害物。苔むした石碑。
+        function buildGravestoneMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({ color: 0x555a5a });
+          var stone = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.7, 0.9, 2.2, 6),
+            mat,
+          );
+          group.add(stone);
+
+          var mossMat = new THREE.MeshStandardMaterial({ color: 0x445533 });
+          var moss = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.75, 0.75, 0.3, 6),
+            mossMat,
+          );
+          moss.position.y = -0.8;
+          group.add(moss);
+
+          return group;
+        }
+
+        // 竹: 妖怪ステージの障害物。連なる竹林の一部。
+        function buildBambooMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0x669944,
+            emissive: 0x113311,
+            emissiveIntensity: 0.15,
+          });
+          var offsets = [-0.6, 0, 0.7];
+          var heights = [9, 11, 8];
+          for (var i = 0; i < offsets.length; i++) {
+            var stalk = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.25, 0.3, heights[i], 6),
+              mat,
+            );
+            stalk.position.set(offsets[i], heights[i] / 2 - 4, 0);
+            group.add(stalk);
+          }
+          return group;
+        }
+
+        // ハート型の柱: フェアリーステージの障害物。
+        function buildHeartPillarMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0xff6699,
+            emissive: 0x882244,
+            emissiveIntensity: 0.35,
+          });
+          var pillar = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.6, 0.6, 9, 8),
+            mat,
+          );
+          group.add(pillar);
+
+          var heartMat = new THREE.MeshStandardMaterial({
+            color: 0xff2277,
+            emissive: 0xff2277,
+            emissiveIntensity: 0.6,
+          });
+          var lobeGeo = new THREE.SphereGeometry(0.55, 10, 8);
+          var lobeLeft = new THREE.Mesh(lobeGeo, heartMat);
+          lobeLeft.position.set(-0.35, 4.7, 0);
+          group.add(lobeLeft);
+          var lobeRight = new THREE.Mesh(lobeGeo, heartMat.clone());
+          lobeRight.position.set(0.35, 4.7, 0);
+          group.add(lobeRight);
+          var tip = new THREE.Mesh(
+            new THREE.ConeGeometry(0.65, 1, 4),
+            heartMat.clone(),
+          );
+          tip.rotation.y = Math.PI / 4;
+          tip.rotation.x = Math.PI;
+          tip.position.set(0, 3.9, 0);
+          group.add(tip);
+
+          return group;
+        }
+
+        // 巨大キャンディ: フェアリーステージの障害物。
+        function buildLollipopMesh() {
+          var group = new THREE.Group();
+          var stickMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+          var stick = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.15, 0.15, 5, 8),
+            stickMat,
+          );
+          group.add(stick);
+
+          var candyMat = new THREE.MeshStandardMaterial({
+            color: 0xff3388,
+            emissive: 0xaa1155,
+            emissiveIntensity: 0.4,
+          });
+          var candy = new THREE.Mesh(
+            new THREE.TorusKnotGeometry(0.9, 0.28, 40, 8, 2, 3),
+            candyMat,
+          );
+          candy.position.y = 2.8;
+          group.add(candy);
+
+          return group;
+        }
+
+        // 花のアーチ: フェアリーステージの障害物。
+        function buildFlowerArchMesh() {
+          var group = new THREE.Group();
+          var vineMat = new THREE.MeshStandardMaterial({ color: 0x559944 });
+          var arch = new THREE.Mesh(
+            new THREE.TorusGeometry(2, 0.3, 8, 16, Math.PI),
+            vineMat,
+          );
+          arch.rotation.z = Math.PI;
+          arch.position.y = -1.5;
+          group.add(arch);
+
+          var petalMat = new THREE.MeshStandardMaterial({
+            color: 0xffaadd,
+            emissive: 0xaa5588,
+            emissiveIntensity: 0.3,
+          });
+          var petalGeo = new THREE.SphereGeometry(0.3, 8, 6);
+          for (var i = 0; i <= 6; i++) {
+            var angle = Math.PI * (i / 6);
+            var petal = new THREE.Mesh(petalGeo, petalMat.clone());
+            petal.position.set(
+              Math.cos(angle) * 2,
+              Math.sin(angle) * 2 - 1.5,
+              0,
+            );
+            group.add(petal);
+          }
+
+          return group;
+        }
+
         function spawnObstacle(kind, laneX) {
           var mesh;
           if (kind === "pillar") {
@@ -3659,6 +4934,24 @@
           } else if (kind === "floating_island") {
             mesh = buildFloatingIslandMesh();
             mesh.position.set(laneX, Math.random() * 2 + 1, -160);
+          } else if (kind === "sotoba") {
+            mesh = buildSotobaMesh();
+            mesh.position.set(laneX, 1, -160);
+          } else if (kind === "gravestone") {
+            mesh = buildGravestoneMesh();
+            mesh.position.set(laneX, -3.5, -160);
+          } else if (kind === "bamboo") {
+            mesh = buildBambooMesh();
+            mesh.position.set(laneX, 1, -160);
+          } else if (kind === "heart_pillar") {
+            mesh = buildHeartPillarMesh();
+            mesh.position.set(laneX, 1, -160);
+          } else if (kind === "lollipop") {
+            mesh = buildLollipopMesh();
+            mesh.position.set(laneX, -3, -160);
+          } else if (kind === "flower_arch") {
+            mesh = buildFlowerArchMesh();
+            mesh.position.set(laneX, 2, -160);
           } else {
             var rockGeo = new THREE.DodecahedronGeometry(1.4, 0);
             var rockMat = new THREE.MeshStandardMaterial({ color: 0x664433 });
@@ -3666,15 +4959,25 @@
             mesh.position.set(laneX, -3.5, -160);
           }
           scene.add(mesh);
+          var isFullHeight =
+            kind === "pillar" ||
+            kind === "ruins" ||
+            kind === "sotoba" ||
+            kind === "bamboo" ||
+            kind === "heart_pillar";
           obstacles.push({
             mesh: mesh,
-            radius: kind === "pillar" || kind === "ruins" ? 1.2 : 1.4,
-            hitHeight:
-              kind === "pillar" || kind === "ruins"
-                ? 999
-                : kind === "floating_island"
-                  ? 2.5
-                  : 1.6,
+            radius:
+              kind === "pillar" || kind === "ruins" || kind === "sotoba"
+                ? 1.2
+                : kind === "bamboo" || kind === "heart_pillar"
+                  ? 1.3
+                  : 1.4,
+            hitHeight: isFullHeight
+              ? 999
+              : kind === "floating_island" || kind === "flower_arch"
+                ? 2.5
+                : 1.6,
             speed: 26,
           });
         }
@@ -3806,6 +5109,173 @@
           }
         }
 
+        // 塩まき(相撲取り専用): 力士が塩を撒く動作を模し、小さく白い粒を
+        // 霧状に(1回の発射で複数粒)、直進ではなく放物線(山なりの弧)を
+        // 描いてばら撒く。各粒はsourcePositionからplayerGroup方向への
+        // 扇状の初速に、横方向のランダムな散らばりを加えて「霧」らしい
+        // 広がりを出す。
+        var SALT_MIST_COUNT = 9;
+        var SALT_MIST_SPREAD = 1.4;
+        var SALT_MIST_ARC_HEIGHT = 3.5;
+        var SALT_MIST_DURATION_SECONDS = 0.75;
+
+        function fireSaltBullet(sourcePosition) {
+          var toPlayer = new THREE.Vector3().subVectors(
+            playerGroup.position,
+            sourcePosition,
+          );
+          var lateral = new THREE.Vector3()
+            .crossVectors(toPlayer, new THREE.Vector3(0, 1, 0))
+            .normalize();
+          var geo = new THREE.SphereGeometry(0.14, 6, 6);
+          var mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+          for (var i = 0; i < SALT_MIST_COUNT; i++) {
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(sourcePosition);
+            scene.add(mesh);
+
+            // 横方向にランダムに散らした着弾目標点(霧のように広がる)。
+            var lateralOffset = (Math.random() - 0.5) * 2 * SALT_MIST_SPREAD;
+            var target = playerGroup.position
+              .clone()
+              .addScaledVector(lateral, lateralOffset);
+
+            enemyBullets.push({
+              mesh: mesh,
+              dir: new THREE.Vector3(),
+              speed: 0,
+              nearMissPlayed: false,
+              isSaltMist: true,
+              startPosition: sourcePosition.clone(),
+              targetPosition: target,
+              arcHeight: SALT_MIST_ARC_HEIGHT * (0.7 + Math.random() * 0.6),
+              flightDuration:
+                SALT_MIST_DURATION_SECONDS * (0.85 + Math.random() * 0.3),
+              flightProgress: 0,
+            });
+          }
+        }
+
+        // 星形ジオメトリ(フェアリークイーンの杖ビーム用)。ExtrudeGeometryで
+        // 薄い立体の五稜星にし、キラキラした魔法弾らしい見た目にする。
+        var STAR_BOLT_SHAPE = (function () {
+          var shape = new THREE.Shape();
+          var spikes = 5;
+          var outerR = 0.32;
+          var innerR = 0.13;
+          for (var i = 0; i < spikes * 2; i++) {
+            var r = i % 2 === 0 ? outerR : innerR;
+            var a = (i / (spikes * 2)) * Math.PI * 2 - Math.PI / 2;
+            var x = Math.cos(a) * r;
+            var y = Math.sin(a) * r;
+            if (i === 0) shape.moveTo(x, y);
+            else shape.lineTo(x, y);
+          }
+          shape.closePath();
+          return shape;
+        })();
+
+        // 魔法の杖ビーム(フェアリークイーン専用): 星形の光弾を自機へ
+        // ホーミングさせて放つ。「魔法少女の杖」らしく1〜3発の少数精鋭で
+        // 正確に狙い撃つ攻撃。
+        function spawnStarBolt(sourcePosition) {
+          var geo = new THREE.ExtrudeGeometry(STAR_BOLT_SHAPE, {
+            depth: 0.08,
+            bevelEnabled: false,
+          });
+          var mat = new THREE.MeshBasicMaterial({ color: 0xffee66 });
+          var mesh = new THREE.Mesh(geo, mat);
+          mesh.position.copy(sourcePosition);
+          scene.add(mesh);
+          var dir = new THREE.Vector3()
+            .subVectors(playerGroup.position, sourcePosition)
+            .normalize();
+          enemyBullets.push({
+            mesh: mesh,
+            dir: dir,
+            speed: 24,
+            nearMissPlayed: false,
+            isHoming: true,
+            homingTurnRate: 2.2,
+            isStarBolt: true,
+            spinPhase: Math.random() * Math.PI * 2,
+          });
+        }
+
+        // ハート型ジオメトリ(投げキッスのハート爆弾用)。球+コーンの組み
+        // 合わせでは「団子」にしか見えなかったため、STAR_BOLT_SHAPEと
+        // 同じ手法(ベジエ曲線でハートの輪郭を描きExtrudeGeometryで
+        // 立体化)で、左右の丸み+下端の尖りを持つ正しいハート型にする。
+        var HEART_BOMB_SHAPE = (function () {
+          var shape = new THREE.Shape();
+          shape.moveTo(0, -0.5);
+          shape.bezierCurveTo(-0.55, -0.05, -0.55, 0.45, -0.22, 0.45);
+          shape.bezierCurveTo(-0.06, 0.45, 0, 0.28, 0, 0.15);
+          shape.bezierCurveTo(0, 0.28, 0.06, 0.45, 0.22, 0.45);
+          shape.bezierCurveTo(0.55, 0.45, 0.55, -0.05, 0, -0.5);
+          return shape;
+        })();
+
+        // 投げキッスのハート爆弾(フェアリークイーン専用): ゆったり自機へ
+        // 迫るハート型の弾。自機に接近するか一定時間が経つと大きく爆発し、
+        // 直撃だけでなく爆風範囲にも判定を持つ「避けても油断できない」
+        // 一撃にする。isHeartBombフラグを立て、爆発処理はupdateEnemyBullets
+        // 側で扱う。サイズは旧実装(2球+コーン)のおよそ2倍。
+        function spawnHeartBomb(sourcePosition) {
+          var geo = new THREE.ExtrudeGeometry(HEART_BOMB_SHAPE, {
+            depth: 0.3,
+            bevelEnabled: true,
+            bevelThickness: 0.08,
+            bevelSize: 0.05,
+            bevelSegments: 2,
+          });
+          var mat = new THREE.MeshBasicMaterial({ color: 0xff2277 });
+          var mesh = new THREE.Mesh(geo, mat);
+          mesh.scale.set(1.6, 1.6, 1.6);
+          mesh.position.copy(sourcePosition);
+          scene.add(mesh);
+          // ボスは"kiss"中も通常のZ往復演出(engageZ〜BOSS_RETREAT_Zの
+          // -90まで)を続けているため、発射元のZは毎回大きく異なる。
+          // armTimerを固定秒数にすると、ボスが奥にいるタイミングで
+          // 撃った弾はzSpeed×armTimerの移動距離が自機まで届く前に
+          // 尽きてしまい、手前で弾けていた。そのため実際の距離から
+          // 到達に必要な時間を逆算し、余裕を持たせてarmTimerとする。
+          var zSpeed = 13;
+          var distanceToPlayerZ = Math.abs(
+            playerGroup.position.z - sourcePosition.z,
+          );
+          enemyBullets.push({
+            mesh: mesh,
+            dir: new THREE.Vector3(),
+            speed: 0,
+            nearMissPlayed: false,
+            isHeartBomb: true,
+            zSpeed: zSpeed,
+            lateralHomingRate: 1.4,
+            armTimer: distanceToPlayerZ / zSpeed + 1,
+            spinPhase: Math.random() * Math.PI * 2,
+          });
+        }
+
+        // ハート爆弾の炸裂: 見た目の爆発(spawnExplosion)を出しつつ、
+        // 直撃していなくても自機が爆風範囲内にいればダメージを与える。
+        var HEART_BOMB_BLAST_RADIUS = 3.8;
+
+        function detonateHeartBomb(eb) {
+          spawnExplosion(eb.mesh.position, 2.2);
+          if (invulnerableTimer <= 0) {
+            var distToPlayer = eb.mesh.position.distanceTo(
+              playerGroup.position,
+            );
+            var withinZRange =
+              Math.abs(eb.mesh.position.z - playerGroup.position.z) < 2.5;
+            if (distToPlayer < HEART_BOMB_BLAST_RADIUS && withinZRange) {
+              damagePlayer();
+            }
+          }
+        }
+
         function fireAtPlayer(enemy) {
           if (enemy.kind === "dom") {
             var muzzleWorldPos = new THREE.Vector3();
@@ -3869,6 +5339,57 @@
             // リップル発射の瞬間だけ口を大きく開ける。この間に開いた口へ
             // 命中すると弱点扱いで大ダメージになる。
             enemy.mouthOpenTimer = BARBARIAN_MOUTH_OPEN_SECONDS;
+          } else if (enemy.bossType === "sumo") {
+            // 塩をまく: 左右移動を止めて静止している(salting)間のみ、
+            // 左右の手から交互に、小さく白い塩粒を霧状(1回で複数粒)に
+            // 放物線を描いてばら撒く。構え(ready)・突進(charging/
+            // dashing)・張り手ラッシュ(slapping)中は一切発射しない
+            // (張り手は体当たりの圧だけで魅せる近接attackのため)。
+            if (enemy.dashState === "salting") {
+              var sumoHandName = enemy.nextFiringHeadIsLeft
+                ? "leftHand"
+                : "rightHand";
+              var sumoHandPos = new THREE.Vector3();
+              enemy.mesh.userData[sumoHandName].getWorldPosition(sumoHandPos);
+              fireSaltBullet(sumoHandPos);
+              enemy.nextFiringHeadIsLeft = !enemy.nextFiringHeadIsLeft;
+            }
+          } else if (enemy.bossType === "fairy_queen") {
+            // "wand"(星形ビームの連射)はパターン切り替えの瞬間に
+            // updateFairyQueenPerformance側で連射キューをセットして扱う
+            // (fireTimer/baseIntervalの1回性の発射とは相性が悪いため)。
+            // "flyby"(上空からの飛来)は攻撃を伴わない演出専用パターン
+            // なので、ここでは何も発射しない。
+            if (enemy.attackPattern === "kiss") {
+              var wandPos = new THREE.Vector3();
+              enemy.mesh.userData.muzzle.getWorldPosition(wandPos);
+              // 投げキッス: ゆっくり迫る大きなハート爆弾を放つ。直撃だけ
+              // でなく着弾/接近時の爆風にも判定があるため回避が必須になる。
+              spawnHeartBomb(wandPos);
+            }
+          } else if (enemy.bossType === "cerberus") {
+            // 三頭から交互にブレス: 左→中央→右の順に頭を巡回させながら、
+            // 生存している頭部から自機狙いの炎弾を1発ずつ放つ
+            // (firingHeadIndexを0→1→2→0…と巡回させる)。
+            var cerberusHeadNames = ["leftHead", "centerHead", "rightHead"];
+            var cerberusHeadHpKeys = ["leftHp", "centerHp", "rightHp"];
+            var startIndex = enemy.firingHeadIndex || 0;
+            for (var hci = 0; hci < cerberusHeadNames.length; hci++) {
+              var tryIndex = (startIndex + hci) % cerberusHeadNames.length;
+              if (enemy[cerberusHeadHpKeys[tryIndex]] > 0) {
+                var cerberusHeadPos = new THREE.Vector3();
+                enemy.mesh.userData[
+                  cerberusHeadNames[tryIndex]
+                ].userData.muzzle.getWorldPosition(cerberusHeadPos);
+                firePlayerDirected(
+                  cerberusHeadPos,
+                  CERBERUS_BREATH_BULLET_RADIUS,
+                );
+                enemy.firingHeadIndex =
+                  (tryIndex + 1) % cerberusHeadNames.length;
+                break;
+              }
+            }
           } else if (enemy.bossType === "final") {
             // 第2形態(HP50%以下)ではリング全体が高速回転しており、
             // 弾数を増やしほぼ全方位の扇状弾幕に強化する(ラスボスらしい
@@ -4001,6 +5522,20 @@
             "SCORE: " + score;
           document.getElementById("lives-display").textContent =
             "LIVES: " + lives;
+        }
+
+        // スコア加算はここに一本化する。SCORE_1UP_INTERVALのラインを
+        // 跨いだ回数だけライフを増やす(コンボボーナス込みの一撃で複数区切り
+        // を一気に跨ぐ場合もあるため、while で跨いだ分だけ処理する)。
+        function gainScore(amount) {
+          score += amount;
+          while (score >= nextScoreForLife) {
+            lives += 1;
+            nextScoreForLife += SCORE_1UP_INTERVAL;
+            play1upSound();
+            showStageBanner("1UP!");
+          }
+          updateHud();
         }
 
         function flashDamage() {
@@ -4223,6 +5758,7 @@
           updateObstacles(dt);
           updateEnemyBullets(dt);
           updateExplosions(dt);
+          updatePetals(dt);
 
           if (stageTransitionTimer > 0) {
             // 次ステージへの遷移待ち(ファンファーレ演出中)。この間も
@@ -4256,7 +5792,7 @@
           }
         }
 
-        // JET STREAM DOMS(サルペドン)専用: 通常は左右にうねりながら飛行
+        // ASSAULT TRIAD(サルペドン)専用: 通常は左右にうねりながら飛行
         // するが、一定間隔で「素早い左右横移動→静止→予兆(赤く点滅)→
         // 縦方向に放物線を描きながら自機の位置へジャンプして着地→また
         // 奥へ戻る」演出を挟む。ジャンプ先(X/Y/Z)は予兆終了時点の自機
@@ -4406,6 +5942,349 @@
           }
         }
 
+        // ONIMARU(相撲取り)専用: 左右移動(pacing)→静止して塩をまく
+        // (salting)→四股を踏み構える(ready)→予兆(charging)→突進
+        // (dashing)→張り手ラッシュ(slapping)→奥へ戻る(returning)、の
+        // サイクルで攻撃する専用ステートマシン。
+        var SUMO_PACING_SECONDS = 1.6;
+        var SUMO_SALTING_SECONDS = 0.7;
+        var SUMO_READY_SECONDS = 0.9;
+        var SUMO_CHARGE_TELEGRAPH_SECONDS = 0.6;
+        var SUMO_DASH_SECONDS = 0.4;
+        var SUMO_SLAP_SECONDS = 1.3;
+        var SUMO_RETURN_SECONDS = 0.9;
+        // 突進で自機にどこまで肉薄するか(自機Zのすぐ奥)。近すぎると避け
+        // づらすぎるため、自機との間に3ユニットの余白を残す。
+        var SUMO_DASH_TARGET_OFFSET_Z = 3;
+        // pacing中の左右移動の速さと振幅。
+        var SUMO_PACING_SPEED = 0.8;
+        var SUMO_PACING_AMPLITUDE = 5;
+
+        function updateSumoPerformance(en, dt) {
+          if (en.dashState === "pacing") {
+            // 左右移動: 奥の間合いで左右に往復するだけの牽制動作
+            // (この段階では攻撃しない)。
+            en.wavePhase = (en.wavePhase || 0) + dt * SUMO_PACING_SPEED;
+            en.mesh.position.x = clamp(
+              en.baseX + Math.sin(en.wavePhase) * SUMO_PACING_AMPLITUDE,
+              PLAYER_BOUNDS.minX,
+              PLAYER_BOUNDS.maxX,
+            );
+            en.mesh.rotation.z = Math.sin(elapsedTime * 3) * 0.08;
+            en.dashTimer -= dt;
+            if (en.dashTimer <= 0) {
+              en.dashState = "salting";
+              en.dashTimer = SUMO_SALTING_SECONDS;
+            }
+          } else if (en.dashState === "salting") {
+            // 塩をまく(ビーム発射): 左右移動を止め、その場で塩ビームを
+            // 撃つ。実際の発射はfireAtPlayer側がこの状態を見て行う。
+            en.mesh.rotation.z *= 1 - Math.min(1, dt * 6);
+            en.dashTimer -= dt;
+            if (en.dashTimer <= 0) {
+              en.dashState = "ready";
+              en.dashTimer = SUMO_READY_SECONDS;
+            }
+          } else if (en.dashState === "ready") {
+            // 四股を踏み構える: 完全に静止し、次の突進に備えて身構える。
+            // 「よーい、どん」の「よーい」に当たる間(攻撃も移動もしない)。
+            var readyFlicker = Math.abs(Math.sin(elapsedTime * 10)) * 0.5 + 0.3;
+            en.mesh.userData.leftHand.material.emissiveIntensity = readyFlicker;
+            en.mesh.userData.rightHand.material.emissiveIntensity =
+              readyFlicker;
+            en.dashTimer -= dt;
+            if (en.dashTimer <= 0) {
+              en.dashState = "charging";
+              en.dashTimer = SUMO_CHARGE_TELEGRAPH_SECONDS;
+              en.jumpOrigin.copy(en.mesh.position);
+              // 突進の到達点は「自機の現在位置のすぐ奥」。X/Zどちらも
+              // 動かすことで、原作の張り手のような正面衝突の圧を出す。
+              en.jumpTarget.set(
+                Math.max(
+                  PLAYER_BOUNDS.minX,
+                  Math.min(PLAYER_BOUNDS.maxX, playerGroup.position.x),
+                ),
+                en.homeY,
+                playerGroup.position.z + SUMO_DASH_TARGET_OFFSET_Z,
+              );
+            }
+          } else if (en.dashState === "charging") {
+            en.mesh.rotation.z = 0;
+            // 予兆: 目を激しく明滅させ、突進の直前であることを示す。
+            var sumoFlicker = Math.abs(Math.sin(elapsedTime * 20)) * 0.6 + 0.4;
+            en.mesh.userData.leftHand.material.emissiveIntensity = sumoFlicker;
+            en.mesh.userData.rightHand.material.emissiveIntensity = sumoFlicker;
+            en.dashTimer -= dt;
+            if (en.dashTimer <= 0) {
+              en.dashState = "dashing";
+              en.dashTimer = SUMO_DASH_SECONDS;
+              en.dashProgress = 0;
+            }
+          } else if (en.dashState === "dashing") {
+            en.dashProgress = Math.min(
+              1,
+              en.dashProgress + dt / SUMO_DASH_SECONDS,
+            );
+            var sumoP = en.dashProgress;
+            // 加速しながら突っ込む急加速イージングで「踏み込み」の
+            // 勢いを出す。
+            var sumoEased = sumoP * sumoP;
+            en.mesh.position.lerpVectors(
+              en.jumpOrigin,
+              en.jumpTarget,
+              sumoEased,
+            );
+            en.mesh.rotation.z = sumoP * 0.15;
+            if (en.dashProgress >= 1) {
+              en.dashState = "slapping";
+              en.dashTimer = SUMO_SLAP_SECONDS;
+              en.slapCount = 0;
+              cameraShake = Math.max(cameraShake, 0.6);
+            }
+          } else if (en.dashState === "slapping") {
+            // 張り手ラッシュ: 自機の目の前まで踏み込んだ状態で、腕を
+            // 大きく振り回す動作+本体ごと前後に揺さぶることで「至近距離で
+            // 叩いている」圧を出す。ビームは発射しない(体当たりの圧だけで
+            // 魅せる)。
+            en.mesh.rotation.z = 0;
+            var slapSwing = Math.sin(elapsedTime * 14);
+            en.mesh.userData.leftHand.rotation.z = 0.5 + slapSwing * 0.5;
+            en.mesh.userData.rightHand.rotation.z = -0.5 - slapSwing * 0.5;
+            en.mesh.position.z =
+              en.jumpTarget.z + Math.abs(Math.sin(elapsedTime * 14)) * -0.8;
+            en.dashTimer -= dt;
+            if (en.dashTimer <= 0) {
+              // 張り手の後は奥の元の間合いへ戻る。
+              en.dashState = "returning";
+              en.dashTimer = SUMO_RETURN_SECONDS;
+              en.dashProgress = 0;
+              en.jumpOrigin.copy(en.mesh.position);
+              var range = BOSS_ENGAGE_RANGE_BY_TYPE.sumo;
+              en.engageZ = range[0] + Math.random() * (range[1] - range[0]);
+              en.jumpTarget.set(en.baseX, en.homeY, en.engageZ);
+            }
+          } else if (en.dashState === "returning") {
+            en.dashProgress = Math.min(
+              1,
+              en.dashProgress + dt / SUMO_RETURN_SECONDS,
+            );
+            var backP =
+              en.dashProgress * en.dashProgress * (3 - 2 * en.dashProgress);
+            en.mesh.position.lerpVectors(en.jumpOrigin, en.jumpTarget, backP);
+            en.mesh.userData.leftHand.rotation.z = 0.5;
+            en.mesh.userData.rightHand.rotation.z = -0.5;
+            if (en.dashProgress >= 1) {
+              en.dashState = "pacing";
+              en.dashTimer = SUMO_PACING_SECONDS;
+              en.baseX = en.mesh.position.x;
+              en.wavePhase = 0;
+            }
+          }
+        }
+
+        // クイーン・ティターニア専用: 「杖攻撃(星形ビーム)→投げキッス
+        // (ハート爆弾)→上空飛来(演出のみ、攻撃なし)」を順に繰り出す。
+        // HP50%以下では巨大化・発光強化し、杖攻撃を2連射にして苛烈にする
+        // (fireAtPlayer側のqueenEnraged参照と対応)。
+        var FAIRY_QUEEN_PATTERN_ORDER = ["wand", "wand", "kiss", "flyby"];
+        // wandは10連射(enraged時)を0.08秒間隔で撃ち切るのに約0.8秒かかる
+        // ため、それより少し長めに確保しておく。
+        var FAIRY_QUEEN_PATTERN_SECONDS = {
+          wand: 1.1,
+          kiss: 1.6,
+          flyby: 2.2,
+        };
+        var FAIRY_QUEEN_FLYBY_HEIGHT = 11;
+
+        function updateFairyQueenPerformance(en, dt) {
+          var enraged = en.hp / en.maxHp <= 0.5;
+          if (!en.queenEnraged && enraged) {
+            en.queenEnraged = true;
+            en.mesh.scale.multiplyScalar(1.3);
+          }
+
+          // パターン切り替えの判定は、このフレームで使う isFlying/移動処理
+          // より先に行う。以前は切り替え後もisFlyingが「切り替え前の
+          // attackPattern」を見たままflybyの移動処理を1フレーム分余分に
+          // 実行しており、その際p(進行度)が既に1のまま新しいランダムな
+          // flybyTargetXを再抽選してしまい、ボスの位置が一瞬で不連続に
+          // 飛ぶ不具合の原因になっていた。
+          en.patternTimer -= dt * (enraged ? 1.3 : 1);
+          if (en.patternTimer <= 0) {
+            // "wand"がFAIRY_QUEEN_PATTERN_ORDER内に2回出現するため、値
+            // (attackPattern文字列)からindexOfで現在位置を逆引きすると
+            // 常に最初の"wand"に引っかかり2周目以降へ進めなくなる。
+            // 進行位置は必ずen.patternIndex(数値)側で管理する。
+            en.patternIndex =
+              ((en.patternIndex || 0) + 1) % FAIRY_QUEEN_PATTERN_ORDER.length;
+            en.attackPattern = FAIRY_QUEEN_PATTERN_ORDER[en.patternIndex];
+            en.patternTimer = FAIRY_QUEEN_PATTERN_SECONDS[en.attackPattern];
+            if (en.attackPattern === "flyby") {
+              en.flybyProgress = 0;
+              en.flybyTargetX = undefined;
+            } else if (en.attackPattern === "wand") {
+              // 杖攻撃: 魔法の杖を1振りして、流れ星のように連続した星形
+              // ビームを放つ。実際の連射はupdateEnemies側でstarVolley
+              // カウンタを毎フレーム消化する形で行う(setTimeoutだと
+              // ポーズ中も裏で発射され続けてしまうため、dtベースで処理する)。
+              en.starVolleyRemaining = en.queenEnraged ? 10 : 6;
+              en.starVolleyTimer = 0;
+            } else if (en.attackPattern === "kiss") {
+              // wandフェーズ中もfireAtPlayerのcanFire判定自体は毎フレーム
+              // 通過しており、その中のbaseInterval計算(このボスの場合
+              // attackPattern==="kiss"以外なら2秒)でfireTimerが上書き
+              // され続けていた。そのためkissへ切り替わった直後もfireTimer
+              // が残っていると、kissフェーズ(1.6秒)中に一度もfireTimer<=0
+              // にならずspawnHeartBombが呼ばれずに終わる不具合があった。
+              // kiss突入の瞬間に必ず即射させるためfireTimerを0にリセットする。
+              en.fireTimer = 0;
+            }
+          }
+
+          var isFlying = en.attackPattern === "flyby";
+          var wingFlap =
+            Math.sin(elapsedTime * (isFlying ? 14 : enraged ? 10 : 5)) * 0.5;
+          // 4枚羽(蝶のような上翅/下翅)。上翅は大きく、下翅はやや遅れた
+          // 位相で小さく羽ばたかせ、蝶が舞うような自然なずれを出す。
+          en.mesh.userData.wings[0].rotation.y = 0.7 + wingFlap;
+          en.mesh.userData.wings[1].rotation.y = -0.7 - wingFlap;
+          var wingFlap2 =
+            Math.sin(elapsedTime * (isFlying ? 14 : enraged ? 10 : 5) + 0.6) *
+            0.35;
+          en.mesh.userData.wings[2].rotation.y = 0.4 + wingFlap2;
+          en.mesh.userData.wings[3].rotation.y = -0.4 - wingFlap2;
+
+          if (isFlying) {
+            // 上空飛来: 純粋な演出。羽を大きく閃かせながら上空へ舞い上がり、
+            // 左右に位置を変えてからまた元の高さへ戻る(攻撃は伴わない)。
+            en.flybyProgress = Math.min(
+              1,
+              (en.flybyProgress || 0) + dt / FAIRY_QUEEN_PATTERN_SECONDS.flyby,
+            );
+            var p = en.flybyProgress;
+            var arc = Math.sin(p * Math.PI);
+            en.mesh.position.y = en.homeY + arc * FAIRY_QUEEN_FLYBY_HEIGHT;
+            if (en.flybyTargetX === undefined) {
+              en.flybyTargetX =
+                PLAYER_BOUNDS.minX +
+                Math.random() * (PLAYER_BOUNDS.maxX - PLAYER_BOUNDS.minX);
+            }
+            en.mesh.position.x =
+              en.baseX + (en.flybyTargetX - en.baseX) * (p * p * (3 - 2 * p));
+            if (p >= 1) {
+              en.baseX = en.mesh.position.x;
+            }
+          } else {
+            en.mesh.position.y = en.homeY;
+          }
+        }
+
+        // CERBERUS専用: 3頭それぞれの生死に応じて表情(発光)を切り替え、
+        // 常に正面(自機側)を向いたまま(godani/sarpedon同様Z往復のみ)、
+        // 呼吸に合わせて三頭がわずかに上下・左右へ揺れる演出を加える。
+        // ブレス発射時の頭部フラッシュはfireAtPlayer側のfiringHeadIndexと
+        // 連動させ、直前に発射した頭が一瞬強く発光するようにする。
+        var CERBERUS_HEAD_BOB_SPEED = 2.4;
+        var CERBERUS_HEAD_BOB_AMPLITUDE = 0.12;
+        // 姿勢遷移(伏せ→座り→立ち→首をもたげる、を巡回)の各姿勢の
+        // 滞在秒数。左右移動や前後の間合い調整で怖さを出すのではなく、
+        // その場から動かず体勢そのものが変化することで威圧感を出す。
+        var CERBERUS_POSE_ORDER = ["crouch", "sit", "stand", "rear"];
+        var CERBERUS_POSE_SECONDS = {
+          crouch: 1.8,
+          sit: 1.6,
+          stand: 1.8,
+          rear: 1.4,
+        };
+        // 姿勢ごとの目標値(本体の高さ・前傾/後傾、頭の高さ・見上げ角度)。
+        // poseProgress(0→1)でtargetへ滑らかに補間しながら遷移させる。
+        var CERBERUS_POSE_TARGETS = {
+          crouch: {
+            bodyY: -0.35,
+            bodyTiltX: 0.12,
+            headY: 0.85,
+            headTiltX: 0.3,
+          },
+          sit: { bodyY: -0.15, bodyTiltX: 0.04, headY: 1.15, headTiltX: 0.08 },
+          stand: { bodyY: 0.2, bodyTiltX: 0, headY: 1.35, headTiltX: 0 },
+          rear: {
+            bodyY: 0.25,
+            bodyTiltX: -0.08,
+            headY: 1.85,
+            headTiltX: -0.35,
+          },
+        };
+
+        function updateCerberusPerformance(en, dt) {
+          var heads = [
+            { mesh: en.mesh.userData.leftHead, hpKey: "leftHp", phase: 0 },
+            {
+              mesh: en.mesh.userData.centerHead,
+              hpKey: "centerHp",
+              phase: 1.3,
+            },
+            { mesh: en.mesh.userData.rightHead, hpKey: "rightHp", phase: 2.6 },
+          ];
+
+          // 姿勢の巡回: poseTimerが尽きたら次の姿勢へ進める。
+          if (en.posePhaseIndex === undefined) {
+            en.posePhaseIndex = 0;
+            en.poseTimer = CERBERUS_POSE_SECONDS[CERBERUS_POSE_ORDER[0]];
+            en.posePrev = CERBERUS_POSE_TARGETS[CERBERUS_POSE_ORDER[0]];
+          }
+          en.poseTimer -= dt;
+          if (en.poseTimer <= 0) {
+            en.posePrev =
+              CERBERUS_POSE_TARGETS[CERBERUS_POSE_ORDER[en.posePhaseIndex]];
+            en.posePhaseIndex =
+              (en.posePhaseIndex + 1) % CERBERUS_POSE_ORDER.length;
+            var nextPoseName = CERBERUS_POSE_ORDER[en.posePhaseIndex];
+            en.poseTimer = CERBERUS_POSE_SECONDS[nextPoseName];
+            en.poseDuration = en.poseTimer;
+          }
+          var currentPoseName = CERBERUS_POSE_ORDER[en.posePhaseIndex];
+          var poseTarget = CERBERUS_POSE_TARGETS[currentPoseName];
+          var poseDuration =
+            en.poseDuration || CERBERUS_POSE_SECONDS[currentPoseName];
+          // 姿勢切り替え直後から一定時間で前の姿勢から今の姿勢へ滑らかに
+          // 遷移させ(ease)、残り時間はその姿勢のまま静止させる。
+          var CERBERUS_POSE_TRANSITION_SECONDS = 0.6;
+          var elapsedInPose = poseDuration - en.poseTimer;
+          var t = Math.min(1, elapsedInPose / CERBERUS_POSE_TRANSITION_SECONDS);
+          var eased = t * t * (3 - 2 * t);
+          var prevTarget = en.posePrev || poseTarget;
+          var bodyY =
+            prevTarget.bodyY + (poseTarget.bodyY - prevTarget.bodyY) * eased;
+          var bodyTiltX =
+            prevTarget.bodyTiltX +
+            (poseTarget.bodyTiltX - prevTarget.bodyTiltX) * eased;
+          var headYBase =
+            prevTarget.headY + (poseTarget.headY - prevTarget.headY) * eased;
+          var headTiltX =
+            prevTarget.headTiltX +
+            (poseTarget.headTiltX - prevTarget.headTiltX) * eased;
+
+          en.mesh.userData.body.position.y = 0.2 + bodyY;
+          en.mesh.userData.body.rotation.x = bodyTiltX;
+          en.mesh.rotation.x = 0;
+
+          for (var hi = 0; hi < heads.length; hi++) {
+            var headInfo = heads[hi];
+            var alive = en[headInfo.hpKey] > 0;
+            headInfo.mesh.visible = alive;
+            if (!alive) continue;
+            headInfo.mesh.position.y =
+              headYBase +
+              Math.sin(elapsedTime * CERBERUS_HEAD_BOB_SPEED + headInfo.phase) *
+                CERBERUS_HEAD_BOB_AMPLITUDE;
+            headInfo.mesh.rotation.x = headTiltX;
+          }
+
+          // 前後左右への移動は行わず、その場から一切動かさない。
+          en.mesh.position.x = en.baseX;
+          en.mesh.rotation.z = 0;
+        }
+
         // ボス種別ごとの固有演出(頭部の生死表現・花弁開閉・リング回転など)。
         // ゴダーニ/サルペドンは原作同様「常に正面(自機側)を向く」ため、
         // スケイラのようなZ往復や横回転は行わない。
@@ -4519,6 +6398,12 @@
             }
             var bounce = Math.sin(en.bouncePhase * Math.PI) * en.bounceHeight;
             en.mesh.position.y = (en.homeY || 0) + bounce;
+          } else if (en.bossType === "sumo") {
+            updateSumoPerformance(en, dt);
+          } else if (en.bossType === "fairy_queen") {
+            updateFairyQueenPerformance(en, dt);
+          } else if (en.bossType === "cerberus") {
+            updateCerberusPerformance(en, dt);
           } else if (en.bossType === "final") {
             // 第2形態(HP50%以下)はリングの回転速度とコアの発光が増し、
             // 弾幕強化(fireAtPlayer側)と連動して見た目にも「怒り状態」が
@@ -4596,12 +6481,24 @@
               // させることで回避の間合いを生む。交戦距離(手前側の折り返し
               // 地点)はボスごとに異なる範囲からランダムに選び、初回接近時に
               // 一度だけ決定する(en.engageZが未設定の初回のみ抽選)。
-              // ただしJET STREAM DOMSのジャンプ演出中(charging/jumping/
-              // landed/returning)は、ジャンプ側がZ/Y位置を専有するため
-              // 通常のZ往復を止める。
+              // ただしASSAULT TRIADのジャンプ演出中(charging/jumping/
+              // landed/returning)や、相撲取りの塩まき〜突進〜張り手〜
+              // 帰還演出中(pacing以外)は、専用演出側がZ/X位置を専有する
+              // ため通常のZ往復を止める。pacingは「奥で左右に動く間合い」
+              // の状態なので通常のZ往復に任せ、X方向だけ専用演出で動かす。
               var isSarpedonJumping =
                 en.bossType === "sarpedon" && en.dashState !== "idle";
-              if (!isSarpedonJumping) {
+              var isSumoCharging =
+                en.bossType === "sumo" && en.dashState !== "pacing";
+              // CERBERUSは前後左右へ移動させず、その場からの姿勢変化
+              // (伏せ/座り/立ち/首をもたげる)だけで威圧感を出すため、
+              // 通常のZ往復を常に無効化する。
+              var isCerberusStationary = en.bossType === "cerberus";
+              if (
+                !isSarpedonJumping &&
+                !isSumoCharging &&
+                !isCerberusStationary
+              ) {
                 if (en.engageZ === undefined) {
                   var range = BOSS_ENGAGE_RANGE_BY_TYPE[en.bossType] || [
                     -20, -20,
@@ -4653,12 +6550,30 @@
             } else if (!isScaler && en.kind !== "boss") {
               en.mesh.rotation.y += dt * 2;
             }
+            if (en.hitVoiceCooldown > 0) en.hitVoiceCooldown -= dt;
+            if (en.starVolleyRemaining > 0) {
+              // 流れ星の連射: キラキラと途切れず降り注ぐ見た目にするため、
+              // 通常のfireTimerより短い間隔(0.08秒=1秒間に約12発ペース)で
+              // 1発ずつ消化する。
+              en.starVolleyTimer -= dt;
+              if (en.starVolleyTimer <= 0) {
+                var starPos = new THREE.Vector3();
+                en.mesh.userData.muzzle.getWorldPosition(starPos);
+                spawnStarBolt(starPos);
+                en.starVolleyRemaining -= 1;
+                en.starVolleyTimer = 0.08;
+              }
+            }
             en.fireTimer -= dt;
             var canFire =
               en.kind === "dom" ||
               en.kind === "boss" ||
               en.kind === "shooter" ||
-              en.kind === "weaver";
+              en.kind === "weaver" ||
+              en.kind === "princess" ||
+              en.kind === "biwa_hoshi" ||
+              en.kind === "fairy" ||
+              en.kind === "cupid";
             var zThreshold = isScaler ? SCALER_DEEP_RETREAT_Z : -100;
             if (
               canFire &&
@@ -4685,6 +6600,23 @@
                   en.scalerBreathShotsLeft = SCALER_BREATH_SHOT_COUNT - 1;
                   baseInterval = SCALER_BREATH_PAUSE_INTERVAL;
                 }
+              } else if (en.bossType === "sumo") {
+                // salting中(静止して塩をまいている間、0.7秒)だけ塩を撒く。
+                // 1回で霧状に複数粒(SALT_MIST_COUNT)ばら撒くため、
+                // フェーズ中に2回ほど撒く間隔にする。それ以外の状態
+                // (pacing/ready/突進/張り手)は次の判定まで短い間隔で
+                // 待機させておく(実際の発射有無はfireAtPlayer側が
+                // dashStateを見て判断する)。
+                baseInterval = en.dashState === "salting" ? 0.35 : 0.3;
+              } else if (en.bossType === "fairy_queen") {
+                // "wand"はfireAtPlayerを経由せずupdateFairyQueenPerformance
+                // 側で連射キューを直接セットするため、ここでは"kiss"用の
+                // 間隔だけを意識すればよい。
+                baseInterval = en.attackPattern === "kiss" ? 1.4 : 2;
+              } else if (en.bossType === "cerberus") {
+                // 三頭が矢継ぎ早に交互ブレスを吐く、休みなく攻め立てる
+                // 番犬らしい圧力を出すため、他ボスよりかなり短い間隔にする。
+                baseInterval = CERBERUS_FIRE_INTERVAL;
               } else {
                 baseInterval =
                   en.bossType === "sarpedon"
@@ -4740,24 +6672,69 @@
               }
             }
 
+            // GODANI/CERBERUSは胴体・首・脚・尻尾を撃っても無効(顔=頭部
+            // にしか判定を持たせない)。生存している頭部それぞれのワールド
+            // 座標を中心にした小さい円でのみ被弾させることで、「弱点は
+            // 頭部のみ」という多頭の獣らしい駆け引きを再現する。
+            var multiHeadHitConfig = {
+              godani: [
+                { hpKey: "leftHp", meshKey: "leftHead" },
+                { hpKey: "rightHp", meshKey: "rightHead" },
+              ],
+              cerberus: [
+                { hpKey: "leftHp", meshKey: "leftHead" },
+                { hpKey: "centerHp", meshKey: "centerHead" },
+                { hpKey: "rightHp", meshKey: "rightHead" },
+              ],
+            };
+            var multiHeadHeads = multiHeadHitConfig[en.bossType];
+
             for (var bj = bullets.length - 1; bj >= 0; bj--) {
               var bullet = bullets[bj];
-              var hitBullet = circlesIntersect(
-                {
-                  x: en.mesh.position.x,
-                  y: en.mesh.position.y,
-                  radius: en.radius,
-                },
-                {
-                  x: bullet.mesh.position.x,
-                  y: bullet.mesh.position.y,
-                  radius: 0.15,
-                },
-              );
+              var multiHeadHitBullet = false;
+              if (multiHeadHeads) {
+                for (var mhi = 0; mhi < multiHeadHeads.length; mhi++) {
+                  var headConfig = multiHeadHeads[mhi];
+                  if (en[headConfig.hpKey] <= 0) continue;
+                  var headPos = new THREE.Vector3();
+                  en.mesh.userData[headConfig.meshKey].getWorldPosition(
+                    headPos,
+                  );
+                  if (
+                    circlesIntersect(
+                      { x: headPos.x, y: headPos.y, radius: 0.9 },
+                      {
+                        x: bullet.mesh.position.x,
+                        y: bullet.mesh.position.y,
+                        radius: 0.15,
+                      },
+                    ) &&
+                    Math.abs(headPos.z - bullet.mesh.position.z) < 1.9
+                  ) {
+                    multiHeadHitBullet = true;
+                    break;
+                  }
+                }
+              }
+              var hitBullet = multiHeadHeads
+                ? multiHeadHitBullet
+                : circlesIntersect(
+                    {
+                      x: en.mesh.position.x,
+                      y: en.mesh.position.y,
+                      radius: en.radius,
+                    },
+                    {
+                      x: bullet.mesh.position.x,
+                      y: bullet.mesh.position.y,
+                      radius: 0.15,
+                    },
+                  );
               if (
                 hitBullet &&
-                Math.abs(en.mesh.position.z - bullet.mesh.position.z) <
-                  en.radius + 1
+                (multiHeadHeads ||
+                  Math.abs(en.mesh.position.z - bullet.mesh.position.z) <
+                    en.radius + 1)
               ) {
                 if (!applyBulletDamage(en, bullet)) {
                   // トモスの花弁ガードに阻まれた等、本体無効ヒットの場合は
@@ -4769,6 +6746,15 @@
                 scene.remove(bullet.mesh);
                 bullets.splice(bj, 1);
                 playHitSound();
+                if (
+                  en.bossType === "fairy_queen" &&
+                  (en.hitVoiceCooldown || 0) <= 0
+                ) {
+                  // 連打時に声が重なって煩くならないよう、短いクール
+                  // ダウンを挟んでから次のボイスを鳴らす。
+                  playFairyQueenHitVoice();
+                  en.hitVoiceCooldown = 0.5;
+                }
                 if (en.kind === "boss") {
                   updateBossHpBar(en);
                 }
@@ -4783,8 +6769,7 @@
                   var gainedScore = Math.round(
                     scoreForEnemy(en.kind) * comboMultiplier,
                   );
-                  score += gainedScore;
-                  updateHud();
+                  gainScore(gainedScore);
                   showScorePopup(
                     en.mesh.position,
                     gainedScore,
@@ -4858,6 +6843,34 @@
             en.hp = en.domHp.reduce(function (sum, hp) {
               return sum + Math.max(0, hp);
             }, 0);
+            return true;
+          }
+
+          if (en.centerHp !== undefined) {
+            // CERBERUS: 弾のワールドX座標に最も近い(かつ生存している)
+            // 頭にダメージを与える(左/中央/右の3分割)。
+            var cerberusHeads = [
+              { key: "leftHp", offsetX: -1.15 },
+              { key: "centerHp", offsetX: 0 },
+              { key: "rightHp", offsetX: 1.15 },
+            ];
+            var cerberusClosestKey = null;
+            var cerberusClosestDist = Infinity;
+            for (var chi = 0; chi < cerberusHeads.length; chi++) {
+              var candidate = cerberusHeads[chi];
+              if (en[candidate.key] <= 0) continue;
+              var headX = en.mesh.position.x + candidate.offsetX;
+              var dist = Math.abs(headX - bullet.mesh.position.x);
+              if (dist < cerberusClosestDist) {
+                cerberusClosestDist = dist;
+                cerberusClosestKey = candidate.key;
+              }
+            }
+            if (cerberusClosestKey === null) {
+              return false;
+            }
+            en[cerberusClosestKey] -= 1;
+            en.hp = en.leftHp + en.centerHp + en.rightHp;
             return true;
           }
 
@@ -4975,6 +6988,103 @@
         function updateEnemyBullets(dt) {
           for (var ebi = enemyBullets.length - 1; ebi >= 0; ebi--) {
             var eb = enemyBullets[ebi];
+            if (eb.isSaltMist) {
+              // 塩まき: 直進ではなく、開始位置から着弾目標点への
+              // 放物線(山なりの弧)を描く。進行度(0→1)で位置を線形補間し、
+              // Yだけsin波で持ち上げることで弧を表現する。
+              eb.flightProgress = Math.min(
+                1,
+                eb.flightProgress + dt / eb.flightDuration,
+              );
+              var saltP = eb.flightProgress;
+              eb.mesh.position.lerpVectors(
+                eb.startPosition,
+                eb.targetPosition,
+                saltP,
+              );
+              eb.mesh.position.y += Math.sin(saltP * Math.PI) * eb.arcHeight;
+              if (saltP >= 1) {
+                scene.remove(eb.mesh);
+                enemyBullets.splice(ebi, 1);
+                continue;
+              }
+              if (invulnerableTimer <= 0) {
+                var saltHit = circlesIntersect(
+                  {
+                    x: eb.mesh.position.x,
+                    y: eb.mesh.position.y,
+                    radius: 0.25,
+                  },
+                  {
+                    x: playerGroup.position.x,
+                    y: playerGroup.position.y,
+                    radius: 0.6,
+                  },
+                );
+                var saltWithinZ =
+                  Math.abs(eb.mesh.position.z - playerGroup.position.z) < 1.2;
+                if (saltHit && saltWithinZ) {
+                  scene.remove(eb.mesh);
+                  enemyBullets.splice(ebi, 1);
+                  damagePlayer();
+                  continue;
+                }
+              }
+              continue;
+            }
+            if (eb.isHeartBomb) {
+              // 投げキッスのハート爆弾: Z方向は自機へ向けて一定速度
+              // (zSpeed)で必ず前進させ、X/Yだけ自機の現在位置へ緩やかに
+              // 寄せる(lateralHomingRate)。isHomingの汎用ロジック(進行
+              // 方向ベクトル全体を自機へlerp)を使うと、自機が横に動く
+              // たびに弾が回り込むような軌道になりZ方向の前進が実質止まり、
+              // 自機まで届かずarmTimer切れで弾けてしまっていた。
+              eb.mesh.position.z += eb.zSpeed * dt;
+              var lateralToPlayerX =
+                playerGroup.position.x - eb.mesh.position.x;
+              var lateralToPlayerY =
+                playerGroup.position.y - eb.mesh.position.y;
+              eb.mesh.position.x +=
+                lateralToPlayerX * Math.min(1, eb.lateralHomingRate * dt);
+              eb.mesh.position.y +=
+                lateralToPlayerY * Math.min(1, eb.lateralHomingRate * dt);
+              eb.spinPhase += dt * 3;
+              eb.mesh.rotation.z = eb.spinPhase;
+
+              eb.armTimer -= dt;
+              // 自機は常にボスより手前(Zが大きい側)にいるため、弾のZが
+              // 自機のZに追いついた時点で「同じZ座標に到達した」とみなす。
+              var reachedPlayerZ = eb.mesh.position.z >= playerGroup.position.z;
+              if (eb.armTimer <= 0 || reachedPlayerZ) {
+                detonateHeartBomb(eb);
+                scene.remove(eb.mesh);
+                enemyBullets.splice(ebi, 1);
+                continue;
+              }
+              if (invulnerableTimer <= 0) {
+                var heartHit = circlesIntersect(
+                  {
+                    x: eb.mesh.position.x,
+                    y: eb.mesh.position.y,
+                    radius: 0.3,
+                  },
+                  {
+                    x: playerGroup.position.x,
+                    y: playerGroup.position.y,
+                    radius: 0.6,
+                  },
+                );
+                var heartWithinZ =
+                  Math.abs(eb.mesh.position.z - playerGroup.position.z) < 1.2;
+                if (heartHit && heartWithinZ) {
+                  detonateHeartBomb(eb);
+                  scene.remove(eb.mesh);
+                  enemyBullets.splice(ebi, 1);
+                  continue;
+                }
+              }
+              continue;
+            }
             if (eb.isRipple) {
               eb.travelDistance += eb.speed * dt;
               eb.basePosition.addScaledVector(eb.dir, eb.speed * dt);
@@ -4989,8 +7099,16 @@
                 .normalize();
               eb.dir.lerp(toPlayer, eb.homingTurnRate * dt).normalize();
               eb.mesh.position.addScaledVector(eb.dir, eb.speed * dt);
-              eb.mesh.lookAt(eb.mesh.position.clone().add(eb.dir));
-              eb.mesh.rotateX(Math.PI / 2);
+              if (eb.isStarBolt) {
+                // 星形は進行方向を向かせるより、正面(自機側)を向いたまま
+                // その場でゆっくり自転させる方がシルエットが崩れず
+                // 可愛らしく見える。
+                eb.spinPhase += dt * 8;
+                eb.mesh.rotation.z = eb.spinPhase;
+              } else {
+                eb.mesh.lookAt(eb.mesh.position.clone().add(eb.dir));
+                eb.mesh.rotateX(Math.PI / 2);
+              }
             } else if (eb.isHomingToFixedTarget) {
               // 扇状弾のホーミング演出: 発射時点の自機位置(固定目標)へ
               // 進行方向を徐々に収束させる。現在の自機位置は追わないため、
