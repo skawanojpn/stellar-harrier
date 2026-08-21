@@ -1,6 +1,6 @@
 # STELLAR HARRIER
 
-three.js製の擬似3Dシューティングゲーム。ファンタジー×SFが融合した世界観、スピード感あふれる疑似3D演出、オリジナルBGMで、オールドスクールなアーケードシューターへのオマージュを詰め込んだブラウザゲーム。
+three.jsを使用した擬似3Dシューティングゲーム。ファンタジー×SFが融合した世界観、スピード感あふれる疑似3D演出、オリジナルBGMで、オールドスクールなアーケードシューターへのオマージュを詰め込んだブラウザゲーム。
 
 **▶ [今すぐプレイ](https://skawanojpn.github.io/stellar-harrier/)**（インストール不要、ブラウザで開くだけ）
 
@@ -51,7 +51,3 @@ npm run verify   # typecheck + lint + format:check + test + build
 `src/index.html` 内のゲームロジックは vanilla JS で書かれており、`src/game/*.ts` の同名ロジックとは実装が重複している（テストは `src/game/*.ts` 側のみを検証）。
 
 `main` ブランチへの push で GitHub Actions (`.github/workflows/deploy.yml`) が `npm run verify` を実行し、成功すれば GitHub Pages へ自動デプロイする。
-
-## クレジット
-
-セガ「スペースハリアー」へのオマージュ作品。セガ公式アセット・BGM原曲は使用せず、ビジュアル・楽曲は全てオリジナル制作。
