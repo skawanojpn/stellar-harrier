@@ -18,18 +18,18 @@ three.jsを使用した擬似3Dシューティングゲーム。ファンタジ�
 
 全10ステージ構成。ステージが進むごとに敵の攻撃も激しくなる。
 
-| ステージ           | ボス                                                       |
-| ------------------ | ---------------------------------------------------------- |
-| FANTASY ZONE       | SCALER（東洋の龍）                                         |
-| VOID GARDEN        | TOMOS（花の怪物）                                          |
-| FROZEN NEBULA      | GODANI（双頭クリスタルドラゴン）                           |
-| CRYSTAL CANYON     | ASSAULT TRIAD（ドム3体のジェットストリームアタック）       |
-| YOZAKURA           | ONIMARU（土俵の力士）                                      |
-| INFERNO CORE       | CERBERUS（炎を吐く三頭の地獄の犬）                         |
-| SWEETHEART GROVE   | QUEEN TITANIA（花冠と羽を持つ妖精の女王）                  |
-| ABSYMBEL           | MOAI（口から波状誘導弾を放つ石像、失われた古代文明の遺跡） |
-| HALL OF LEGENDS    | BOSS RUSH（これまでのボスとの連戦）                        |
-| ABYSS ZERO（最終） | ABYSS ZERO                                                 |
+| ステージ              | ボス                                                       |
+| --------------------- | ---------------------------------------------------------- |
+| FANTASY ZONE          | SCALER（東洋の龍）                                         |
+| VOID GARDEN           | TOMOS（花の怪物）                                          |
+| FROZEN NEBULA         | GODANI（双頭クリスタルドラゴン）                           |
+| CRYSTAL CANYON        | ASSAULT TRIAD（ドム3体のジェットストリームアタック）       |
+| YOZAKURA              | ONIMARU（土俵の力士）                                      |
+| INFERNO CORE          | CERBERUS（炎を吐く三頭の地獄の犬）                         |
+| SWEETHEART GROVE      | QUEEN TITANIA（花冠と羽を持つ妖精の女王）                  |
+| RUINS OF THE ANCIENTS | MOAI（口から波状誘導弾を放つ石像、失われた古代文明の遺跡） |
+| HALL OF LEGENDS       | BOSS RUSH（これまでのボスとの連戦）                        |
+| ABYSS ZERO（最終）    | ABYSS ZERO                                                 |
 
 ## 隠し要素
 
