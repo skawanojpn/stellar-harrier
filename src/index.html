@@ -819,6 +819,10 @@
             tomosEnabled: false,
             // 大きく蛇行して避けにくいweaverをここで初登場させる。
             enemyKinds: ["shooter", "dasher", "dasher", "weaver"],
+            // 地獄の中心へ向かう地中トンネルの演出。天井にも地面と同じ
+            // 紋様を配置し、上下を地面で挟まれたトンネル内を進んでいる
+            // ように見せる(buildCeiling参照)。
+            theme: "inferno",
           },
           {
             id: 7,
@@ -1058,56 +1062,86 @@
           osc.stop(ctx.currentTime + 0.3);
         }
 
-        // ボス出現前の警告音: 8bit風のピコピコした高音サイレンではなく、
-        // 低音域のサイン波+のこぎり波を重ねた「ぶー・ブー・ブー」という
-        // 重厚な警笛のような音を3回鳴らす。1音ごとにわずかにピッチを
-        // 下げ下降感を出し、旧実装(約1060ms)のおよそ1.5倍(約1600ms)の
-        // 長さに引き伸ばして緊張感を長く持続させる。
+        // ボス出現前の警戒音（劇場版『超時空要塞マクロス 愛・おぼえていますか』
+        // マクロス艦内空襲警報風 4回リピート）
+        // 80年代SFアニメ特有のアナログピッチスウィープ（180Hz -> 460Hz）と
+        // デチューン鋸波、共鳴ローパスフィルター（Q=5.0）および艦内船体振動
+        // サブベース（50Hz）をWeb Audio APIで合成し、重厚で緊迫感あふれる
+        // 艦内警報を正確なタイムスケジュールで4回鳴らす。
         function playBossWarningSound() {
-          var beepCount = 3;
-          var beepFreqs = [110, 98, 87];
-          for (var i = 0; i < beepCount; i++) {
-            (function (index) {
-              setTimeout(function () {
-                if (!soundEnabled) return;
-                var ctx = ensureAudio();
-                if (!ctx) return;
-                var now = ctx.currentTime;
-                var duration = 0.42;
-                var freq = beepFreqs[index];
+          if (!soundEnabled) return;
+          var ctx = ensureAudio();
+          if (!ctx) return;
 
-                var lowpass = ctx.createBiquadFilter();
-                lowpass.type = "lowpass";
-                lowpass.frequency.value = 320;
+          var now = ctx.currentTime;
+          var count = 4;
+          var step = 1.15; // 警報1回あたりの発音間隔（1.15秒）
 
-                var osc1 = ctx.createOscillator();
-                osc1.type = "sawtooth";
-                osc1.frequency.setValueAtTime(freq, now);
-                var gain1 = ctx.createGain();
-                gain1.gain.setValueAtTime(0.0001, now);
-                gain1.gain.linearRampToValueAtTime(0.3, now + 0.05);
-                gain1.gain.setValueAtTime(0.3, now + duration - 0.12);
-                gain1.gain.exponentialRampToValueAtTime(0.001, now + duration);
-                osc1.connect(lowpass);
-                lowpass.connect(gain1);
-                gain1.connect(ctx.destination);
-                osc1.start(now);
-                osc1.stop(now + duration + 0.02);
+          for (var i = 0; i < count; i++) {
+            var t = now + i * step;
+            var duration = 0.95; // 1音の持続時間
+            var glideTime = 0.42; // ピッチ上昇（スウィープ）にかかる時間
 
-                var osc2 = ctx.createOscillator();
-                osc2.type = "sine";
-                osc2.frequency.setValueAtTime(freq / 2, now);
-                var gain2 = ctx.createGain();
-                gain2.gain.setValueAtTime(0.0001, now);
-                gain2.gain.linearRampToValueAtTime(0.22, now + 0.05);
-                gain2.gain.setValueAtTime(0.22, now + duration - 0.12);
-                gain2.gain.exponentialRampToValueAtTime(0.001, now + duration);
-                osc2.connect(gain2);
-                gain2.connect(ctx.destination);
-                osc2.start(now);
-                osc2.stop(now + duration + 0.02);
-              }, index * 530);
-            })(i);
+            // 1. メインゲインエンベロープ（滑らかなアタック＆ディケイ）
+            var sirenGain = ctx.createGain();
+            sirenGain.gain.setValueAtTime(0.001, t);
+            sirenGain.gain.linearRampToValueAtTime(0.35, t + 0.08);
+            sirenGain.gain.setValueAtTime(0.35, t + duration - 0.18);
+            sirenGain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+
+            // 2. 共鳴ローパスフィルター（アナログシンセ特有の金属的レゾナンス）
+            var filter = ctx.createBiquadFilter();
+            filter.type = "lowpass";
+            filter.frequency.setValueAtTime(300, t);
+            filter.frequency.exponentialRampToValueAtTime(1800, t + glideTime);
+            filter.Q.setValueAtTime(5.0, t);
+
+            // 3. 主・鋸波オシレーター（180Hz -> 460Hz アナログピッチスウィープ）
+            var osc1 = ctx.createOscillator();
+            osc1.type = "sawtooth";
+            osc1.frequency.setValueAtTime(180, t);
+            osc1.frequency.exponentialRampToValueAtTime(460, t + glideTime);
+
+            // 4. デチューン鋸波オシレーター（1.008倍ピッチずらしによる
+            // 太い厚みとうねり）
+            var osc2 = ctx.createOscillator();
+            osc2.type = "sawtooth";
+            osc2.frequency.setValueAtTime(180 * 1.008, t);
+            osc2.frequency.exponentialRampToValueAtTime(
+              460 * 1.008,
+              t + glideTime,
+            );
+
+            // 5. 艦内振動サブベース（サイン波 50Hz -> 127.8Hz）
+            var subOsc = ctx.createOscillator();
+            subOsc.type = "sine";
+            subOsc.frequency.setValueAtTime(50, t);
+            subOsc.frequency.exponentialRampToValueAtTime(
+              50 * (460 / 180),
+              t + glideTime,
+            );
+
+            var subGain = ctx.createGain();
+            subGain.gain.setValueAtTime(0.25, t);
+
+            // ノードのルーティング接続
+            osc1.connect(filter);
+            osc2.connect(filter);
+            filter.connect(sirenGain);
+
+            subOsc.connect(subGain);
+            subGain.connect(sirenGain);
+
+            sirenGain.connect(ctx.destination);
+
+            // オシレーターの発音開始・終了スケジュール
+            osc1.start(t);
+            osc2.start(t);
+            subOsc.start(t);
+
+            osc1.stop(t + duration);
+            osc2.stop(t + duration);
+            subOsc.stop(t + duration);
           }
         }
 
@@ -1131,33 +1165,94 @@
           }, chordStartMs);
         }
 
-        // クイーン・ティターニア被弾時のボイス: 「んっ♥」のような艶めいた
-        // 一声を、サイン波の短いピッチベンド(急上昇→ゆるやかに下降)で
-        // 表現する。既存SFXと同じくオシレーター合成のみで作り、録音音声は
-        // 使わない(アーケード風の記号的な演出に留める)。
+        // クイーン・ティターニア被弾時のボイス(Pattern 07: Whispered
+        // Exhale「あぁん…（囁き）」)。Web Audio APIのフォルマント＋
+        // ウィスパーノイズ合成による女性音声。実音(声帯振動)のゲインを
+        // 抑え、気流成分(エアリーノイズ)とフォルマント共鳴を前に出した
+        // ささやくような被弾吐息ボイスにする。録音音声は使わない。
         function playFairyQueenHitVoice() {
           if (!soundEnabled) return;
           var ctx = ensureAudio();
           if (!ctx) return;
+
+          var now = ctx.currentTime;
+          var duration = 0.46; // 発音時間
+
+          // 1. 声帯振動源 (Sawtooth + Glottal Filter) - ささやきのため
+          // ゲイン低め設定
           var osc = ctx.createOscillator();
-          var gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(520, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(
-            880,
-            ctx.currentTime + 0.08,
-          );
-          osc.frequency.exponentialRampToValueAtTime(
-            600,
-            ctx.currentTime + 0.32,
-          );
-          gain.gain.setValueAtTime(0, ctx.currentTime);
-          gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.04);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.38);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.38);
+          osc.type = "sawtooth";
+
+          // ピッチカーブ (460Hz -> 620Hz -> 380Hz)
+          osc.frequency.setValueAtTime(460, now);
+          osc.frequency.exponentialRampToValueAtTime(620, now + 0.06);
+          osc.frequency.exponentialRampToValueAtTime(380, now + duration);
+
+          var glottalFilter = ctx.createBiquadFilter();
+          glottalFilter.type = "lowpass";
+          glottalFilter.frequency.setValueAtTime(2400, now);
+
+          // 2. フォルマント共鳴器 (F1: 820Hz, F2: 1400Hz, F3: 2800Hz)
+          var formants = [
+            { freq: 820, q: 6.0, gain: 0.18 },
+            { freq: 1400, q: 7.0, gain: 0.14 },
+            { freq: 2800, q: 8.0, gain: 0.09 },
+          ];
+
+          var vocalGain = ctx.createGain();
+          vocalGain.gain.setValueAtTime(0.001, now);
+          vocalGain.gain.linearRampToValueAtTime(0.18, now + 0.04);
+          vocalGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+          osc.connect(glottalFilter);
+
+          formants.forEach(function (fmt) {
+            var biquad = ctx.createBiquadFilter();
+            biquad.type = "bandpass";
+            biquad.frequency.setValueAtTime(fmt.freq, now);
+            biquad.Q.setValueAtTime(fmt.q, now);
+
+            var fg = ctx.createGain();
+            fg.gain.setValueAtTime(fmt.gain, now);
+
+            glottalFilter.connect(biquad);
+            biquad.connect(fg);
+            fg.connect(vocalGain);
+          });
+
+          vocalGain.connect(ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + duration + 0.02);
+
+          // 3. ウィスパー・エアリーノイズ (ささやき特有の気流ノイズ成分)
+          var bufferSize = ctx.sampleRate * duration;
+          var noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          var output = noiseBuffer.getChannelData(0);
+          for (var k = 0; k < bufferSize; k++) {
+            output[k] = Math.random() * 2 - 1;
+          }
+
+          var noise = ctx.createBufferSource();
+          noise.buffer = noiseBuffer;
+
+          var noiseFilter = ctx.createBiquadFilter();
+          noiseFilter.type = "bandpass";
+          noiseFilter.frequency.setValueAtTime(3300, now);
+          noiseFilter.Q.setValueAtTime(2.2, now);
+
+          var noiseGain = ctx.createGain();
+          noiseGain.gain.setValueAtTime(0.001, now);
+          // 気流感を前面に出すためノイズゲインを高めに設定
+          noiseGain.gain.linearRampToValueAtTime(0.28, now + duration * 0.4);
+          noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+          noise.connect(noiseFilter);
+          noiseFilter.connect(noiseGain);
+          noiseGain.connect(ctx.destination);
+
+          noise.start(now);
+          noise.stop(now + duration);
         }
 
         // 1UP(ライフ増加)の効果音: 短く軽快な上昇アルペジオ。
@@ -23674,6 +23769,7 @@
         var player, playerLight, playerGroup, shieldMesh;
         var skyMesh, starField;
         var groundMesh;
+        var ceilingMesh;
         var mtFujiMesh, petalField;
         var bullets = [];
         var enemyBullets = [];
@@ -23833,6 +23929,25 @@
         // ボス警告演出の表示時間(ミリ秒)。この間はボスの出現を遅らせる。
         var BOSS_WARNING_DURATION_MS = 1800;
 
+        // 最終ステージ(ABYSS ZERO)はボス出現の一定時間前から、地面を
+        // 黄系の色から黒系へ徐々に変化させ、変化しきったところで警告音+
+        // WARNING表示+ボス出現という決戦の緊迫感を演出する。
+        var FINAL_STAGE_ID = 10;
+        var FINAL_STAGE_BOSS_GROUND_COLOR = 0x0a0a0a;
+        var FINAL_STAGE_GROUND_FADE_SECONDS = 3;
+        // フェード中の地面テクスチャは毎フレーム作り直すとコストが高いため、
+        // 間引いて更新する(0.1秒おき = 1秒間に10回)。
+        var FINAL_STAGE_GROUND_FADE_STEP_SECONDS = 0.1;
+        var groundFadeStartColor = null;
+        var groundFadeElapsed = 0;
+        var groundFadeStepTimer = 0;
+        var groundFadeActive = false;
+        // 最終ステージのspawnSchedule内でboss出現イベントが格納されている
+        // インデックス。通常敵の出現間隔次第ではboss到達時刻の直前・直後
+        // に他の敵イベントが挟まり、必ずしも「次のイベント=boss」になる
+        // とは限らないため、インデックスを直接特定して参照する。
+        var finalStageBossSpawnIndex = -1;
+
         // ボス登場時、FOVを一時的に狭めて疑似ズームインする演出用タイマー。
         var BASE_FOV = 70;
         var BOSS_ZOOM_FOV = 55;
@@ -23971,6 +24086,30 @@
           scene.add(groundMesh);
         }
 
+        // INFERNO CORE専用: 地面と同じ紋様を天井にも配置し、上下を同じ
+        // 地面模様で挟むことで「地獄の中心へ向かう地中トンネルの中を
+        // 進んでいる」印象を出す。地面と同じテクスチャ生成関数を再利用
+        // しつつ、面を下向きにするため地面とは逆向きに回転させる。
+        function buildCeiling(stage) {
+          if (ceilingMesh) {
+            scene.remove(ceilingMesh);
+            ceilingMesh = null;
+          }
+          if (stage.theme !== "inferno") return;
+          var texture = createGroundTexture(stage.groundColor);
+          var ceilingGeo = new THREE.PlaneGeometry(240, 400, 4, 60);
+          var ceilingMat = new THREE.MeshBasicMaterial({
+            map: texture,
+            fog: true,
+          });
+          ceilingMesh = new THREE.Mesh(ceilingGeo, ceilingMat);
+          ceilingMesh.rotation.x = Math.PI / 2;
+          ceilingMesh.position.y = 10;
+          ceilingMesh.position.z = -120;
+          ceilingMesh.name = "ceiling";
+          scene.add(ceilingMesh);
+        }
+
         // 富士山: 遠景に静止させる低ポリのシルエット。裾野の広い円錐+
         // 山頂の雪冠(小さめの白い円錐を重ねる)で富士山らしいシルエットにする。
         function buildMtFujiMesh() {
@@ -23979,16 +24118,52 @@
             color: 0x5a4a66,
             fog: true,
           });
-          var body = new THREE.Mesh(new THREE.ConeGeometry(60, 34, 4), bodyMat);
+          // ConeGeometry(radius, height, ...)の原点は高さの中央にあるため、
+          // 頂点は+height/2、底面は-height/2の位置になる。雪冠のサイズ・
+          // 位置は、この山体の断面半径を超えないよう下のコメントの計算
+          // に基づいて決めている(はみ出すと雪冠のふもとが山の稜線から
+          // 飛び出て見える)。
+          var bodyRadius = 60;
+          var bodyHeight = 34;
+          var body = new THREE.Mesh(
+            new THREE.ConeGeometry(bodyRadius, bodyHeight, 4),
+            bodyMat,
+          );
           body.rotation.y = Math.PI / 4;
           group.add(body);
+
+          // 雪(山体と混ざって見えないよう、fogの影響を受けない明るい白に
+          // する。fog: falseにしないと、山頂付近は遠景fogでどちらも同じ
+          // 暗い色に沈んでしまい、雪冠が山と同化して見えなくなる)。
           var snowMat = new THREE.MeshBasicMaterial({
-            color: 0xfff5fa,
-            fog: true,
+            color: 0xffffff,
+            fog: false,
           });
-          var snow = new THREE.Mesh(new THREE.ConeGeometry(20, 11, 4), snowMat);
+          // 雪冠は山体と全く同じ傾斜(半径/高さの比)を持つ相似形の円錐に
+          // する。傾斜を山体と揃えることで、雪冠の高さ(=雪が積もる範囲)
+          // をどれだけ大きくしても、雪冠の側面が常に山体の斜面にほぼ
+          // 沿ったままになり、左右にはみ出すことがない(相似形なので底面
+          // の半径も自動的に斜面のその高さでの半径と一致する)。ここでは
+          // 山の高さの約6割(20/34)を雪で覆い、頂点を山頂(y=+17)に一致
+          // させている。
+          // 注意: 相似比をちょうど1.0にする、または1.0未満(内側)にすると、
+          // 雪冠の側面が山体の側面と同一平面かそれより内側になり、深度
+          // テストで山体メッシュに隠れて雪が全く見えなくなる(実際に
+          // 0.98倍で試したところ完全に不可視になった)。そのため、視覚的
+          // なはみ出しとして認識されない程度(2%)だけ相似比を1.0より
+          // 大きくし、雪冠の側面を山体の側面よりわずかに外側に出すことで、
+          // 常に手前に描画されて見えるようにしている。
+          var slopeRatio = bodyRadius / bodyHeight;
+          var snowHeight = 20;
+          var snowMargin = 1.02;
+          var snowRadius = slopeRatio * snowHeight * snowMargin;
+          var snowY = bodyHeight / 2 - snowHeight / 2;
+          var snow = new THREE.Mesh(
+            new THREE.ConeGeometry(snowRadius, snowHeight, 4),
+            snowMat,
+          );
           snow.rotation.y = Math.PI / 4;
-          snow.position.y = 13;
+          snow.position.y = snowY;
           group.add(snow);
           group.position.set(-40, 13, -260);
           return group;
@@ -24000,6 +24175,71 @@
         var PETAL_COUNT = 150;
         var PETAL_FALL_SPEED = 3.5;
         var petalVelocities;
+
+        // 桜の花びら形(先端に特徴的な切れ込みのある五角形に近い形)を
+        // Canvasに描き、Points用のスプライトテクスチャとして使う。
+        // 単なる丸い点ではなく花びららしいシルエットにするための処理。
+        // 横幅を絞ってスリムな輪郭にし、さらにテクスチャ自体を30度右へ
+        // 傾けて描く(Pointsは常にカメラへ正対するスプライトのため、
+        // 個々の花びらを3D空間で回転させることはできない。その代わり
+        // テクスチャの絵柄そのものを傾けて描くことで、単調に正面を向
+        // いた花びらの羅列ではなく、傾いてひらひら舞っているように
+        // 見せる)。
+        function createSakuraPetalTexture() {
+          var size = 64;
+          var canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          var ctx = canvas.getContext("2d");
+          var cx = size / 2;
+          var cy = size / 2;
+          var r = size * 0.42;
+          var slimX = 0.7; // 横幅を絞ってスリムなシルエットにする係数
+
+          ctx.translate(cx, cy);
+          // 30度の傾き + 180度回転(根元を上、二股のノッチを下にする)。
+          ctx.rotate((30 * Math.PI) / 180 + Math.PI);
+          ctx.scale(slimX, 1);
+          ctx.beginPath();
+          // 花びらの輪郭: 根元(下)は細くすぼまり、中央がふっくらと
+          // 丸く張り出し、先端(上)は桜特有の浅いV字の切れ込み(ノッチ)
+          // で二つの山に分かれる、涙型に近いシルエットを描く。中央の谷は
+          // 単純なV字(2つの山の間がそのまま谷底)にする。以前は谷底の
+          // 手前でさらに小さく外側へ飛び出す制御点があり、意図しない
+          // 小さな突起(3つ目の小さな山)に見えていたため、その飛び出し
+          // を取り除いた。
+          ctx.moveTo(0, r * 0.95);
+          ctx.bezierCurveTo(
+            r * 0.75,
+            r * 0.7,
+            r * 0.92,
+            r * 0.05,
+            r * 0.7,
+            -r * 0.55,
+          );
+          ctx.quadraticCurveTo(r * 0.55, -r * 0.85, r * 0.22, -r * 0.72);
+          ctx.lineTo(0, -r * 0.68);
+          ctx.lineTo(-r * 0.22, -r * 0.72);
+          ctx.quadraticCurveTo(-r * 0.55, -r * 0.85, -r * 0.7, -r * 0.55);
+          ctx.bezierCurveTo(
+            -r * 0.92,
+            r * 0.05,
+            -r * 0.75,
+            r * 0.7,
+            0,
+            r * 0.95,
+          );
+          ctx.closePath();
+
+          var gradient = ctx.createRadialGradient(0, r * 0.1, r * 0.1, 0, 0, r);
+          gradient.addColorStop(0, "rgba(255, 240, 246, 0.95)");
+          gradient.addColorStop(0.55, "rgba(255, 190, 217, 0.9)");
+          gradient.addColorStop(1, "rgba(255, 150, 190, 0.75)");
+          ctx.fillStyle = gradient;
+          ctx.fill();
+
+          return new THREE.CanvasTexture(canvas);
+        }
 
         function buildPetalField() {
           var positions = new Float32Array(PETAL_COUNT * 3);
@@ -24014,11 +24254,13 @@
           var geo = new THREE.BufferGeometry();
           geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
           var mat = new THREE.PointsMaterial({
-            color: 0xffb7d5,
-            size: 0.55,
+            color: 0xffffff,
+            map: createSakuraPetalTexture(),
+            size: 1.6,
             sizeAttenuation: true,
             transparent: true,
-            opacity: 0.85,
+            opacity: 0.9,
+            depthWrite: false,
           });
           petalField = new THREE.Points(geo, mat);
           petalField.visible = false;
@@ -24093,6 +24335,7 @@
           buildSky(STAGES[0]);
           buildStars();
           buildGround(STAGES[0]);
+          buildCeiling(STAGES[0]);
           mtFujiMesh = buildMtFujiMesh();
           mtFujiMesh.visible = false;
           scene.add(mtFujiMesh);
@@ -24736,6 +24979,7 @@
           currentStage = getStageConfig(stageId);
           buildSky(currentStage);
           buildGround(currentStage);
+          buildCeiling(currentStage);
           setYokaiSceneryVisible(currentStage.theme === "yokai");
           spawnSchedule = generateSpawnSchedule(
             currentStage.durationSeconds,
@@ -24759,6 +25003,16 @@
           elapsedTime = 0;
           bossRushIndex = 0;
           bossRushAllDefeated = false;
+          groundFadeActive = false;
+          finalStageBossSpawnIndex = -1;
+          if (currentStage.id === FINAL_STAGE_ID) {
+            for (var fsi = 0; fsi < spawnSchedule.length; fsi++) {
+              if (spawnSchedule[fsi].kind === "boss") {
+                finalStageBossSpawnIndex = fsi;
+                break;
+              }
+            }
+          }
 
           if (currentStage.bossSequence) {
             // ボスラッシュステージ: 最初のボスだけ少し早めに予約する。
@@ -24806,6 +25060,22 @@
           setTimeout(function () {
             banner.classList.remove("visible");
           }, 2200);
+        }
+
+        // ボスは即座に出現させず、警告演出(音+WARNING表示+ボス名)を挟んで
+        // から少し遅れて出現させる。ゲーム内時間(elapsedTime)基準で遅延
+        // させることで、ポーズ中は演出も止まる。通常ステージのボスイベン
+        // トはbossTypeを持たず、spawnEnemy側と同じくcurrentStage.bossType
+        // にフォールバックする(このフォールバックをしないとボス名が常に
+        // 既定値"BOSS"になってしまう)。
+        function triggerBossWarning(ev) {
+          var warningBossType = ev.bossType || currentStage.bossType;
+          showBossWarning(BOSS_NAME_BY_TYPE[warningBossType] || "BOSS");
+          pendingBossSpawns.push({
+            time: elapsedTime + BOSS_WARNING_DURATION_MS / 1000,
+            laneX: ev.laneX,
+            bossType: warningBossType,
+          });
         }
 
         // ボス出現の直前に警告音+「WARNING」+ボス名を大きく表示する。
@@ -24896,6 +25166,7 @@
           currentStage = getStageConfig(borrowStageId);
           buildSky(currentStage);
           buildGround(currentStage);
+          buildCeiling(currentStage);
           setYokaiSceneryVisible(currentStage.theme === "yokai");
           spawnSchedule = [];
           obstacleSchedule = [];
@@ -24907,6 +25178,7 @@
           elapsedTime = 0;
           bossRushIndex = 0;
           bossRushAllDefeated = false;
+          groundFadeActive = false;
           bossTestBossType = bossType;
 
           document.getElementById("stage-display").textContent =
@@ -26962,59 +27234,346 @@
         // 姫: 妖怪ステージの雑魚(遠距離型)。扇で妖術弾を放つ。
         function buildPrincessMesh() {
           var group = new THREE.Group();
-          var robeMat = new THREE.MeshStandardMaterial({
-            color: 0xaa2255,
-            emissive: 0x440a22,
-            emissiveIntensity: 0.35,
-          });
-          var robe = new THREE.Mesh(
-            new THREE.ConeGeometry(0.55, 1.4, 8),
-            robeMat,
-          );
-          group.add(robe);
 
-          var headMat = new THREE.MeshStandardMaterial({
-            color: 0xffe4cc,
-            emissive: 0x442211,
+          // --- 1. マテリアル定義 ---
+          var skinMat = new THREE.MeshStandardMaterial({
+            color: 0xfff0f5,
+            emissive: 0x4a1828,
             emissiveIntensity: 0.2,
+            roughness: 0.3,
+            metalness: 0.05,
           });
-          var head = new THREE.Mesh(
-            new THREE.SphereGeometry(0.3, 10, 8),
-            headMat,
-          );
-          head.position.y = 0.95;
-          group.add(head);
 
-          var hairMat = new THREE.MeshStandardMaterial({ color: 0x110811 });
-          var hair = new THREE.Mesh(
-            new THREE.SphereGeometry(
-              0.33,
-              10,
-              8,
-              0,
-              Math.PI * 2,
-              0,
-              Math.PI * 0.55,
-            ),
+          var hairMat = new THREE.MeshStandardMaterial({
+            color: 0x0a050d,
+            emissive: 0x18051a,
+            emissiveIntensity: 0.3,
+            roughness: 0.8,
+          });
+
+          var robeOuterMat = new THREE.MeshStandardMaterial({
+            color: 0x9f1239,
+            emissive: 0x4c0519,
+            emissiveIntensity: 0.4,
+            roughness: 0.45,
+            metalness: 0.15,
+            side: THREE.DoubleSide,
+          });
+
+          var robeInnerMat = new THREE.MeshStandardMaterial({
+            color: 0x4c1d95,
+            emissive: 0x2e1065,
+            emissiveIntensity: 0.45,
+            roughness: 0.4,
+            side: THREE.DoubleSide,
+          });
+
+          var goldMat = new THREE.MeshStandardMaterial({
+            color: 0xf59e0b,
+            emissive: 0x78350f,
+            emissiveIntensity: 0.5,
+            metalness: 0.85,
+            roughness: 0.2,
+          });
+
+          var hornMat = new THREE.MeshStandardMaterial({
+            color: 0xe11d48,
+            emissive: 0xff0044,
+            emissiveIntensity: 1.2,
+            roughness: 0.15,
+            metalness: 0.4,
+          });
+
+          var eyeMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
+          var lipMat = new THREE.MeshBasicMaterial({ color: 0xc90a28 });
+
+          var hitodamaMat = new THREE.MeshStandardMaterial({
+            color: 0x06b6d4,
+            emissive: 0x00f0ff,
+            emissiveIntensity: 2.0,
+            transparent: true,
+            opacity: 0.85,
+          });
+
+          // --- 2. 頭部・美しい鬼面・鬼角・垂髪 ---
+          var headGroup = new THREE.Group();
+          headGroup.position.set(0, 1.2, 0.05);
+
+          var headBase = new THREE.Mesh(
+            new THREE.SphereGeometry(0.28, 16, 14),
+            skinMat,
+          );
+          headBase.scale.set(0.9, 1.1, 0.9);
+          headGroup.add(headBase);
+
+          // 切れ長で妖しく光る紅眼 ＆ 唇
+          for (var eyeSign = -1; eyeSign <= 1; eyeSign += 2) {
+            var eye = new THREE.Mesh(
+              new THREE.SphereGeometry(0.04, 8, 8),
+              eyeMat,
+            );
+            eye.position.set(eyeSign * 0.09, 0.04, 0.23);
+            eye.scale.set(0.8, 0.5, 0.4);
+            headGroup.add(eye);
+
+            var eyebrow = new THREE.Mesh(
+              new THREE.BoxGeometry(0.08, 0.015, 0.01),
+              hairMat,
+            );
+            eyebrow.position.set(eyeSign * 0.1, 0.1, 0.23);
+            eyebrow.rotation.z = -eyeSign * 0.2;
+            headGroup.add(eyebrow);
+          }
+
+          var lips = new THREE.Mesh(
+            new THREE.SphereGeometry(0.035, 8, 8),
+            lipMat,
+          );
+          lips.position.set(0, -0.12, 0.24);
+          lips.scale.set(1.2, 0.5, 0.5);
+          headGroup.add(lips);
+
+          // 艶やかな2本の鬼角（額から天へ伸びる）
+          var horns = [];
+          for (var hSign = -1; hSign <= 1; hSign += 2) {
+            var hornCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(hSign * 0.1, 0.18, 0.15),
+              new THREE.Vector3(hSign * 0.22, 0.42, 0.1),
+              new THREE.Vector3(hSign * 0.28, 0.65, -0.05),
+            ]);
+            var hornMesh = new THREE.Mesh(
+              new THREE.TubeGeometry(hornCurve, 10, 0.038, 6, false),
+              hornMat,
+            );
+            headGroup.add(hornMesh);
+            horns.push(hornMesh);
+          }
+
+          // 漆黒の垂髪（おすべらかし）
+          var hairGroup = new THREE.Group();
+
+          var frontHair = new THREE.Mesh(
+            new THREE.SphereGeometry(0.31, 14, 12),
             hairMat,
           );
-          hair.position.y = 1.05;
-          group.add(hair);
+          frontHair.position.set(0, 0.05, -0.02);
+          frontHair.scale.set(0.96, 1.05, 0.95);
+          hairGroup.add(frontHair);
 
-          var fanMat = new THREE.MeshStandardMaterial({
-            color: 0xffd700,
-            emissive: 0xaa8800,
-            emissiveIntensity: 0.4,
-          });
-          var fan = new THREE.Mesh(
-            new THREE.ConeGeometry(0.35, 0.1, 6),
-            fanMat,
+          // 左右・後方に流れて風になびく長髪
+          for (var hairI = -2; hairI <= 2; hairI++) {
+            var hCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(hairI * 0.08, 0.1, -0.15),
+              new THREE.Vector3(hairI * 0.18, -0.4, -0.4),
+              new THREE.Vector3(hairI * 0.28, -1.0, -0.7),
+            ]);
+            var hairStrand = new THREE.Mesh(
+              new THREE.TubeGeometry(hCurve, 10, 0.045, 6, false),
+              hairMat,
+            );
+            hairGroup.add(hairStrand);
+          }
+          headGroup.add(hairGroup);
+          group.add(headGroup);
+
+          // --- 3. 十二単（じゅうにひとえ）の胴体 ＆ たなびく裾 ---
+          var bodyGroup = new THREE.Group();
+
+          var neck = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.1, 0.2, 8),
+            skinMat,
           );
-          fan.rotation.z = Math.PI / 2;
-          fan.position.set(0.45, 0.7, 0.1);
-          group.add(fan);
+          neck.position.set(0, 1.05, 0.02);
+          bodyGroup.add(neck);
 
-          group.userData.muzzle = fan;
+          // 着物の重ね衿（首元の美）
+          var collar1 = new THREE.Mesh(
+            new THREE.TorusGeometry(0.12, 0.025, 6, 16),
+            robeInnerMat,
+          );
+          collar1.rotation.x = Math.PI / 2.3;
+          collar1.position.set(0, 0.98, 0.05);
+          bodyGroup.add(collar1);
+
+          var collar2 = new THREE.Mesh(
+            new THREE.TorusGeometry(0.14, 0.025, 6, 16),
+            robeOuterMat,
+          );
+          collar2.rotation.x = Math.PI / 2.3;
+          collar2.position.set(0, 0.95, 0.06);
+          bodyGroup.add(collar2);
+
+          // 上半身（着物）
+          var upperRobe = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.16, 0.38, 0.7, 10),
+            robeOuterMat,
+          );
+          upperRobe.position.set(0, 0.65, 0);
+          bodyGroup.add(upperRobe);
+
+          // 空中に優雅に流れる裾（裾引き・ドレス状の広がり）
+          var skirtShape = new THREE.Shape();
+          skirtShape.moveTo(-0.25, 0);
+          skirtShape.bezierCurveTo(-0.6, -0.6, -1.1, -1.4, -0.8, -2.1);
+          skirtShape.bezierCurveTo(-0.3, -2.4, 0.3, -2.4, 0.8, -2.1);
+          skirtShape.bezierCurveTo(1.1, -1.4, 0.6, -0.6, 0.25, 0);
+
+          var skirtGeo = new THREE.ExtrudeGeometry(skirtShape, {
+            depth: 0.15,
+            bevelEnabled: true,
+            bevelThickness: 0.05,
+            bevelSize: 0.04,
+            bevelSegments: 3,
+          });
+          skirtGeo.center();
+
+          var skirtMesh = new THREE.Mesh(skirtGeo, robeOuterMat);
+          skirtMesh.position.set(0, -0.4, -0.15);
+          skirtMesh.rotation.x = 0.25;
+          bodyGroup.add(skirtMesh);
+
+          // 内側の重ね着（インナー裾）
+          var innerSkirtMesh = new THREE.Mesh(skirtGeo, robeInnerMat);
+          innerSkirtMesh.position.set(0, -0.38, -0.12);
+          innerSkirtMesh.scale.set(0.92, 0.95, 0.8);
+          innerSkirtMesh.rotation.x = 0.22;
+          bodyGroup.add(innerSkirtMesh);
+
+          group.add(bodyGroup);
+
+          // --- 4. 振りそで（大袖） ＆ 金彩の檜扇（ひおうぎ） ---
+          var armGroupLeft = new THREE.Group();
+          armGroupLeft.position.set(-0.28, 0.8, 0);
+
+          var sleeveLeft = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.8, 0.6),
+            robeOuterMat,
+          );
+          sleeveLeft.position.set(-0.2, -0.35, 0.1);
+          sleeveLeft.rotation.z = 0.3;
+          sleeveLeft.rotation.x = 0.15;
+          armGroupLeft.add(sleeveLeft);
+          group.add(armGroupLeft);
+
+          var armGroupRight = new THREE.Group();
+          armGroupRight.position.set(0.28, 0.8, 0);
+
+          var sleeveRight = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.8, 0.6),
+            robeOuterMat,
+          );
+          sleeveRight.position.set(0.2, -0.3, 0.15);
+          sleeveRight.rotation.z = -0.4;
+          sleeveRight.rotation.x = -0.2;
+          armGroupRight.add(sleeveRight);
+
+          // 金彩の檜扇（ひおうぎ・右手に掲げる）
+          var fanGroup = new THREE.Group();
+          fanGroup.position.set(0.38, -0.1, 0.35);
+          fanGroup.rotation.y = -0.4;
+          fanGroup.rotation.z = -0.3;
+
+          var fanShape = new THREE.Shape();
+          fanShape.moveTo(0, 0);
+          fanShape.arc(0, 0, 0.55, Math.PI * 0.15, Math.PI * 0.85, false);
+          fanShape.lineTo(0, 0);
+
+          var fanGeo = new THREE.ExtrudeGeometry(fanShape, {
+            depth: 0.02,
+            bevelEnabled: true,
+            bevelThickness: 0.008,
+            bevelSize: 0.01,
+            bevelSegments: 2,
+          });
+          fanGeo.center();
+
+          var fanMesh = new THREE.Mesh(fanGeo, goldMat);
+          fanGroup.add(fanMesh);
+
+          // 扇の骨組み装飾
+          for (var fRib = -3; fRib <= 3; fRib++) {
+            var ribAngle = (fRib / 3) * 0.8;
+            var rib = new THREE.Mesh(
+              new THREE.BoxGeometry(0.015, 0.52, 0.03),
+              goldMat,
+            );
+            rib.position.set(
+              Math.sin(ribAngle) * 0.22,
+              Math.cos(ribAngle) * 0.22,
+              0.01,
+            );
+            rib.rotation.z = -ribAngle;
+            fanGroup.add(rib);
+          }
+
+          var muzzle = new THREE.Object3D();
+          muzzle.position.set(0, 0.35, 0.05);
+          fanGroup.add(muzzle);
+
+          armGroupRight.add(fanGroup);
+          group.add(armGroupRight);
+
+          // --- 5. 周囲を漂う妖火・人魂（Hitodama） ---
+          var hitodamaGroup = new THREE.Group();
+          var hitodamaNodes = [];
+
+          for (var hi = 0; hi < 3; hi++) {
+            var hPivot = new THREE.Group();
+            var hSphere = new THREE.Mesh(
+              new THREE.SphereGeometry(0.12, 10, 10),
+              hitodamaMat,
+            );
+            hSphere.position.set(1.2 + hi * 0.2, 0, 0);
+
+            var hTail = new THREE.Mesh(
+              new THREE.ConeGeometry(0.1, 0.4, 8),
+              hitodamaMat,
+            );
+            hTail.position.set(1.2 + hi * 0.2, 0.2, 0);
+            hTail.rotation.z = -0.2;
+            hPivot.add(hSphere);
+            hPivot.add(hTail);
+
+            hitodamaGroup.add(hPivot);
+            hitodamaNodes.push({
+              pivot: hPivot,
+              phase: hi * ((Math.PI * 2) / 3),
+            });
+          }
+          group.add(hitodamaGroup);
+
+          // --- 6. アニメーション処理 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            // 空中浮遊の幽玄なゆらめき
+            group.position.y = Math.sin(time * 2.2) * 0.18;
+            group.rotation.z = Math.sin(time * 1.5) * 0.04;
+            group.rotation.x = Math.cos(time * 1.2) * 0.03;
+
+            // 袖と着物裾の風のゆらぎ
+            sleeveLeft.rotation.z = 0.3 + Math.sin(time * 3.0) * 0.08;
+            sleeveRight.rotation.z = -0.4 - Math.cos(time * 3.0) * 0.08;
+            skirtMesh.rotation.x = 0.25 + Math.sin(time * 2.5) * 0.05;
+
+            // 檜扇の妖しい扇ぎ
+            fanGroup.rotation.x = Math.sin(time * 4.0) * 0.12;
+            fanGroup.rotation.z = -0.3 + Math.cos(time * 3.5) * 0.08;
+
+            // 鬼角の輝き脈動
+            hornMat.emissiveIntensity = 1.0 + Math.sin(time * 5.0) * 0.4;
+
+            // 人魂の周囲公転
+            for (var k = 0; k < hitodamaNodes.length; k++) {
+              var hn = hitodamaNodes[k];
+              hn.pivot.rotation.y = time * 1.8 + hn.phase;
+              hn.pivot.position.y = Math.sin(time * 3.0 + hn.phase) * 0.25;
+            }
+          };
+
+          group.userData.muzzle = muzzle;
+          group.userData.head = headGroup;
+          group.userData.fan = fanGroup;
+          group.userData.hitodama = hitodamaGroup;
+
           return group;
         }
 
@@ -27200,82 +27759,790 @@
         // ピクシー: フェアリーステージの雑魚(近接高速型)。小柄で素早い。
         function buildPixieMesh() {
           var group = new THREE.Group();
-          var bodyMat = new THREE.MeshStandardMaterial({
-            color: 0x88ffcc,
-            emissive: 0x228855,
-            emissiveIntensity: 0.4,
+
+          // --- 1. マテリアル定義 ---
+          var skinMat = new THREE.MeshStandardMaterial({
+            color: 0xffe0cd,
+            emissive: 0x4a2518,
+            emissiveIntensity: 0.15,
+            roughness: 0.4,
+            metalness: 0.05,
           });
-          var body = new THREE.Mesh(
-            new THREE.SphereGeometry(0.24, 10, 8),
-            bodyMat,
-          );
-          group.add(body);
+
+          var hairMat = new THREE.MeshStandardMaterial({
+            color: 0xffe033,
+            emissive: 0x886600,
+            emissiveIntensity: 0.35,
+            roughness: 0.5,
+            metalness: 0.1,
+          });
+
+          var dressMat = new THREE.MeshStandardMaterial({
+            color: 0x10b981,
+            emissive: 0x064e3b,
+            emissiveIntensity: 0.4,
+            roughness: 0.35,
+            metalness: 0.1,
+            side: THREE.DoubleSide,
+          });
+
+          var dressHighlightMat = new THREE.MeshStandardMaterial({
+            color: 0x34d399,
+            emissive: 0x047857,
+            emissiveIntensity: 0.5,
+            roughness: 0.3,
+            side: THREE.DoubleSide,
+          });
 
           var wingMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            emissive: 0xccffee,
-            emissiveIntensity: 0.6,
+            color: 0x6ee7b7,
+            emissive: 0x10b981,
+            emissiveIntensity: 0.8,
             transparent: true,
-            opacity: 0.6,
+            opacity: 0.75,
+            roughness: 0.1,
+            metalness: 0.2,
+            side: THREE.DoubleSide,
           });
-          var wingGeo = new THREE.CircleGeometry(0.26, 6);
-          var wingLeft = new THREE.Mesh(wingGeo, wingMat);
-          wingLeft.position.set(-0.26, 0.05, -0.08);
-          group.add(wingLeft);
-          var wingRight = new THREE.Mesh(wingGeo, wingMat.clone());
-          wingRight.position.set(0.26, 0.05, -0.08);
-          group.add(wingRight);
 
-          group.userData.wings = [wingLeft, wingRight];
+          var goldWandMat = new THREE.MeshStandardMaterial({
+            color: 0xf59e0b,
+            emissive: 0x78350f,
+            emissiveIntensity: 0.6,
+            metalness: 0.85,
+            roughness: 0.2,
+          });
+
+          var starGlowMat = new THREE.MeshStandardMaterial({
+            color: 0x38bdf8,
+            emissive: 0x0284c7,
+            emissiveIntensity: 2.0,
+            roughness: 0.1,
+          });
+
+          var pixieDustMat = new THREE.MeshStandardMaterial({
+            color: 0xfef08a,
+            emissive: 0xeab308,
+            emissiveIntensity: 2.2,
+            transparent: true,
+            opacity: 0.85,
+          });
+
+          var eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+
+          // --- 2. 頭部・金髪おだんご・表情 ---
+          var headGroup = new THREE.Group();
+          headGroup.position.set(0, 0.42, 0);
+
+          var head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.22, 16, 14),
+            skinMat,
+          );
+          head.scale.set(0.95, 1.05, 0.92);
+          headGroup.add(head);
+
+          // つぶらな瞳 ＆ ほっぺたの紅潮
+          for (var eyeSign = -1; eyeSign <= 1; eyeSign += 2) {
+            var eye = new THREE.Mesh(
+              new THREE.SphereGeometry(0.032, 8, 8),
+              eyeMat,
+            );
+            eye.position.set(eyeSign * 0.08, 0.02, 0.19);
+            eye.scale.set(0.7, 1.2, 0.4);
+            headGroup.add(eye);
+
+            var cheek = new THREE.Mesh(
+              new THREE.SphereGeometry(0.035, 8, 8),
+              new THREE.MeshBasicMaterial({
+                color: 0xf43f5e,
+                transparent: true,
+                opacity: 0.6,
+              }),
+            );
+            cheek.position.set(eyeSign * 0.11, -0.05, 0.18);
+            cheek.scale.set(1.0, 0.5, 0.4);
+            headGroup.add(cheek);
+          }
+
+          // 金髪のおだんごヘアー (Topknot Bun) & 前髪
+          var hairBase = new THREE.Mesh(
+            new THREE.SphereGeometry(0.23, 12, 12),
+            hairMat,
+          );
+          hairBase.position.set(0, 0.04, -0.02);
+          hairBase.scale.set(0.98, 1.02, 0.96);
+          headGroup.add(hairBase);
+
+          var bun = new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 10, 10),
+            hairMat,
+          );
+          bun.position.set(0, 0.24, -0.08);
+          headGroup.add(bun);
+
+          // 愛らしい前髪
+          var bangs = new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 8, 8),
+            hairMat,
+          );
+          bangs.position.set(0, 0.15, 0.14);
+          bangs.scale.set(1.2, 0.5, 0.6);
+          headGroup.add(bangs);
+
+          group.add(headGroup);
+
+          // --- 3. 可憐な二頭身ボディ ＆ 葉っぱのリーフドレス ---
+          var bodyGroup = new THREE.Group();
+
+          var torso = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.12, 0.32, 10),
+            skinMat,
+          );
+          torso.position.set(0, 0.12, 0);
+          bodyGroup.add(torso);
+
+          // リーフビスチェ（胸元）
+          var bustier = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.09, 0.11, 0.16, 10),
+            dressMat,
+          );
+          bustier.position.set(0, 0.16, 0);
+          bodyGroup.add(bustier);
+
+          // スカラップ（葉っぱ）カットの層状ミニスカート
+          var skirtGroup = new THREE.Group();
+          skirtGroup.position.set(0, 0.04, 0);
+
+          var petalCount = 7;
+          for (var p = 0; p < petalCount; p++) {
+            var pAngle = (p / petalCount) * Math.PI * 2;
+            var leafShape = new THREE.Shape();
+            leafShape.moveTo(0, 0);
+            leafShape.bezierCurveTo(-0.06, -0.1, -0.08, -0.22, 0, -0.28);
+            leafShape.bezierCurveTo(0.08, -0.22, 0.06, -0.1, 0, 0);
+
+            var leafGeo = new THREE.ExtrudeGeometry(leafShape, {
+              depth: 0.008,
+              bevelEnabled: true,
+              bevelThickness: 0.003,
+              bevelSize: 0.004,
+              bevelSegments: 2,
+            });
+
+            var leafMesh = new THREE.Mesh(
+              leafGeo,
+              p % 2 === 0 ? dressMat : dressHighlightMat,
+            );
+            leafMesh.rotation.y = pAngle;
+            leafMesh.rotation.x = 0.35; // 外側へ可憐に広がる
+            skirtGroup.add(leafMesh);
+          }
+          bodyGroup.add(skirtGroup);
+
+          // 華奢で綺麗な足（素足）
+          for (var legSign = -1; legSign <= 1; legSign += 2) {
+            var leg = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.042, 0.025, 0.38, 8),
+              skinMat,
+            );
+            leg.position.set(legSign * 0.07, -0.2, 0.02);
+            leg.rotation.z = -legSign * 0.08;
+            leg.rotation.x = 0.12;
+            bodyGroup.add(leg);
+
+            var foot = new THREE.Mesh(
+              new THREE.SphereGeometry(0.028, 8, 8),
+              skinMat,
+            );
+            foot.position.set(legSign * 0.085, -0.38, 0.05);
+            foot.scale.set(0.7, 0.5, 1.2);
+            bodyGroup.add(foot);
+          }
+
+          group.add(bodyGroup);
+
+          // --- 4. 繊細で美しいオーロラ翼（上翼・下翼 2対4枚） ---
+          var wings = [];
+          var wingPivots = [];
+
+          function createPixieWing(isUpper, isLeft) {
+            var sign = isLeft ? -1 : 1;
+            var wingGroup = new THREE.Group();
+
+            var shape = new THREE.Shape();
+            if (isUpper) {
+              shape.moveTo(0, 0);
+              shape.bezierCurveTo(
+                sign * 0.2,
+                0.15,
+                sign * 0.55,
+                0.45,
+                sign * 0.48,
+                0.65,
+              );
+              shape.bezierCurveTo(sign * 0.35, 0.72, sign * 0.12, 0.4, 0, 0);
+            } else {
+              shape.moveTo(0, 0);
+              shape.bezierCurveTo(
+                sign * 0.18,
+                -0.1,
+                sign * 0.38,
+                -0.32,
+                sign * 0.28,
+                -0.45,
+              );
+              shape.bezierCurveTo(sign * 0.12, -0.48, sign * 0.05, -0.22, 0, 0);
+            }
+
+            var wingGeo = new THREE.ShapeGeometry(shape);
+            var wingMesh = new THREE.Mesh(wingGeo, wingMat);
+            wingGroup.add(wingMesh);
+
+            // 翅脈（フレーム）
+            var frameCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(0, 0, 0),
+              new THREE.Vector3(sign * 0.25, isUpper ? 0.35 : -0.22, 0.01),
+              new THREE.Vector3(
+                sign * (isUpper ? 0.45 : 0.26),
+                isUpper ? 0.62 : -0.42,
+                0.01,
+              ),
+            ]);
+            var frameMesh = new THREE.Mesh(
+              new THREE.TubeGeometry(frameCurve, 8, 0.008, 4, false),
+              goldWandMat,
+            );
+            wingGroup.add(frameMesh);
+
+            return wingGroup;
+          }
+
+          var wingConfigs = [
+            { isUpper: true, isLeft: true, posX: -0.06, posY: 0.22, rotY: 0.3 },
+            {
+              isUpper: true,
+              isLeft: false,
+              posX: 0.06,
+              posY: 0.22,
+              rotY: -0.3,
+            },
+            {
+              isUpper: false,
+              isLeft: true,
+              posX: -0.05,
+              posY: 0.15,
+              rotY: 0.2,
+            },
+            {
+              isUpper: false,
+              isLeft: false,
+              posX: 0.05,
+              posY: 0.15,
+              rotY: -0.2,
+            },
+          ];
+
+          for (var w = 0; w < wingConfigs.length; w++) {
+            var wCfg = wingConfigs[w];
+            var wPivot = new THREE.Group();
+            wPivot.position.set(wCfg.posX, wCfg.posY, -0.08);
+            wPivot.rotation.y = wCfg.rotY;
+
+            var wingMesh = createPixieWing(wCfg.isUpper, wCfg.isLeft);
+            wPivot.add(wingMesh);
+
+            bodyGroup.add(wPivot);
+            wingPivots.push({ pivot: wPivot, cfg: wCfg });
+            wings.push(wPivot);
+          }
+
+          // --- 5. 腕 ＆ 星の魔法ステッキ (Pixie Wand & Muzzle) ---
+          var armLeft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.028, 0.02, 0.22, 6),
+            skinMat,
+          );
+          armLeft.position.set(-0.13, 0.18, 0.05);
+          armLeft.rotation.z = Math.PI / 4;
+          armLeft.rotation.x = -0.2;
+          group.add(armLeft);
+
+          var armRight = new THREE.Group();
+          armRight.position.set(0.11, 0.2, 0.02);
+
+          var armRightMesh = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.028, 0.02, 0.22, 6),
+            skinMat,
+          );
+          armRightMesh.position.set(0.06, -0.05, 0.06);
+          armRightMesh.rotation.z = -Math.PI / 3.5;
+          armRightMesh.rotation.x = -Math.PI / 4;
+          armRight.add(armRightMesh);
+
+          // 魔法ステッキ
+          var wandGroup = new THREE.Group();
+          wandGroup.position.set(0.12, -0.1, 0.15);
+          wandGroup.rotation.x = -0.3;
+
+          var wandShaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.008, 0.006, 0.42, 6),
+            goldWandMat,
+          );
+          wandShaft.position.set(0, 0.21, 0);
+          wandGroup.add(wandShaft);
+
+          // 星型トップ (Octahedron)
+          var starHead = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.05, 0),
+            starGlowMat,
+          );
+          starHead.position.set(0, 0.42, 0);
+          wandGroup.add(starHead);
+
+          var starRing = new THREE.Mesh(
+            new THREE.TorusGeometry(0.06, 0.008, 6, 12),
+            goldWandMat,
+          );
+          starRing.position.set(0, 0.42, 0);
+          wandGroup.add(starRing);
+
+          // 弾幕射出口 (Muzzle)
+          var muzzle = new THREE.Object3D();
+          muzzle.position.set(0, 0.45, 0);
+          wandGroup.add(muzzle);
+
+          armRight.add(wandGroup);
+          group.add(armRight);
+
+          // --- 6. 周囲を漂う妖精の粉 (Pixie Dust) ---
+          var dustGroup = new THREE.Group();
+          var dustNodes = [];
+          for (var d = 0; d < 5; d++) {
+            var dMesh = new THREE.Mesh(
+              new THREE.SphereGeometry(0.025, 6, 6),
+              pixieDustMat,
+            );
+            var dAngle = (d / 5) * Math.PI * 2;
+            var dRad = 0.35 + (d % 2) * 0.15;
+            dMesh.position.set(
+              Math.cos(dAngle) * dRad,
+              (d - 2) * 0.12,
+              Math.sin(dAngle) * dRad,
+            );
+            dustGroup.add(dMesh);
+            dustNodes.push({
+              mesh: dMesh,
+              baseAngle: dAngle,
+              rad: dRad,
+              phase: d * 1.2,
+            });
+          }
+          group.add(dustGroup);
+
+          // --- 7. アニメーション処理 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            // 小妖精特有のピョンピョンと俊敏な高速ホバリング
+            group.position.y = Math.sin(time * 6.0) * 0.08;
+            group.rotation.z = Math.sin(time * 4.0) * 0.05;
+            group.rotation.x = Math.cos(time * 3.5) * 0.04;
+
+            // 2対4枚の翼の超高速羽ばたき
+            var flap = Math.sin(time * 28.0) * 0.45;
+            for (var i = 0; i < wingPivots.length; i++) {
+              var wp = wingPivots[i];
+              var sign = i % 2 === 0 ? 1 : -1;
+              wp.pivot.rotation.y = wp.cfg.rotY + sign * flap;
+            }
+
+            // 魔法のステッキの揺らぎと星の脈動
+            wandGroup.rotation.z = Math.sin(time * 5.0) * 0.12;
+            starHead.scale.setScalar(1.0 + Math.sin(time * 9.0) * 0.25);
+
+            // 妖精の粉（ピクシーダスト）の公転
+            for (var dn = 0; dn < dustNodes.length; dn++) {
+              var node = dustNodes[dn];
+              var curA = time * 2.5 + node.phase;
+              node.mesh.position.x = Math.cos(curA) * node.rad;
+              node.mesh.position.z = Math.sin(curA) * node.rad;
+              node.mesh.position.y = Math.sin(time * 4.0 + node.phase) * 0.18;
+            }
+          };
+
+          group.userData.muzzle = muzzle;
+          group.userData.wings = wings;
+          group.userData.wand = wandGroup;
+          group.userData.head = headGroup;
+
           return group;
         }
 
         // キューピッド: フェアリーステージの雑魚(遠距離型)。弓矢を構える。
         function buildCupidMesh() {
           var group = new THREE.Group();
-          var bodyMat = new THREE.MeshStandardMaterial({
-            color: 0xffccaa,
-            emissive: 0x664422,
-            emissiveIntensity: 0.3,
+
+          // --- 1. マテリアル定義 ---
+          var skinMat = new THREE.MeshStandardMaterial({
+            color: 0xffdcc8,
+            emissive: 0x4a2518,
+            emissiveIntensity: 0.2,
+            roughness: 0.45,
+            metalness: 0.05,
           });
-          var body = new THREE.Mesh(
-            new THREE.SphereGeometry(0.32, 10, 8),
-            bodyMat,
-          );
-          group.add(body);
+
+          var hairMat = new THREE.MeshStandardMaterial({
+            color: 0xffeb85,
+            emissive: 0x664d00,
+            emissiveIntensity: 0.3,
+            roughness: 0.6,
+          });
+
+          var haloMat = new THREE.MeshStandardMaterial({
+            color: 0xffea00,
+            emissive: 0xffd700,
+            emissiveIntensity: 1.4,
+            metalness: 0.9,
+            roughness: 0.1,
+          });
 
           var wingMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            emissive: 0xffddee,
-            emissiveIntensity: 0.5,
-            transparent: true,
-            opacity: 0.75,
+            color: 0xfff5f8,
+            emissive: 0xf472b6,
+            emissiveIntensity: 0.45,
+            roughness: 0.35,
+            metalness: 0.1,
+            side: THREE.DoubleSide,
           });
-          var wingGeo = new THREE.CircleGeometry(0.4, 8);
-          var wingLeft = new THREE.Mesh(wingGeo, wingMat);
-          wingLeft.position.set(-0.4, 0.15, -0.12);
-          wingLeft.rotation.y = 0.5;
-          group.add(wingLeft);
-          var wingRight = new THREE.Mesh(wingGeo, wingMat.clone());
-          wingRight.position.set(0.4, 0.15, -0.12);
-          wingRight.rotation.y = -0.5;
-          group.add(wingRight);
 
-          var bowMat = new THREE.MeshStandardMaterial({
-            color: 0xffdd66,
-            emissive: 0xcc9900,
-            emissiveIntensity: 0.6,
+          var goldBowMat = new THREE.MeshStandardMaterial({
+            color: 0xffd700,
+            emissive: 0x996600,
+            emissiveIntensity: 0.55,
+            metalness: 0.85,
+            roughness: 0.2,
           });
-          var bow = new THREE.Mesh(
-            new THREE.TorusGeometry(0.28, 0.03, 6, 12, Math.PI),
-            bowMat,
+
+          var heartArrowMat = new THREE.MeshStandardMaterial({
+            color: 0xff1493,
+            emissive: 0xff0066,
+            emissiveIntensity: 1.8,
+            roughness: 0.1,
+          });
+
+          var eyeMat = new THREE.MeshBasicMaterial({ color: 0x1f2937 });
+
+          // --- 2. 頭部・天使の輪・巻き毛 ---
+          var headGroup = new THREE.Group();
+          headGroup.position.set(0, 0.55, 0);
+
+          var head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.32, 16, 14),
+            skinMat,
           );
-          bow.rotation.y = Math.PI / 2;
-          bow.position.set(0, 0, 0.35);
-          group.add(bow);
+          head.scale.set(1.0, 1.05, 0.95);
+          headGroup.add(head);
 
-          group.userData.muzzle = bow;
-          group.userData.wings = [wingLeft, wingRight];
+          // 天使の輪 (Halo)
+          var halo = new THREE.Mesh(
+            new THREE.TorusGeometry(0.24, 0.03, 8, 20),
+            haloMat,
+          );
+          halo.rotation.x = Math.PI / 2.2;
+          halo.position.set(0, 0.45, -0.05);
+          headGroup.add(halo);
+
+          // くりっとした目とピンクの頬
+          for (var eyeSign = -1; eyeSign <= 1; eyeSign += 2) {
+            var eye = new THREE.Mesh(
+              new THREE.SphereGeometry(0.045, 8, 8),
+              eyeMat,
+            );
+            eye.position.set(eyeSign * 0.11, 0.04, 0.28);
+            eye.scale.set(0.7, 1.2, 0.5);
+            headGroup.add(eye);
+
+            var cheek = new THREE.Mesh(
+              new THREE.SphereGeometry(0.05, 8, 8),
+              new THREE.MeshBasicMaterial({
+                color: 0xff6699,
+                transparent: true,
+                opacity: 0.65,
+              }),
+            );
+            cheek.position.set(eyeSign * 0.16, -0.06, 0.26);
+            cheek.scale.set(1.0, 0.5, 0.5);
+            headGroup.add(cheek);
+          }
+
+          // くるくる巻き毛 (Curly Hair)
+          for (var h = 0; h < 14; h++) {
+            var angle = (h / 14) * Math.PI * 2;
+            var curl = new THREE.Mesh(
+              new THREE.SphereGeometry(0.09, 8, 8),
+              hairMat,
+            );
+            curl.position.set(
+              Math.sin(angle) * 0.28,
+              0.15 + Math.cos(angle * 2) * 0.05,
+              Math.cos(angle) * 0.26 - 0.02,
+            );
+            headGroup.add(curl);
+          }
+          var topCurl = new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 8, 8),
+            hairMat,
+          );
+          topCurl.position.set(0, 0.32, 0);
+          headGroup.add(topCurl);
+
+          group.add(headGroup);
+
+          // --- 3. ぽっちゃりとした天使の素体 (Classic Cherub Body) ---
+          var bodyGroup = new THREE.Group();
+
+          var torso = new THREE.Mesh(
+            new THREE.SphereGeometry(0.38, 14, 12),
+            skinMat,
+          );
+          torso.scale.set(0.9, 1.1, 0.85);
+          torso.position.set(0, 0.1, 0);
+          bodyGroup.add(torso);
+
+          var belly = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 10, 10),
+            skinMat,
+          );
+          belly.position.set(0, -0.02, 0.1);
+          belly.scale.set(0.95, 0.95, 0.85);
+          bodyGroup.add(belly);
+
+          var pelvis = new THREE.Mesh(
+            new THREE.SphereGeometry(0.32, 12, 10),
+            skinMat,
+          );
+          pelvis.position.set(0, -0.18, 0);
+          pelvis.scale.set(0.95, 0.8, 0.85);
+          bodyGroup.add(pelvis);
+
+          // ぷっくりとした可愛らしい素足（指つきの裸足）
+          for (var legSign = -1; legSign <= 1; legSign += 2) {
+            var leg = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.13, 0.08, 0.35, 8),
+              skinMat,
+            );
+            leg.position.set(legSign * 0.16, -0.36, 0.02);
+            leg.rotation.z = -legSign * 0.15;
+            leg.rotation.x = 0.2;
+            bodyGroup.add(leg);
+
+            // 足の甲・かかと（素足）
+            var footInstep = new THREE.Mesh(
+              new THREE.SphereGeometry(0.08, 8, 8),
+              skinMat,
+            );
+            footInstep.position.set(legSign * 0.18, -0.5, 0.08);
+            footInstep.scale.set(0.85, 0.65, 1.2);
+            bodyGroup.add(footInstep);
+
+            // ぷっくりとした5本の可愛い足指
+            for (var toeI = 0; toeI < 5; toeI++) {
+              var toeRatio = (toeI - 2) * 0.022;
+              var toeSize = 0.022 - Math.abs(toeI - 1) * 0.002;
+              var toe = new THREE.Mesh(
+                new THREE.SphereGeometry(toeSize, 6, 6),
+                skinMat,
+              );
+              toe.position.set(legSign * 0.18 + toeRatio, -0.52, 0.17);
+              bodyGroup.add(toe);
+            }
+          }
+
+          group.add(bodyGroup);
+
+          // --- 4. 立体的な羽毛で構築された翼（天使の羽根） ---
+          var wingPivots = [];
+          for (var wSign = -1; wSign <= 1; wSign += 2) {
+            var wingPivot = new THREE.Group();
+            wingPivot.position.set(wSign * 0.2, 0.22, -0.18);
+            wingPivot.rotation.y = wSign * 0.4;
+
+            var wingBoneCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(0, 0, 0),
+              new THREE.Vector3(wSign * 0.4, 0.35, -0.05),
+              new THREE.Vector3(wSign * 0.9, 0.1, -0.1),
+            ]);
+            var wingBone = new THREE.Mesh(
+              new THREE.TubeGeometry(wingBoneCurve, 8, 0.035, 6, false),
+              wingMat,
+            );
+            wingPivot.add(wingBone);
+
+            var featherCount = 7;
+            for (var f = 0; f < featherCount; f++) {
+              var t = f / (featherCount - 1);
+              var pos = wingBoneCurve.getPoint(t);
+              var fLen = 0.35 + Math.sin(t * Math.PI) * 0.45;
+
+              var featherShape = new THREE.Shape();
+              featherShape.moveTo(0, 0);
+              featherShape.bezierCurveTo(
+                wSign * 0.08,
+                -fLen * 0.3,
+                wSign * 0.08,
+                -fLen * 0.8,
+                0,
+                -fLen,
+              );
+              featherShape.bezierCurveTo(
+                -wSign * 0.04,
+                -fLen * 0.7,
+                -wSign * 0.04,
+                -fLen * 0.3,
+                0,
+                0,
+              );
+
+              var featherGeo = new THREE.ExtrudeGeometry(featherShape, {
+                depth: 0.012,
+                bevelEnabled: true,
+                bevelThickness: 0.005,
+                bevelSize: 0.008,
+                bevelSegments: 2,
+              });
+
+              var featherMesh = new THREE.Mesh(featherGeo, wingMat);
+              featherMesh.position.copy(pos);
+              featherMesh.rotation.z = wSign * (-0.2 + t * 0.25);
+              featherMesh.rotation.x = 0.1;
+              wingPivot.add(featherMesh);
+            }
+
+            group.add(wingPivot);
+            wingPivots.push(wingPivot);
+          }
+
+          // --- 5. 腕 ＆ 豪華な愛の黄金弓矢 ---
+          var armLeft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.06, 0.38, 8),
+            skinMat,
+          );
+          armLeft.position.set(-0.24, 0.2, 0.18);
+          armLeft.rotation.z = Math.PI / 2.8;
+          armLeft.rotation.x = -Math.PI / 4;
+          group.add(armLeft);
+
+          var armRight = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.06, 0.38, 8),
+            skinMat,
+          );
+          armRight.position.set(0.24, 0.18, 0.08);
+          armRight.rotation.z = -Math.PI / 3.2;
+          armRight.rotation.x = -Math.PI / 3;
+          group.add(armRight);
+
+          var bowGroup = new THREE.Group();
+          bowGroup.position.set(-0.15, 0.2, 0.38);
+          bowGroup.rotation.y = -0.3;
+
+          var bowCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0, 0.6, -0.1),
+            new THREE.Vector3(0, 0.35, 0.15),
+            new THREE.Vector3(0, 0, 0.22),
+            new THREE.Vector3(0, -0.35, 0.15),
+            new THREE.Vector3(0, -0.6, -0.1),
+          ]);
+          var bowMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(bowCurve, 16, 0.035, 8, false),
+            goldBowMat,
+          );
+          bowGroup.add(bowMesh);
+
+          var heartShape = new THREE.Shape();
+          heartShape.moveTo(0, 0);
+          heartShape.bezierCurveTo(0, 0, -0.05, 0.08, -0.1, 0.08);
+          heartShape.bezierCurveTo(-0.16, 0.08, -0.16, 0.02, -0.16, 0.02);
+          heartShape.bezierCurveTo(-0.16, -0.06, -0.08, -0.12, 0, -0.18);
+          heartShape.bezierCurveTo(0.08, -0.12, 0.16, -0.06, 0.16, 0.02);
+          heartShape.bezierCurveTo(0.16, 0.02, 0.16, 0.08, 0.1, 0.08);
+          heartShape.bezierCurveTo(0.05, 0.08, 0, 0, 0, 0);
+
+          var heartGeo = new THREE.ExtrudeGeometry(heartShape, {
+            depth: 0.04,
+            bevelEnabled: true,
+            bevelThickness: 0.015,
+            bevelSize: 0.02,
+            bevelSegments: 2,
+          });
+          heartGeo.center();
+
+          var bowHeart = new THREE.Mesh(heartGeo, heartArrowMat);
+          bowHeart.position.set(0, 0, 0.24);
+          bowHeart.scale.set(0.65, 0.65, 0.65);
+          bowGroup.add(bowHeart);
+
+          var stringGeo = new THREE.CylinderGeometry(0.006, 0.006, 1.2, 4);
+          var bowString = new THREE.Mesh(
+            stringGeo,
+            new THREE.MeshBasicMaterial({
+              color: 0xffffff,
+              transparent: true,
+              opacity: 0.8,
+            }),
+          );
+          bowString.position.set(0, 0, -0.08);
+          bowGroup.add(bowString);
+
+          var arrowGroup = new THREE.Group();
+          arrowGroup.position.set(0, 0, 0.05);
+
+          var shaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.015, 0.015, 0.85, 6),
+            goldBowMat,
+          );
+          shaft.rotation.x = Math.PI / 2;
+          arrowGroup.add(shaft);
+
+          var arrowTip = new THREE.Mesh(heartGeo, heartArrowMat);
+          arrowTip.position.set(0, 0, 0.45);
+          arrowTip.rotation.x = Math.PI / 2;
+          arrowTip.scale.set(0.7, 0.7, 0.7);
+          arrowGroup.add(arrowTip);
+
+          for (var flSign = -1; flSign <= 1; flSign += 2) {
+            var fletch = new THREE.Mesh(
+              new THREE.BoxGeometry(0.01, 0.08, 0.12),
+              heartArrowMat,
+            );
+            fletch.position.set(flSign * 0.04, 0, -0.38);
+            fletch.rotation.z = flSign * 0.3;
+            arrowGroup.add(fletch);
+          }
+
+          var muzzle = new THREE.Object3D();
+          muzzle.position.set(0, 0, 0.52);
+          arrowGroup.add(muzzle);
+
+          bowGroup.add(arrowGroup);
+          group.add(bowGroup);
+
+          // --- 6. アニメーション処理 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            group.position.y = Math.sin(time * 3.0) * 0.12;
+            group.rotation.z = Math.sin(time * 2.0) * 0.05;
+
+            var flap = Math.sin(time * 7.0) * 0.35;
+            wingPivots[0].rotation.y = 0.4 + flap;
+            wingPivots[1].rotation.y = -0.4 - flap;
+
+            var pull = (Math.sin(time * 4.0) + 1.0) * 0.08;
+            arrowGroup.position.z = 0.05 - pull;
+            bowHeart.scale.setScalar(0.65 + Math.sin(time * 8.0) * 0.08);
+            arrowTip.scale.setScalar(0.7 + Math.cos(time * 8.0) * 0.09);
+          };
+
+          group.userData.muzzle = muzzle;
+          group.userData.wings = wingPivots;
+          group.userData.bow = bowGroup;
+          group.userData.head = headGroup;
+
           return group;
         }
 
@@ -28056,37 +29323,46 @@
             var sign = isLeft ? -1 : 1; // 左腕: -1, 右腕: 1
             var armGroup = new THREE.Group();
 
+            // 腕全体の回転軸を肩関節の位置に置く。以前はarmGroup自体の
+            // 原点(体の中心)を軸に回転させていたため、腕を振り上げても
+            // 「肩から先が持ち上がる」動きにならず、体の中心を軸に横へ
+            // 流れるだけの小さな動きにしか見えなかった。肩位置にpivotを
+            // 置き、それより先の全パーツを肩からの相対座標で配置し直す
+            // ことで、実際に肩から腕を大きく振り上げる自然な動きにする。
+            var shoulderPivot = new THREE.Group();
+            shoulderPivot.position.set(sign * 1.5, 1.25, 0.2);
+            armGroup.add(shoulderPivot);
+
             // 肩
             var shoulder = new THREE.Mesh(
               new THREE.SphereGeometry(0.88, 12, 10),
               bodyMat,
             );
-            shoulder.position.set(sign * 1.5, 1.25, 0.2);
-            armGroup.add(shoulder);
+            shoulderPivot.add(shoulder);
 
             // 上腕（二頭筋）
             var bicep = new THREE.Mesh(
               new THREE.CylinderGeometry(0.8, 0.7, 1.2, 10),
               bodyMat,
             );
-            bicep.position.set(sign * 1.75, 1.15, 0.75);
+            bicep.position.set(sign * 0.25, -0.1, 0.55);
             bicep.rotation.x = Math.PI / 2.3;
             bicep.rotation.y = sign * -0.25;
-            armGroup.add(bicep);
+            shoulderPivot.add(bicep);
 
             // 前腕
             var forearm = new THREE.Mesh(
               new THREE.CylinderGeometry(0.7, 0.62, 1.1, 10),
               bodyMat,
             );
-            forearm.position.set(sign * 2.0, 1.0, 1.5);
+            forearm.position.set(sign * 0.5, -0.25, 1.3);
             forearm.rotation.x = Math.PI / 2.1;
             forearm.rotation.y = sign * -0.32;
-            armGroup.add(forearm);
+            shoulderPivot.add(forearm);
 
             // 掌（手のひら）グループ
             var palmGroup = new THREE.Group();
-            palmGroup.position.set(sign * 2.2, 0.95, 2.1);
+            palmGroup.position.set(sign * 0.7, -0.3, 1.9);
             palmGroup.rotation.y = sign * -0.35;
             palmGroup.rotation.x = -0.12;
 
@@ -28211,7 +29487,7 @@
               palmGroup.add(fingerPivot);
             }
 
-            armGroup.add(palmGroup);
+            shoulderPivot.add(palmGroup);
             return {
               armGroup: armGroup,
               palmGroup: palmGroup,
@@ -28304,20 +29580,21 @@
           var wingFrontMat = new THREE.MeshStandardMaterial({
             color: 0x00f0ff,
             emissive: 0x0088cc,
-            emissiveIntensity: 0.65,
+            emissiveIntensity: 0.7,
             transparent: true,
-            opacity: 0.8,
-            side: THREE.FrontSide,
+            opacity: 0.75,
+            side: THREE.DoubleSide,
             roughness: 0.1,
+            metalness: 0.15,
           });
 
           var wingBackMat = new THREE.MeshStandardMaterial({
-            color: 0xff66cc,
-            emissive: 0x880055,
-            emissiveIntensity: 0.55,
+            color: 0xff33bb,
+            emissive: 0xaa0066,
+            emissiveIntensity: 0.6,
             transparent: true,
-            opacity: 0.75,
-            side: THREE.BackSide,
+            opacity: 0.65,
+            side: THREE.DoubleSide,
             roughness: 0.1,
           });
 
@@ -28651,59 +29928,167 @@
           wandRing.position.set(0, 0.7, 0);
           wandGroup.add(wandRing);
 
-          // --- 6. オーロラ butterfly 翼 ---
+          // --- 6. オーロラ butterfly 翼 (アゲハ蝶風大翅 ＆ ゴールド翅脈 & 尾状突起) ---
           function createFairyWing(isUpper, isLeft) {
             var wingGroup = new THREE.Group();
             var sign = isLeft ? -1 : 1;
 
             var shape = new THREE.Shape();
             if (isUpper) {
+              // 豪華で優美な大翅（前翅）：上部・外側へ大きく広がり、美しいアールとスカロップ羽縁を描く
               shape.moveTo(0, 0);
               shape.bezierCurveTo(
                 sign * 0.5,
-                0.4,
-                sign * 1.4,
-                1.2,
-                sign * 1.1,
+                0.6,
+                sign * 1.2,
                 1.8,
+                sign * 2.2,
+                2.7,
               );
-              shape.bezierCurveTo(sign * 0.7, 2.1, sign * 0.2, 1.1, 0, 0);
+              shape.bezierCurveTo(
+                sign * 2.8,
+                3.2,
+                sign * 3.3,
+                3.0,
+                sign * 3.1,
+                2.2,
+              );
+              shape.bezierCurveTo(
+                sign * 2.8,
+                1.6,
+                sign * 2.5,
+                1.1,
+                sign * 2.1,
+                0.7,
+              );
+              shape.bezierCurveTo(sign * 1.5, 0.3, sign * 0.8, 0.05, 0, 0);
             } else {
+              // 尾状突起（スワローテール）を持つ優美な下翅（後翅）
               shape.moveTo(0, 0);
               shape.bezierCurveTo(
-                sign * 0.4,
-                -0.2,
-                sign * 0.95,
-                -0.7,
-                sign * 0.72,
-                -1.1,
+                sign * 0.9,
+                -0.1,
+                sign * 2.0,
+                -0.4,
+                sign * 2.3,
+                -1.0,
               );
-              shape.bezierCurveTo(sign * 0.3, -1.2, sign * 0.1, -0.6, 0, 0);
+              shape.bezierCurveTo(
+                sign * 2.4,
+                -1.6,
+                sign * 2.2,
+                -2.3,
+                sign * 1.8,
+                -3.0,
+              );
+              shape.bezierCurveTo(
+                sign * 1.5,
+                -3.2,
+                sign * 1.3,
+                -2.5,
+                sign * 1.2,
+                -1.9,
+              );
+              shape.bezierCurveTo(sign * 0.8, -1.4, sign * 0.4, -0.8, 0, 0);
             }
 
             var wingGeo = new THREE.ShapeGeometry(shape);
 
             var wingFront = new THREE.Mesh(wingGeo, wingFrontMat);
             var wingBack = new THREE.Mesh(wingGeo, wingBackMat);
+            wingBack.position.z = -0.01;
             wingGroup.add(wingFront);
             wingGroup.add(wingBack);
 
-            var frameGeo = new THREE.CylinderGeometry(
-              0.012,
-              0.008,
-              isUpper ? 1.8 : 1.2,
-              6,
-            );
-            var mainFrame = new THREE.Mesh(frameGeo, goldMat);
+            // 金色の立体的翅脈（Filigree Vein Structure）の追加
+            var veinGroup = new THREE.Group();
 
+            // 1. 主前縁フレーム (Leading Edge Spine)
+            var spinePoints = [];
             if (isUpper) {
-              mainFrame.position.set(sign * 0.55, 0.9, 0.01);
-              mainFrame.rotation.z = -sign * 0.55;
+              spinePoints.push(new THREE.Vector3(0, 0, 0.005));
+              spinePoints.push(new THREE.Vector3(sign * 0.5, 0.6, 0.005));
+              spinePoints.push(new THREE.Vector3(sign * 1.2, 1.8, 0.005));
+              spinePoints.push(new THREE.Vector3(sign * 2.2, 2.7, 0.005));
+              spinePoints.push(new THREE.Vector3(sign * 3.1, 2.2, 0.005));
             } else {
-              mainFrame.position.set(sign * 0.38, -0.55, 0.01);
-              mainFrame.rotation.z = sign * 0.62;
+              spinePoints.push(new THREE.Vector3(0, 0, 0.005));
+              spinePoints.push(new THREE.Vector3(sign * 0.9, -0.1, 0.005));
+              spinePoints.push(new THREE.Vector3(sign * 2.0, -0.4, 0.005));
+              spinePoints.push(new THREE.Vector3(sign * 2.3, -1.0, 0.005));
+              spinePoints.push(new THREE.Vector3(sign * 1.8, -3.0, 0.005));
             }
-            wingGroup.add(mainFrame);
+            var spineCurve = new THREE.CatmullRomCurve3(spinePoints);
+            var spineGeo = new THREE.TubeGeometry(
+              spineCurve,
+              20,
+              0.018,
+              8,
+              false,
+            );
+            var mainSpine = new THREE.Mesh(spineGeo, goldMat);
+            veinGroup.add(mainSpine);
+
+            // 2. 放射状の支脈（Radial / Media Veins）
+            var subVeinPaths = [];
+            if (isUpper) {
+              subVeinPaths.push([
+                new THREE.Vector3(sign * 0.6, 0.8, 0.005),
+                new THREE.Vector3(sign * 1.6, 1.4, 0.005),
+                new THREE.Vector3(sign * 2.7, 1.8, 0.005),
+              ]);
+              subVeinPaths.push([
+                new THREE.Vector3(sign * 0.5, 0.4, 0.005),
+                new THREE.Vector3(sign * 1.3, 0.8, 0.005),
+                new THREE.Vector3(sign * 2.2, 1.0, 0.005),
+              ]);
+              subVeinPaths.push([
+                new THREE.Vector3(sign * 1.2, 1.8, 0.005),
+                new THREE.Vector3(sign * 2.1, 2.2, 0.005),
+              ]);
+            } else {
+              subVeinPaths.push([
+                new THREE.Vector3(sign * 0.5, -0.2, 0.005),
+                new THREE.Vector3(sign * 1.4, -0.8, 0.005),
+                new THREE.Vector3(sign * 2.0, -1.8, 0.005),
+              ]);
+              subVeinPaths.push([
+                new THREE.Vector3(sign * 0.4, -0.5, 0.005),
+                new THREE.Vector3(sign * 1.0, -1.2, 0.005),
+                new THREE.Vector3(sign * 1.4, -2.2, 0.005),
+              ]);
+            }
+
+            for (var vI = 0; vI < subVeinPaths.length; vI++) {
+              var vCurve = new THREE.CatmullRomCurve3(subVeinPaths[vI]);
+              var vGeo = new THREE.TubeGeometry(vCurve, 12, 0.01, 6, false);
+              var subMesh = new THREE.Mesh(vGeo, goldMat);
+              veinGroup.add(subMesh);
+            }
+
+            // 3. 翅脈結節の輝くルビー宝石
+            var gemNodePoints = isUpper
+              ? [
+                  new THREE.Vector3(sign * 1.2, 1.8, 0.01),
+                  new THREE.Vector3(sign * 2.2, 2.7, 0.01),
+                  new THREE.Vector3(sign * 1.6, 1.4, 0.01),
+                ]
+              : [
+                  new THREE.Vector3(sign * 0.9, -0.1, 0.01),
+                  new THREE.Vector3(sign * 2.3, -1.0, 0.01),
+                  new THREE.Vector3(sign * 1.4, -0.8, 0.01),
+                ];
+
+            for (var gI = 0; gI < gemNodePoints.length; gI++) {
+              var gNode = new THREE.Mesh(
+                new THREE.OctahedronGeometry(0.035, 0),
+                gemMat,
+              );
+              gNode.position.copy(gemNodePoints[gI]);
+              veinGroup.add(gNode);
+            }
+
+            wingGroup.add(veinGroup);
 
             return wingGroup;
           }
@@ -28713,38 +30098,43 @@
             {
               isUpper: true,
               isLeft: true,
-              posX: -0.14,
+              posX: -0.16,
               posY: 1.18,
               rotY: 0.35,
+              rotZ: 0.1,
             },
             {
               isUpper: true,
               isLeft: false,
-              posX: 0.14,
+              posX: 0.16,
               posY: 1.18,
               rotY: -0.35,
+              rotZ: -0.1,
             },
             {
               isUpper: false,
               isLeft: true,
-              posX: -0.12,
-              posY: 1.02,
+              posX: -0.14,
+              posY: 0.98,
               rotY: 0.25,
+              rotZ: -0.05,
             },
             {
               isUpper: false,
               isLeft: false,
-              posX: 0.12,
-              posY: 1.02,
+              posX: 0.14,
+              posY: 0.98,
               rotY: -0.25,
+              rotZ: 0.05,
             },
           ];
 
           for (var wI = 0; wI < wingConfigs.length; wI++) {
             var wCfg = wingConfigs[wI];
             var wPivot = new THREE.Group();
-            wPivot.position.set(wCfg.posX, wCfg.posY, -0.1);
+            wPivot.position.set(wCfg.posX, wCfg.posY, -0.12);
             wPivot.rotation.y = wCfg.rotY;
+            if (wCfg.rotZ) wPivot.rotation.z = wCfg.rotZ;
 
             var wingMesh = createFairyWing(wCfg.isUpper, wCfg.isLeft);
             wPivot.add(wingMesh);
@@ -28758,7 +30148,11 @@
           group.userData.wings = wingPivots;
           group.userData.armLeft = armL.shoulderPivot;
           group.userData.armRight = armR.shoulderPivot;
+          group.userData.elbowLeft = armL.elbowPivot;
+          group.userData.elbowRight = armR.elbowPivot;
           group.userData.headGroup = headGroup;
+          group.userData.eyeLeft = eyeL;
+          group.userData.eyeRight = eyeR;
 
           return group;
         }
@@ -29680,7 +31074,7 @@
         var BOSS_HP_BY_TYPE = {
           scaler: 15,
           godani: 34,
-          tomos: 18,
+          tomos: 30,
           sarpedon: 22,
           sumo: 24,
           cerberus: 30,
@@ -30493,7 +31887,7 @@
             enemy.homeY = mesh.position.y;
           }
           if (isTomosBoss) {
-            enemy.petalHp = [3, 3, 3, 3, 3, 3];
+            enemy.petalHp = [5, 5, 5, 5, 5, 5];
             enemy.coreVulnerable = false;
           }
           if (bossType === "barbarian") {
@@ -31710,31 +33104,73 @@
           if (groundMesh && groundMesh.material.map) {
             groundMesh.material.map.offset.y = groundOffset * 0.03;
           }
+          if (ceilingMesh && ceilingMesh.material.map) {
+            // 天井は地面と回転の符号が逆(rotation.x = +PI/2 vs -PI/2)の
+            // ため、UV空間がミラーされている。地面と同じ符号のoffsetを
+            // 与えると見た目のスクロール方向が逆になってしまうため、
+            // ここだけ符号を反転させて地面と同じ向きに流れるようにする。
+            ceilingMesh.material.map.offset.y = -groundOffset * 0.03;
+          }
+
+          if (
+            finalStageBossSpawnIndex >= 0 &&
+            !groundFadeActive &&
+            nextSpawnIndex <= finalStageBossSpawnIndex &&
+            spawnSchedule[finalStageBossSpawnIndex].time -
+              FINAL_STAGE_GROUND_FADE_SECONDS <=
+              elapsedTime
+          ) {
+            // 最終ステージはボス出現の一定時間前から地面フェードを開始する。
+            // フェードが完了した瞬間に警告演出を発火させるため、この時点
+            // ではまだboss出現イベント自体は処理しない(下のwhileループを
+            // finalStageBossSpawnIndexの手前で止める)。
+            groundFadeActive = true;
+            groundFadeElapsed = 0;
+            groundFadeStepTimer = 0;
+            groundFadeStartColor = new THREE.Color(currentStage.groundColor);
+          }
 
           while (
             nextSpawnIndex < spawnSchedule.length &&
-            spawnSchedule[nextSpawnIndex].time <= elapsedTime
+            spawnSchedule[nextSpawnIndex].time <= elapsedTime &&
+            !(groundFadeActive && nextSpawnIndex === finalStageBossSpawnIndex)
           ) {
             var ev = spawnSchedule[nextSpawnIndex];
             if (ev.kind === "boss") {
-              // ボスは即座に出現させず、警告演出(音+WARNING表示+ボス名)を
-              // 挟んでから少し遅れて出現させる。ゲーム内時間(elapsedTime)
-              // 基準で遅延させることで、ポーズ中は演出も止まる。
-              // 通常ステージのボスイベントはbossTypeを持たず、spawnEnemy
-              // 側と同じくcurrentStage.bossTypeにフォールバックする
-              // (このフォールバックをしないとボス名が常に既定値"BOSS"に
-              // なってしまう)。
-              var warningBossType = ev.bossType || currentStage.bossType;
-              showBossWarning(BOSS_NAME_BY_TYPE[warningBossType] || "BOSS");
-              pendingBossSpawns.push({
-                time: elapsedTime + BOSS_WARNING_DURATION_MS / 1000,
-                laneX: ev.laneX,
-                bossType: warningBossType,
-              });
+              triggerBossWarning(ev);
             } else {
               spawnEnemy(ev.kind, ev.laneX, ev.bossType);
             }
             nextSpawnIndex += 1;
+          }
+
+          if (groundFadeActive) {
+            groundFadeElapsed += dt;
+            groundFadeStepTimer += dt;
+            var fadeT = Math.min(
+              1,
+              groundFadeElapsed / FINAL_STAGE_GROUND_FADE_SECONDS,
+            );
+            if (
+              fadeT >= 1 ||
+              groundFadeStepTimer >= FINAL_STAGE_GROUND_FADE_STEP_SECONDS
+            ) {
+              groundFadeStepTimer = 0;
+              var fadeColor = new THREE.Color();
+              fadeColor.lerpColors(
+                groundFadeStartColor,
+                new THREE.Color(FINAL_STAGE_BOSS_GROUND_COLOR),
+                fadeT,
+              );
+              buildGround({ groundColor: fadeColor.getHex() });
+            }
+            if (fadeT >= 1) {
+              // フェード完了。ここで初めてboss出現イベントを処理し、
+              // 警告演出(音+WARNING表示)を発火させる。
+              groundFadeActive = false;
+              triggerBossWarning(spawnSchedule[finalStageBossSpawnIndex]);
+              nextSpawnIndex = finalStageBossSpawnIndex + 1;
+            }
           }
 
           for (var pbi = pendingBossSpawns.length - 1; pbi >= 0; pbi--) {
@@ -32177,21 +33613,97 @@
               // 長がbaseInterval(1.4秒)よりわずかに長いため、何もしないと
               // フェーズ終盤にfireTimerが再度0を切って2発目が出てしまう。
               en.kissHeartFired = false;
+              // 投げキッスモーション(両手を口元に当ててから広げる)の
+              // 進行度を0から開始する。ウインクもこのタイミングに合わせる。
+              en.kissMotionPhase = 0;
             }
           }
 
           var isFlying = en.attackPattern === "flyby";
+          // flyby中は舞い上がる演出に合わせて羽ばたきの振り幅も一段
+          // 大きくする(頻度はenraged時と同じ14だが、振幅を通常の1.6倍に
+          // 誇張して「大きく羽ばたいている」ことを強調する)。
+          var wingFlapAmp = isFlying ? 0.8 : enraged ? 0.5 : 0.5;
+          var wingFlapAmp2 = isFlying ? 0.56 : enraged ? 0.35 : 0.35;
           var wingFlap =
-            Math.sin(elapsedTime * (isFlying ? 14 : enraged ? 10 : 5)) * 0.5;
+            Math.sin(elapsedTime * (isFlying ? 14 : enraged ? 10 : 5)) *
+            wingFlapAmp;
           // 4枚羽(蝶のような上翅/下翅)。上翅は大きく、下翅はやや遅れた
           // 位相で小さく羽ばたかせ、蝶が舞うような自然なずれを出す。
           en.mesh.userData.wings[0].rotation.y = 0.7 + wingFlap;
           en.mesh.userData.wings[1].rotation.y = -0.7 - wingFlap;
           var wingFlap2 =
             Math.sin(elapsedTime * (isFlying ? 14 : enraged ? 10 : 5) + 0.6) *
-            0.35;
+            wingFlapAmp2;
           en.mesh.userData.wings[2].rotation.y = 0.4 + wingFlap2;
           en.mesh.userData.wings[3].rotation.y = -0.4 - wingFlap2;
+
+          // --- 常時のアイドル揺らぎ(呼吸のような自然な動き) ---
+          // 手足を完全固定にしない。各ステート固有モーションが後で
+          // 上書きする分もこの揺らぎに加算する形にすることで、直立
+          // 不動な印象を避ける。
+          var idleArmSwayL = Math.sin(elapsedTime * 1.6) * 0.06;
+          var idleArmSwayR = Math.sin(elapsedTime * 1.6 + Math.PI) * 0.06;
+          var armLeftBaseZ = en.mesh.userData.armLeft.userData.baseRotZ;
+          var armRightBaseZ = en.mesh.userData.armRight.userData.baseRotZ;
+          if (armLeftBaseZ === undefined) {
+            armLeftBaseZ = en.mesh.userData.armLeft.rotation.z;
+            en.mesh.userData.armLeft.userData.baseRotZ = armLeftBaseZ;
+          }
+          if (armRightBaseZ === undefined) {
+            armRightBaseZ = en.mesh.userData.armRight.rotation.z;
+            en.mesh.userData.armRight.userData.baseRotZ = armRightBaseZ;
+          }
+          en.mesh.userData.armLeft.rotation.z = armLeftBaseZ + idleArmSwayL;
+          en.mesh.userData.armRight.rotation.z = armRightBaseZ + idleArmSwayR;
+          en.mesh.userData.elbowLeft.rotation.z =
+            Math.sin(elapsedTime * 1.4 + 0.4) * 0.08;
+          en.mesh.userData.elbowRight.rotation.z =
+            Math.sin(elapsedTime * 1.4 + 0.4 + Math.PI) * 0.08;
+          en.mesh.userData.headGroup.rotation.z =
+            Math.sin(elapsedTime * 1.1) * 0.04;
+          // 脚は下半身メッシュに専用ピボットを持たないため、脚も含めた
+          // 全身のわずかな傾きとして揺らぎを表現する。
+          en.mesh.rotation.z = Math.sin(elapsedTime * 1.2) * 0.015;
+          // ウインクはkissフェーズ内でのみ発生させる。他のフェーズでは
+          // 目を常に開いた基準スケールに戻しておく。
+          en.mesh.userData.eyeRight.scale.y = 1.2;
+
+          if (en.attackPattern === "wand") {
+            // 杖を持った右腕を、星弾の連射リズム(starVolleyTimer)に
+            // 合わせて振り下ろす/振り上げる。連射中は素早く、連射が
+            // 終わった後の残り時間は大きくゆったり振る。
+            var wandSwingSpeed = en.starVolleyRemaining > 0 ? 9 : 3;
+            var wandSwing = Math.sin(elapsedTime * wandSwingSpeed) * 0.3;
+            en.mesh.userData.armRight.rotation.z = armRightBaseZ + wandSwing;
+            en.mesh.userData.elbowRight.rotation.z =
+              Math.abs(Math.sin(elapsedTime * wandSwingSpeed)) * -0.25;
+          } else if (en.attackPattern === "kiss") {
+            // 投げキッス: 両手を口元へ引き寄せてから、大きく左右に開く
+            // 一連の動きをkissMotionPhase(0→1)で進行させ、開き切る
+            // タイミングでウインクする。
+            en.kissMotionPhase = Math.min(
+              1,
+              (en.kissMotionPhase || 0) +
+                dt / (FAIRY_QUEEN_PATTERN_SECONDS.kiss * 0.6),
+            );
+            var kissP = en.kissMotionPhase;
+            // 0→0.4: 口元へ引き寄せる。0.4→1: 大きく左右へ開く。
+            var handsToMouth = Math.min(1, kissP / 0.4);
+            var handsSpread = Math.max(0, (kissP - 0.4) / 0.6);
+            var armLift = handsToMouth * 1.5 - handsSpread * 1.9 + idleArmSwayL;
+            en.mesh.userData.armLeft.rotation.z = armLeftBaseZ - armLift;
+            en.mesh.userData.armRight.rotation.z = armRightBaseZ + armLift;
+            en.mesh.userData.elbowLeft.rotation.z =
+              handsToMouth * 1.1 - handsSpread * 0.6;
+            en.mesh.userData.elbowRight.rotation.z = -(
+              handsToMouth * 1.1 -
+              handsSpread * 0.6
+            );
+            // ウインク: 手を開き切った直後の短い間だけ右目を閉じる。
+            var winkOpen = handsSpread > 0.5 && handsSpread < 0.85 ? 0.05 : 1;
+            en.mesh.userData.eyeRight.scale.y = 1.2 * winkOpen;
+          }
 
           if (isFlying) {
             // 上空飛来: 純粋な演出。羽を大きく閃かせながら上空へ舞い上がり、
@@ -32727,6 +34239,15 @@
                 weaverSegments[wi].position.x =
                   Math.sin(en.wavePhase - (wi + 1) * 0.8) * 0.6;
               }
+            } else if (
+              en.kind === "princess" ||
+              en.kind === "cupid" ||
+              en.kind === "pixie"
+            ) {
+              // 平安鬼姫・キューピッド・ピクシーは自前のupdateLoop(time)で
+              // 全パーツ(浮遊・袖/裾のなびき・扇/弓/杖の演出・発光脈動等)を
+              // まとめてアニメーションするため、専用メッシュ側に委譲する。
+              en.mesh.userData.updateLoop(elapsedTime);
             } else if (!isScaler && en.kind !== "boss") {
               en.mesh.rotation.y += dt * 2;
             }
