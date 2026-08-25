@@ -23879,6 +23879,9 @@
         var STAGE_TRANSITION_SECONDS = 2;
         var stageTransitionTimer = 0;
         var stageTransitionNextId = null;
+        // ボス撃破演出(退場エフェクト+断末魔SE)の残り時間(秒)。0になる
+        // までステージクリア判定(stageComplete)を保留する。
+        var pendingBossDefeatPause = 0;
 
         var HIGH_SCORE_STORAGE_KEY = "stellarHarrierHighScore";
         var comboCount = 0;
@@ -23927,7 +23930,15 @@
         var endingTimer = 0;
         var endingPhase = null;
         // ボス警告演出の表示時間(ミリ秒)。この間はボスの出現を遅らせる。
-        var BOSS_WARNING_DURATION_MS = 1800;
+        // 警戒音(playBossWarningSound)が鳴り終わってからボスが出現する
+        // よう、siren全体の長さ((count-1)*step + duration = 3*1.15+0.95
+        // = 4.4秒、line ~1077-1082参照)と一致させている。siren側の
+        // タイミング定数を変更した場合はこちらも合わせて更新すること。
+        var BOSS_WARNING_DURATION_MS = 4400;
+        // BOSS TESTモード専用の短縮版。開発時の連続検証で毎回4.4秒待たされ
+        // ると効率が悪いため、旧来の短い間隔を維持する(演出自体は通常と
+        // 同じものが流れるが、ボスが操作可能になるまでの待ち時間だけ短縮)。
+        var BOSS_TEST_WARNING_DURATION_MS = 1800;
 
         // 最終ステージ(ABYSS ZERO)はボス出現の一定時間前から、地面を
         // 黄系の色から黒系へ徐々に変化させ、変化しきったところで警告音+
@@ -24860,6 +24871,7 @@
           pendingBossSpawns = [];
           stageTransitionTimer = 0;
           stageTransitionNextId = null;
+          pendingBossDefeatPause = 0;
           invincibleModeActive = false;
           document.getElementById("boss-warning").classList.remove("visible");
           document.getElementById("pause-overlay").classList.add("hidden");
@@ -24999,6 +25011,7 @@
           pendingBossSpawns = [];
           stageTransitionTimer = 0;
           stageTransitionNextId = null;
+          pendingBossDefeatPause = 0;
           nextObstacleIndex = 0;
           elapsedTime = 0;
           bossRushIndex = 0;
@@ -25174,6 +25187,7 @@
           pendingBossSpawns = [];
           stageTransitionTimer = 0;
           stageTransitionNextId = null;
+          pendingBossDefeatPause = 0;
           nextObstacleIndex = 0;
           elapsedTime = 0;
           bossRushIndex = 0;
@@ -31157,6 +31171,31 @@
           generic: "BOSS",
         };
 
+        // ボス被弾SE(bossType別)。第一弾は全ボス共通のダミー音(playHitSound
+        // と同じ)を割り当てるが、bossType→再生関数のディスパッチテーブル
+        // として構造化しておくことで、assets/sfx/boss_hits/配下の1関数
+        // 1ファイルを個別に差し替えていける。fairy_queenだけは既存の専用
+        // ボイスをそのまま流用する。
+        function playBossHitSoundDefault() {
+          playHitSound();
+        }
+        var BOSS_HIT_SOUND_BY_TYPE = {
+          scaler: playBossHitSoundDefault,
+          tomos: playBossHitSoundDefault,
+          godani: playBossHitSoundDefault,
+          sarpedon: playBossHitSoundDefault,
+          sumo: playBossHitSoundDefault,
+          cerberus: playBossHitSoundDefault,
+          fairy_queen: playFairyQueenHitVoice,
+          barbarian: playBossHitSoundDefault,
+          final: playBossHitSoundDefault,
+        };
+        function playBossHitSound(bossType) {
+          var fn = BOSS_HIT_SOUND_BY_TYPE[bossType];
+          if (fn) fn();
+          else playHitSound();
+        }
+
         // 隠しコマンドのBOSS TESTタブで選べるボス一覧。各ボスが登場する
         // 本来のステージ設定(色・敵速度倍率)を借用して雰囲気を再現する。
         var BOSS_TEST_ENTRIES = [
@@ -31214,93 +31253,93 @@
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "dom",
-            label: "ドーム型ザコ",
+            label: "オービター",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "dasher",
             label: "ダッシャー",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "weaver",
             label: "ウィーバー",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "princess",
             label: "姫",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "yoshitsune",
             label: "義経",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "frog",
-            label: "カエル",
+            label: "河童",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "biwa_hoshi",
             label: "琵琶法師",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "fairy",
             label: "フェアリー",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "pixie",
             label: "ピクシー",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "cupid",
             label: "キューピッド",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "imp",
             label: "インプ",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "tomos",
             label: "トモス兵",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "aida",
             label: "アイーダ護衛兵",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "grunt",
-            label: "グラント(汎用ザコ)",
+            label: "グラント",
           },
           {
             category: "enemy",
-            categoryLabel: "雑魚敵",
+            categoryLabel: "エネミー",
             key: "shooter",
-            label: "シューター(汎用ザコ)",
+            label: "シューター",
           },
           {
             category: "boss",
@@ -32368,9 +32407,15 @@
           });
         }
 
-        function spawnEnemyBulletAt(sourcePosition, dir, homingTarget, radius) {
+        function spawnEnemyBulletAt(
+          sourcePosition,
+          dir,
+          homingTarget,
+          radius,
+          color,
+        ) {
           var geo = new THREE.SphereGeometry(radius || 0.25, 8, 8);
-          var mat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+          var mat = new THREE.MeshBasicMaterial({ color: color || 0xff3333 });
           var mesh = new THREE.Mesh(geo, mat);
           mesh.position.copy(sourcePosition);
           scene.add(mesh);
@@ -32404,12 +32449,12 @@
         // ホーミング弾(ゴダーニ専用): 発射直後は発射元の頭部の向きに飛ぶが、
         // 飛行中は少しずつ自機方向へ軌道修正する。直進弾よりは避けにくいが
         // 完全追尾ではないため、左右に大きく動けば振り切れる。
-        function spawnHomingMissile(sourcePosition) {
+        function spawnHomingMissile(sourcePosition, color) {
           var dir = new THREE.Vector3()
             .subVectors(playerGroup.position, sourcePosition)
             .normalize();
           var geo = new THREE.ConeGeometry(0.22, 0.6, 8);
-          var mat = new THREE.MeshBasicMaterial({ color: 0xffaa22 });
+          var mat = new THREE.MeshBasicMaterial({ color: color || 0xffaa22 });
           var mesh = new THREE.Mesh(geo, mat);
           mesh.position.copy(sourcePosition);
           mesh.lookAt(playerGroup.position);
@@ -32422,6 +32467,124 @@
             nearMissPlayed: false,
             isHoming: true,
             homingTurnRate: 1.8,
+          });
+        }
+
+        // 稲妻弾(スケーラー専用): ジグザグに折れ曲がった板状の閃光で雷を
+        // 表現する。THREE.Shape上にジグザグの頂点を並べてExtrudeGeometry化
+        // し、進行方向を向かせる。直進弾だが、既存の球体弾より大きめの
+        // スケール・発光色(黄)にして、稲妻らしいロール回転を加える。
+        function spawnLightningBolt(sourcePosition) {
+          var dir = new THREE.Vector3()
+            .subVectors(playerGroup.position, sourcePosition)
+            .normalize();
+          var shape = new THREE.Shape();
+          shape.moveTo(0, 0.5);
+          shape.lineTo(0.15, 0.15);
+          shape.lineTo(-0.05, 0.05);
+          shape.lineTo(0.15, -0.15);
+          shape.lineTo(0, -0.5);
+          shape.lineTo(0.05, -0.1);
+          shape.lineTo(-0.15, 0);
+          shape.lineTo(0.05, 0.1);
+          shape.closePath();
+          var geo = new THREE.ExtrudeGeometry(shape, {
+            depth: 0.06,
+            bevelEnabled: false,
+          });
+          var mat = new THREE.MeshBasicMaterial({ color: 0xffee33 });
+          var mesh = new THREE.Mesh(geo, mat);
+          mesh.position.copy(sourcePosition);
+          mesh.lookAt(sourcePosition.clone().add(dir));
+          scene.add(mesh);
+          enemyBullets.push({
+            mesh: mesh,
+            dir: dir,
+            speed: 32,
+            nearMissPlayed: false,
+            spinPhase: Math.random() * Math.PI * 2,
+          });
+        }
+
+        // 火炎弾(ケルベロス専用): 球形コアの周りに複数の外炎パーティクル的な
+        // 小さい球を張り付け、揺らめく炎の塊に見せる。1メッシュ内で
+        // グループ化し、進行方向はplayerDirected同様まっすぐ。
+        function spawnFlameBolt(sourcePosition) {
+          var dir = new THREE.Vector3()
+            .subVectors(playerGroup.position, sourcePosition)
+            .normalize();
+          var group = new THREE.Group();
+          var coreMat = new THREE.MeshBasicMaterial({ color: 0xff5500 });
+          var core = new THREE.Mesh(
+            new THREE.SphereGeometry(0.22, 8, 8),
+            coreMat,
+          );
+          group.add(core);
+          var flickerCount = 5;
+          for (var i = 0; i < flickerCount; i++) {
+            var angle = (i / flickerCount) * Math.PI * 2;
+            var flickerMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+            var flicker = new THREE.Mesh(
+              new THREE.SphereGeometry(0.1, 6, 6),
+              flickerMat,
+            );
+            flicker.position.set(
+              Math.cos(angle) * 0.2,
+              Math.sin(angle) * 0.2,
+              0,
+            );
+            group.add(flicker);
+          }
+          group.position.copy(sourcePosition);
+          scene.add(group);
+          enemyBullets.push({
+            mesh: group,
+            dir: dir,
+            speed: 27,
+            nearMissPlayed: false,
+            spinPhase: Math.random() * Math.PI * 2,
+          });
+        }
+
+        // ミニボス弾(ラスボス専用): 過去に登場した各ボスのメッシュを縮小
+        // して純粋な装飾弾として撃ち出す(独自AI/挙動は持たず、直進弾として
+        // enemyBulletsに積むだけ。当たり判定は他の弾と同じ球判定を流用する)。
+        // 演出上、これまでのすべての強敵を飲み込んで放出しているような
+        // 表現にする。
+        var FINAL_BOSS_MINI_BUILDERS = [
+          buildScalerMesh,
+          buildTomosBossMesh,
+          buildSarpedonMesh,
+          buildSumoMesh,
+          buildCerberusMesh,
+          buildFairyQueenMesh,
+          buildBarbarianMesh,
+        ];
+        var FINAL_BOSS_MINI_SCALE = 0.18;
+        var FINAL_BOSS_MINI_BULLET_RADIUS = 0.6;
+        // ミニボス弾の発射間隔(秒)。通常弾幕(fireAtPlayer)とは独立した
+        // タイマーで、10秒に1回だけ演出として放つ。
+        var FINAL_BOSS_MINI_BULLET_INTERVAL_SECONDS = 10;
+
+        function spawnMiniBossBullet(sourcePosition) {
+          var builder =
+            FINAL_BOSS_MINI_BUILDERS[
+              Math.floor(Math.random() * FINAL_BOSS_MINI_BUILDERS.length)
+            ];
+          var mesh = builder();
+          mesh.scale.multiplyScalar(FINAL_BOSS_MINI_SCALE);
+          mesh.position.copy(sourcePosition);
+          var dir = new THREE.Vector3()
+            .subVectors(playerGroup.position, sourcePosition)
+            .normalize();
+          scene.add(mesh);
+          enemyBullets.push({
+            mesh: mesh,
+            dir: dir,
+            speed: 24,
+            nearMissPlayed: false,
+            isMiniBossBullet: true,
+            hitRadius: FINAL_BOSS_MINI_BULLET_RADIUS,
           });
         }
 
@@ -32464,7 +32627,13 @@
         // dir引数)、ホーミング先(homingTarget)は「自機位置を中心に横方向
         // へオフセットした着弾目標点」にすることで、見た目の扇形はそのまま
         // 保ちつつ、直進のみでは画面外に逸れてしまう問題を回避する。
-        function fireFan(sourcePosition, count, spreadRadians) {
+        function fireFan(
+          sourcePosition,
+          count,
+          spreadRadians,
+          color,
+          perBulletColorFn,
+        ) {
           var toPlayer = new THREE.Vector3().subVectors(
             playerGroup.position,
             sourcePosition,
@@ -32491,7 +32660,14 @@
               .clone()
               .addScaledVector(lateral, offset);
 
-            spawnEnemyBulletAt(sourcePosition, initialDir, target);
+            var bulletColor = perBulletColorFn ? perBulletColorFn(t, i) : color;
+            spawnEnemyBulletAt(
+              sourcePosition,
+              initialDir,
+              target,
+              undefined,
+              bulletColor,
+            );
           }
         }
 
@@ -32688,8 +32864,9 @@
           if (enemy.bossType === "scaler") {
             var headWorldPos = new THREE.Vector3();
             enemy.mesh.userData.head.getWorldPosition(headWorldPos);
-            // 火炎放射のイメージなので、通常弾より大きめの弾にする。
-            firePlayerDirected(headWorldPos, SCALER_BREATH_BULLET_RADIUS);
+            // 東洋の龍の雷撃: 稲妻形状の黄色い閃光弾を放つ
+            // (docs/boss-behaviors/scaler.md参照)。
+            spawnLightningBolt(headWorldPos);
           } else if (enemy.bossType === "godani") {
             // 交互ホーミング弾: 左右どちらか一方の頭(生存している方)から
             // 1発ずつ、毎回発射元を切り替えながらホーミング弾を放つ。
@@ -32701,7 +32878,9 @@
             var firingHeadName = useLeftHead ? "leftHead" : "rightHead";
             var firingHeadPos = new THREE.Vector3();
             enemy.mesh.userData[firingHeadName].getWorldPosition(firingHeadPos);
-            spawnHomingMissile(firingHeadPos);
+            // 氷のブレスを表現するため、通常のオレンジ系ではなく
+            // 薄水色に染めたホーミング弾にする。
+            spawnHomingMissile(firingHeadPos, 0xaaeeff);
             enemy.nextFiringHeadIsLeft = !enemy.nextFiringHeadIsLeft;
           } else if (enemy.bossType === "sarpedon") {
             // ジェットストリームアタック: 生存しているドムが両バレルから
@@ -32722,7 +32901,9 @@
               firePlayerDirected(rightMuzzlePos);
             }
           } else if (enemy.bossType === "tomos") {
-            fireFan(enemy.mesh.position, 8, Math.PI * 0.7);
+            // 花粉のイメージで、通常の赤系ではなくやわらかいピンクに
+            // 染めた扇状弾にする(形状は現状維持)。
+            fireFan(enemy.mesh.position, 8, Math.PI * 0.7, 0xffaadd);
           } else if (enemy.bossType === "barbarian") {
             var mouthWorldPos = new THREE.Vector3();
             enemy.mesh.userData.mouth.getWorldPosition(mouthWorldPos);
@@ -32774,10 +32955,9 @@
                 enemy.mesh.userData[
                   cerberusHeadNames[tryIndex]
                 ].userData.muzzle.getWorldPosition(cerberusHeadPos);
-                firePlayerDirected(
-                  cerberusHeadPos,
-                  CERBERUS_BREATH_BULLET_RADIUS,
-                );
+                // 炎を吐く番犬らしく、球形コアの周りに外炎を纏った
+                // 火炎弾にする(docs/boss-behaviors/cerberus.md参照)。
+                spawnFlameBolt(cerberusHeadPos);
                 enemy.firingHeadIndex =
                   (tryIndex + 1) % cerberusHeadNames.length;
                 break;
@@ -32788,10 +32968,27 @@
             // 弾数を増やしほぼ全方位の扇状弾幕に強化する(ラスボスらしい
             // 圧力を出すため、第1形態よりも明確に苛烈にする)。
             var hpRatio = enemy.hp / enemy.maxHp;
+            // 弾ごとにHSLレインボーの色相を変えることで、闇の根源が
+            // あらゆる力を飲み込んでいるような、カラフルな弾幕にする。
+            var finalRainbowColorFn = function (t) {
+              return new THREE.Color().setHSL(t, 1, 0.55).getHex();
+            };
             if (hpRatio <= 0.5) {
-              fireFan(enemy.mesh.position, 16, Math.PI * 1.4);
+              fireFan(
+                enemy.mesh.position,
+                16,
+                Math.PI * 1.4,
+                undefined,
+                finalRainbowColorFn,
+              );
             } else {
-              fireFan(enemy.mesh.position, 10, Math.PI * 0.9);
+              fireFan(
+                enemy.mesh.position,
+                10,
+                Math.PI * 0.9,
+                undefined,
+                finalRainbowColorFn,
+              );
             }
           } else {
             fireFan(enemy.mesh.position, 5, Math.PI / 3);
@@ -32828,7 +33025,10 @@
         }
 
         // ボス撃破は原作同様の派手さを出すため、位置をランダムにずらしながら
-        // 多段で爆発させる(単発より画面映えする)。
+        // 多段で爆発させる(単発より画面映えする)。爆発6発、120ms間隔の
+        // 最終発火＋その爆発の寿命(最大0.8秒)を合わせた総演出時間は
+        // 約1.4秒(BOSS_DEFEAT_PAUSE_SECONDS_BY_TYPEのexplosion系の値と
+        // 対応させること)。
         function spawnBossDefeatExplosions(position) {
           var burstCount = 6;
           for (var i = 0; i < burstCount; i++) {
@@ -32843,6 +33043,219 @@
               }, index * 120);
             })(i);
           }
+        }
+
+        // ボスタイプ別の固有退場演出(docs/boss-defeats/がSOURCE OF TRUTH)。
+        // いずれもボス本体のメッシュには触れず(en.meshは呼び出し元で即座に
+        // scene.removeされる)、explosions配列に積む新規パーティクルのみで
+        // 表現する。こうすることで、ボス本体のマテリアル状態やライフ
+        // サイクルを気にせず、既存のupdateExplosions(dt)だけで一括管理できる。
+
+        // 汎用パーティクルバースト。spawnExplosionと同じexplosions配列の
+        // 構造(mesh/life/maxLife/vel)を使うが、形状・色・速度分布を自由に
+        // 指定できる。
+        function spawnParticleBurst(position, options) {
+          var count = options.count || 10;
+          var geo = options.geometry || new THREE.SphereGeometry(0.1, 6, 6);
+          for (var i = 0; i < count; i++) {
+            var color =
+              typeof options.color === "function"
+                ? options.color(i)
+                : options.color || 0xffffff;
+            var mat = new THREE.MeshBasicMaterial({
+              color: color,
+              transparent: true,
+              opacity: 1,
+              side: THREE.DoubleSide,
+            });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(position);
+            scene.add(mesh);
+            var vel = options.velocity
+              ? options.velocity(i)
+              : new THREE.Vector3(
+                  (Math.random() - 0.5) * 4,
+                  (Math.random() - 0.5) * 4,
+                  (Math.random() - 0.5) * 4,
+                );
+            explosions.push({
+              mesh: mesh,
+              life: options.life || 0.8,
+              maxLife: options.maxLife || options.life || 0.8,
+              vel: vel,
+              gravity: options.gravity || 0,
+            });
+          }
+        }
+
+        // TOMOS撃破: 花弁ガードのモチーフを引き、平面の花びらが弾けて
+        // 舞い散るように見せる(disperse)。総演出時間 約0.9秒。
+        var BOSS_DEFEAT_DISPERSE_DURATION_SECONDS = 0.9;
+        function spawnBossDefeatDisperse(position) {
+          var petalGeo = new THREE.PlaneGeometry(0.35, 0.5);
+          spawnParticleBurst(position, {
+            count: 14,
+            geometry: petalGeo,
+            color: function (i) {
+              return i % 2 === 0 ? 0xff99cc : 0x99ff88;
+            },
+            life: BOSS_DEFEAT_DISPERSE_DURATION_SECONDS,
+            velocity: function () {
+              var angle = Math.random() * Math.PI * 2;
+              var speed = 2 + Math.random() * 3;
+              return new THREE.Vector3(
+                Math.cos(angle) * speed,
+                1 + Math.random() * 2,
+                Math.sin(angle) * speed,
+              );
+            },
+            gravity: 4,
+          });
+          cameraShake = Math.max(cameraShake, 0.2);
+        }
+
+        // GODANI/MOAI撃破: 氷/石像のモチーフを引き、角ばった破片が砕けて
+        // 飛び散るように見せる(shatter)。総演出時間 約0.9秒。colorだけ
+        // 呼び出し側で切り替える(氷=薄水色、石=灰色)。
+        var BOSS_DEFEAT_SHATTER_DURATION_SECONDS = 0.9;
+        function spawnBossDefeatShatter(position, color) {
+          var shardGeo = new THREE.BoxGeometry(0.18, 0.18, 0.18);
+          spawnParticleBurst(position, {
+            count: 16,
+            geometry: shardGeo,
+            color: color,
+            life: BOSS_DEFEAT_SHATTER_DURATION_SECONDS,
+            velocity: function () {
+              var angle = Math.random() * Math.PI * 2;
+              var speed = 3 + Math.random() * 4;
+              return new THREE.Vector3(
+                Math.cos(angle) * speed,
+                2 + Math.random() * 3,
+                Math.sin(angle) * speed,
+              );
+            },
+            gravity: 9,
+          });
+          cameraShake = Math.max(cameraShake, 0.3);
+        }
+        function spawnBossDefeatShatterIce(position) {
+          spawnBossDefeatShatter(position, 0xaaeeff);
+        }
+        function spawnBossDefeatShatterStone(position) {
+          spawnBossDefeatShatter(position, 0x9a9a9a);
+        }
+
+        // ONIMARU撃破: 力士が土俵に崩れ落ちるモチーフで、地面付近に土煙
+        // (茶色の粉塵)が広がるように見せる(fall)。総演出時間 約1.0秒。
+        var BOSS_DEFEAT_FALL_DURATION_SECONDS = 1.0;
+        function spawnBossDefeatFall(position) {
+          var groundPos = position.clone();
+          groundPos.y = -3.5;
+          spawnParticleBurst(groundPos, {
+            count: 12,
+            geometry: new THREE.SphereGeometry(0.22, 6, 6),
+            color: 0xcaa46a,
+            life: BOSS_DEFEAT_FALL_DURATION_SECONDS,
+            velocity: function () {
+              var angle = Math.random() * Math.PI * 2;
+              var speed = 1.5 + Math.random() * 2.5;
+              return new THREE.Vector3(
+                Math.cos(angle) * speed,
+                0.5 + Math.random() * 1.5,
+                Math.sin(angle) * speed,
+              );
+            },
+            gravity: 3,
+          });
+          cameraShake = Math.max(cameraShake, 0.35);
+        }
+
+        // QUEEN TITANIA撃破: 妖精らしく光の粒になって消えていくように見せる
+        // (fadeout)。総演出時間 約1.0秒。爆発的な飛散ではなく、ゆっくり
+        // 上昇しながら小さくきらめく粒にする。
+        var BOSS_DEFEAT_FADE_DURATION_SECONDS = 1.0;
+        function spawnBossDefeatFadeOut(position) {
+          spawnParticleBurst(position, {
+            count: 18,
+            geometry: new THREE.SphereGeometry(0.07, 6, 6),
+            color: 0xfff0a0,
+            life: BOSS_DEFEAT_FADE_DURATION_SECONDS,
+            velocity: function () {
+              var angle = Math.random() * Math.PI * 2;
+              var speed = 0.5 + Math.random() * 1.2;
+              return new THREE.Vector3(
+                Math.cos(angle) * speed,
+                1.5 + Math.random() * 2,
+                Math.sin(angle) * speed,
+              );
+            },
+            gravity: -1.5, // 上昇させる(重力を負にして浮き上がる粒にする)
+          });
+        }
+
+        // bossType別の退場演出ディスパッチ。docs/boss-defeats/<bossType>.md
+        // が各演出のSOURCE OF TRUTH(振る舞いを変えたい場合はまずそちらを
+        // 編集する)。
+        var BOSS_DEFEAT_EFFECT_BY_TYPE = {
+          scaler: spawnBossDefeatExplosions,
+          tomos: spawnBossDefeatDisperse,
+          godani: spawnBossDefeatShatterIce,
+          sarpedon: spawnBossDefeatExplosions,
+          sumo: spawnBossDefeatFall,
+          cerberus: spawnBossDefeatExplosions,
+          fairy_queen: spawnBossDefeatFadeOut,
+          barbarian: spawnBossDefeatShatterStone,
+          final: spawnBossDefeatExplosions,
+        };
+        function playBossDefeatEffect(bossType, position) {
+          var fn =
+            BOSS_DEFEAT_EFFECT_BY_TYPE[bossType] || spawnBossDefeatExplosions;
+          fn(position);
+        }
+
+        // spawnBossDefeatExplosionsの実測総演出時間(6発, 120ms間隔, 最後の
+        // 爆発の寿命0.8秒 = 5*0.12+0.8=1.4秒)を基準に、各ボスの退場演出の
+        // 実測時間と合わせた、撃破後の一時停止時間(秒)。item6の
+        // pendingBossDefeatPauseがこの値だけ経過してからステージクリア
+        // 処理に進む。
+        var BOSS_DEFEAT_EXPLOSION_DURATION_SECONDS = 1.4;
+        var BOSS_DEFEAT_PAUSE_SECONDS_BY_TYPE = {
+          scaler: BOSS_DEFEAT_EXPLOSION_DURATION_SECONDS,
+          tomos: BOSS_DEFEAT_DISPERSE_DURATION_SECONDS,
+          godani: BOSS_DEFEAT_SHATTER_DURATION_SECONDS,
+          sarpedon: BOSS_DEFEAT_EXPLOSION_DURATION_SECONDS,
+          sumo: BOSS_DEFEAT_FALL_DURATION_SECONDS,
+          cerberus: BOSS_DEFEAT_EXPLOSION_DURATION_SECONDS,
+          fairy_queen: BOSS_DEFEAT_FADE_DURATION_SECONDS,
+          barbarian: BOSS_DEFEAT_SHATTER_DURATION_SECONDS,
+          final: BOSS_DEFEAT_EXPLOSION_DURATION_SECONDS,
+        };
+
+        // ボス断末魔SE(bossType別)。第一弾は生物系/機械系ともに既存の
+        // playExplosionSoundを共通ダミーとして割り当てるが、assets/sfx/
+        // boss_deaths/配下の1関数1ファイルで個別に差し替えていけるよう
+        // ディスパッチテーブルとして構造化しておく。
+        function playBiologicalDeathCrySound() {
+          playExplosionSound();
+        }
+        function playMechanicalDeathExplosionSound() {
+          playExplosionSound();
+        }
+        var BOSS_DEATH_SOUND_BY_TYPE = {
+          scaler: playMechanicalDeathExplosionSound,
+          tomos: playBiologicalDeathCrySound,
+          godani: playBiologicalDeathCrySound,
+          sarpedon: playMechanicalDeathExplosionSound,
+          sumo: playBiologicalDeathCrySound,
+          cerberus: playBiologicalDeathCrySound,
+          fairy_queen: playBiologicalDeathCrySound,
+          barbarian: playMechanicalDeathExplosionSound,
+          final: playMechanicalDeathExplosionSound,
+        };
+        function playBossDeathSound(bossType) {
+          var fn = BOSS_DEATH_SOUND_BY_TYPE[bossType];
+          if (fn) fn();
+          else playExplosionSound();
         }
 
         function loadHighScore() {
@@ -33080,9 +33493,16 @@
 
         function update(dt) {
           elapsedTime += dt;
-          if (invulnerableTimer > 0) {
-            invulnerableTimer -= dt;
-            player.visible = Math.floor(elapsedTime * 12) % 2 === 0;
+          if (invulnerableTimer > 0 || invincibleModeActive) {
+            if (invulnerableTimer > 0) {
+              invulnerableTimer -= dt;
+              // 被弾直後の一時無敵はチカチカ点滅で「まもなく切れる」ことを
+              // 示す。無敵モード(隠しコマンド)はいつ切れるか予告不要なので
+              // 点滅させず、常時はっきり見える状態にする。
+              player.visible = Math.floor(elapsedTime * 12) % 2 === 0;
+            } else {
+              player.visible = true;
+            }
             shieldMesh.visible = true;
             shieldMesh.rotation.y += dt * 4;
             shieldMesh.rotation.x += dt * 2;
@@ -33197,6 +33617,10 @@
           updateExplosions(dt);
           updatePetals(dt);
 
+          if (pendingBossDefeatPause > 0) {
+            pendingBossDefeatPause -= dt;
+          }
+
           if (stageTransitionTimer > 0) {
             // 次ステージへの遷移待ち(ファンファーレ演出中)。この間も
             // ゲームを止めずに現ステージの描画・自機操作を続けさせるため、
@@ -33208,6 +33632,7 @@
           } else {
             var stageComplete =
               !bossTestModeActive &&
+              pendingBossDefeatPause <= 0 &&
               (currentStage.bossSequence
                 ? bossRushAllDefeated && enemies.length === 0
                 : elapsedTime >= currentStage.durationSeconds &&
@@ -34076,6 +34501,19 @@
               startBgm("st10_final");
             }
             en.mesh.userData.updateLoop(elapsedTime, enraged ? 2.5 : 1);
+
+            // ミニボス弾: 通常弾幕(fireAtPlayer側)とは別枠で、
+            // FINAL_BOSS_MINI_BULLET_INTERVAL_SECONDS秒に1回、これまでの
+            // 強敵を縮小した装飾弾を中心部からランダムに1体射出する
+            // (docs/boss-behaviors/final.md参照)。
+            if (en.miniBossBulletTimer === undefined) {
+              en.miniBossBulletTimer = FINAL_BOSS_MINI_BULLET_INTERVAL_SECONDS;
+            }
+            en.miniBossBulletTimer -= dt;
+            if (en.miniBossBulletTimer <= 0) {
+              en.miniBossBulletTimer = FINAL_BOSS_MINI_BULLET_INTERVAL_SECONDS;
+              spawnMiniBossBullet(en.mesh.position);
+            }
           } else {
             en.mesh.rotation.y += dt * 1.5;
           }
@@ -34459,18 +34897,16 @@
                 }
                 scene.remove(bullet.mesh);
                 bullets.splice(bj, 1);
-                playHitSound();
-                if (
-                  en.bossType === "fairy_queen" &&
-                  (en.hitVoiceCooldown || 0) <= 0
-                ) {
-                  // 連打時に声が重なって煩くならないよう、短いクール
-                  // ダウンを挟んでから次のボイスを鳴らす。
-                  playFairyQueenHitVoice();
-                  en.hitVoiceCooldown = 0.5;
-                }
                 if (en.kind === "boss") {
+                  // 連打時に音/声が重なって煩くならないよう、短いクール
+                  // ダウンを挟んでからボスごとの被弾SEを鳴らす。
+                  if ((en.hitVoiceCooldown || 0) <= 0) {
+                    playBossHitSound(en.bossType);
+                    en.hitVoiceCooldown = 0.5;
+                  }
                   updateBossHpBar(en);
+                } else {
+                  playHitSound();
                 }
                 if (isBossDefeated(en)) {
                   registerKillForCombo();
@@ -34490,7 +34926,13 @@
                     en.kind === "boss",
                   );
                   if (en.kind === "boss") {
-                    spawnBossDefeatExplosions(en.mesh.position);
+                    playBossDeathSound(en.bossType);
+                    playBossDefeatEffect(en.bossType, en.mesh.position);
+                    // ボス撃破演出(退場エフェクト+断末魔SE)が終わるまで
+                    // ステージクリア判定を保留する(item6: 余韻の間、雑魚は
+                    // 出現せず地面のスクロールだけ続く)。
+                    pendingBossDefeatPause =
+                      BOSS_DEFEAT_PAUSE_SECONDS_BY_TYPE[en.bossType] || 1.0;
                   } else {
                     spawnExplosion(en.mesh.position, 1);
                   }
@@ -34511,7 +34953,7 @@
                             if (bossTestModeActive) {
                               spawnEnemy("boss", 0, bossTestBossType);
                             }
-                          }, BOSS_WARNING_DURATION_MS);
+                          }, BOSS_TEST_WARNING_DURATION_MS);
                         }
                       }, 1500);
                     } else if (currentStage.bossSequence) {
@@ -34841,6 +35283,12 @@
               eb.mesh.position.addScaledVector(eb.dir, eb.speed * dt);
             } else {
               eb.mesh.position.addScaledVector(eb.dir, eb.speed * dt);
+              if (eb.spinPhase !== undefined) {
+                // 稲妻弾(スケーラー)・火炎弾(ケルベロス)用のロール回転
+                // 演出。進行方向を軸に自転させ、揺らめき/雷らしさを出す。
+                eb.spinPhase += dt * 6;
+                eb.mesh.rotation.z = eb.spinPhase;
+              }
             }
             if (
               eb.mesh.position.z > 12 ||
@@ -34857,8 +35305,13 @@
               continue;
             }
             if (invulnerableTimer <= 0) {
+              var bulletHitRadius = eb.hitRadius || 0.25;
               var hitByEnemyBullet = circlesIntersect(
-                { x: eb.mesh.position.x, y: eb.mesh.position.y, radius: 0.25 },
+                {
+                  x: eb.mesh.position.x,
+                  y: eb.mesh.position.y,
+                  radius: bulletHitRadius,
+                },
                 {
                   x: playerGroup.position.x,
                   y: playerGroup.position.y,
@@ -34880,7 +35333,7 @@
                   {
                     x: eb.mesh.position.x,
                     y: eb.mesh.position.y,
-                    radius: 0.25,
+                    radius: bulletHitRadius,
                   },
                   {
                     x: playerGroup.position.x,
@@ -34901,6 +35354,12 @@
           for (var xi = explosions.length - 1; xi >= 0; xi--) {
             var ex = explosions[xi];
             ex.life -= dt;
+            if (ex.gravity) {
+              // ボス退場演出のfall/shatter(下降)やfadeout(gravityを負に
+              // して浮遊させる)で使う任意の重力加速度。指定がない通常の
+              // 爆発パーティクルはこれまで通り速度減衰のみで動く。
+              ex.vel.y -= ex.gravity * dt;
+            }
             ex.mesh.position.addScaledVector(ex.vel, dt);
             ex.vel.multiplyScalar(0.94);
             ex.mesh.material.opacity = Math.max(0, ex.life / ex.maxLife);
