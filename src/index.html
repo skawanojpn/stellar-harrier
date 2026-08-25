@@ -23883,6 +23883,21 @@
         // までステージクリア判定(stageComplete)を保留する。
         var pendingBossDefeatPause = 0;
 
+        // ステージ切り替え時の地面/空の色フェード。最終ステージ専用の
+        // 事前演出(groundFadeActive)と同じ「step timerでlerpColorsした
+        // 色を都度buildGround/buildSkyに渡して再構築する」手法を、通常
+        // のステージ間遷移にも一般化したもの。STAGE_TRANSITION_SECONDS
+        // (クリアファンファーレと同じ2秒)かけて旧ステージの色から新
+        // ステージの色へなめらかに変化させ、フェード完了と同時に
+        // loadStage()でスポーンスケジュール等を本来通りフル再構築する。
+        var STAGE_COLOR_FADE_STEP_SECONDS = 0.1;
+        var stageColorFadeActive = false;
+        var stageColorFadeElapsed = 0;
+        var stageColorFadeStepTimer = 0;
+        var stageColorFadeFrom = null;
+        var stageColorFadeTo = null;
+        var stageColorFadeTargetStageId = null;
+
         var HIGH_SCORE_STORAGE_KEY = "stellarHarrierHighScore";
         var comboCount = 0;
         var comboResetTimer = 0;
@@ -25012,6 +25027,10 @@
           stageTransitionTimer = 0;
           stageTransitionNextId = null;
           pendingBossDefeatPause = 0;
+          // loadStageが呼ばれた時点で、色フェードが未完了のまま残って
+          // いても必ず打ち切る(BOSS TESTモード開始やリトライ等、フェード
+          // 完了経路以外からloadStageが呼ばれるケースの保険)。
+          stageColorFadeActive = false;
           nextObstacleIndex = 0;
           elapsedTime = 0;
           bossRushIndex = 0;
@@ -25188,6 +25207,7 @@
           stageTransitionTimer = 0;
           stageTransitionNextId = null;
           pendingBossDefeatPause = 0;
+          stageColorFadeActive = false;
           nextObstacleIndex = 0;
           elapsedTime = 0;
           bossRushIndex = 0;
@@ -25337,7 +25357,26 @@
           clearGroup(enemies);
           clearGroup(enemyBullets);
           clearGroup(obstacles);
-          loadStage(next);
+
+          // 地面/空の色を即座に切り替えず、旧ステージの色から新ステージ
+          // の色へなめらかにフェードさせる(loadState自体は色フェードが
+          // 完了してから呼ぶ)。BGMの切り替えは色フェードとは独立に
+          // 即座に行ってよい(音のクロスフェードは別途扱わない)。
+          var newStage = getStageConfig(next);
+          stageColorFadeFrom = {
+            ground: new THREE.Color(currentStage.groundColor),
+            skyTop: new THREE.Color(currentStage.skyColorTop),
+            skyBottom: new THREE.Color(currentStage.skyColorBottom),
+          };
+          stageColorFadeTo = {
+            ground: new THREE.Color(newStage.groundColor),
+            skyTop: new THREE.Color(newStage.skyColorTop),
+            skyBottom: new THREE.Color(newStage.skyColorBottom),
+          };
+          stageColorFadeTargetStageId = next;
+          stageColorFadeActive = true;
+          stageColorFadeElapsed = 0;
+          stageColorFadeStepTimer = 0;
           startBgm(stageBgmKey(next));
         }
 
@@ -33590,6 +33629,49 @@
               groundFadeActive = false;
               triggerBossWarning(spawnSchedule[finalStageBossSpawnIndex]);
               nextSpawnIndex = finalStageBossSpawnIndex + 1;
+            }
+          }
+
+          if (stageColorFadeActive) {
+            stageColorFadeElapsed += dt;
+            stageColorFadeStepTimer += dt;
+            var scFadeT = Math.min(
+              1,
+              stageColorFadeElapsed / STAGE_TRANSITION_SECONDS,
+            );
+            if (
+              scFadeT >= 1 ||
+              stageColorFadeStepTimer >= STAGE_COLOR_FADE_STEP_SECONDS
+            ) {
+              stageColorFadeStepTimer = 0;
+              var lerpGround = new THREE.Color().lerpColors(
+                stageColorFadeFrom.ground,
+                stageColorFadeTo.ground,
+                scFadeT,
+              );
+              var lerpSkyTop = new THREE.Color().lerpColors(
+                stageColorFadeFrom.skyTop,
+                stageColorFadeTo.skyTop,
+                scFadeT,
+              );
+              var lerpSkyBottom = new THREE.Color().lerpColors(
+                stageColorFadeFrom.skyBottom,
+                stageColorFadeTo.skyBottom,
+                scFadeT,
+              );
+              buildGround({ groundColor: lerpGround.getHex() });
+              buildSky({
+                skyColorTop: lerpSkyTop.getHex(),
+                skyColorBottom: lerpSkyBottom.getHex(),
+              });
+            }
+            if (scFadeT >= 1) {
+              // 色フェード完了。ここで本来のloadStageを呼び、スポーン
+              // スケジュール等をフル再構築する(色は既にフェード先と
+              // 同じ値なので、loadStage内のbuildGround/buildSky再実行は
+              // 見た目上ノーオペになる)。
+              stageColorFadeActive = false;
+              loadStage(stageColorFadeTargetStageId);
             }
           }
 
