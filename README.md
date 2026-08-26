@@ -52,7 +52,6 @@ three.jsを使用した擬似3Dシューティングゲーム。ファンタジ�
 - `docs/enemies/` — ボス以外のエネミーの移動・攻撃・HP・スコア仕様
 - `docs/stages/` — 各ステージのコンセプト・配色・登場エネミー/障害物ロースター
 - `docs/TODO-renaming.md` — コード上の内部識別子と表示名が食い違っている箇所の一覧（実装はまだ行っていない）
-- `docs/gemini-agent-instructions.md` — キャラクター/障害物デザイン・BGM作曲をGemini等の他のAIエージェントに委託する際の作業指示書
 
 ## 開発
 

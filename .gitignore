@@ -7,3 +7,7 @@ coverage/
 # ARCHITECTURE.md/STAGE_LIST.md/追加修正.mdはdocs/DEVELOPMENT.mdへ統合済みのため削除
 assets/
 music/
+
+# Geminiサブエージェント連携用の内部ルーチン文書(コードと無関係なため非公開)
+docs/gemini-agent-instructions.md
+docs/gemini-handover.md
