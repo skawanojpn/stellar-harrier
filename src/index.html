@@ -694,6 +694,45 @@
           "mushroom",
         ];
 
+        // 各ステージのコンセプトに合わせた障害物ロースター
+        // (docs/stages/*.md がSOURCE OF TRUTH)。generic OBSTACLE_KINDSの
+        // 汎用セット("pillar"/"rock"/"ruins"/"floating_island")のうち、
+        // ステージの世界観と噛み合わない種別だけをテーマ専用のものに
+        // 差し替える。
+        var FANTASY_OBSTACLE_KINDS = [
+          "pillar",
+          "crystal_shard",
+          "floating_island",
+          "rainbow_arch",
+        ];
+        var VOID_OBSTACLE_KINDS = [
+          "withered_tree",
+          "stone_lantern",
+          "floating_island",
+        ];
+        var FROZEN_OBSTACLE_KINDS = ["pillar", "ice_crystal", "icicle_cluster"];
+        var CRYSTAL_OBSTACLE_KINDS = [
+          "data_monolith",
+          "glitch_cube",
+          "floating_island",
+        ];
+        var INFERNO_OBSTACLE_KINDS = [
+          "pillar",
+          "magma_boulder",
+          "obsidian_spike",
+        ];
+        var ANCIENT_OBSTACLE_KINDS = [
+          "pillar",
+          "ruins",
+          "floating_island",
+          "fallen_statue",
+        ];
+        var ABYSS_OBSTACLE_KINDS = [
+          "broken_pillar",
+          "void_rift",
+          "floating_island",
+        ];
+
         var STAGES = [
           {
             id: 1,
@@ -717,6 +756,7 @@
             // 導入ステージなので、高速なdasher・大きく蛇行するweaverは
             // まだ出さず、grunt/shooterの基礎編成のみにする。
             enemyKinds: ["grunt", "grunt", "shooter"],
+            obstacleKinds: FANTASY_OBSTACLE_KINDS,
           },
           {
             id: 2,
@@ -737,6 +777,7 @@
             tomosEnabled: false,
             // shooterの比率を上げ、撃ってくる敵への対応に慣れさせる。
             enemyKinds: ["grunt", "grunt", "shooter", "shooter"],
+            obstacleKinds: VOID_OBSTACLE_KINDS,
           },
           {
             id: 3,
@@ -759,6 +800,7 @@
             tomosEnabled: false,
             // 高速で直線的に突っ込んでくるdasherをここで初登場させる。
             enemyKinds: ["grunt", "shooter", "shooter", "dasher"],
+            obstacleKinds: FROZEN_OBSTACLE_KINDS,
           },
           {
             id: 4,
@@ -779,6 +821,7 @@
             tomosEnabled: false,
             // dasherの比率を上げ、高速突撃への回避に慣れさせる。
             enemyKinds: ["grunt", "shooter", "dasher", "dasher"],
+            obstacleKinds: CRYSTAL_OBSTACLE_KINDS,
           },
           {
             id: 5,
@@ -819,6 +862,7 @@
             tomosEnabled: false,
             // 大きく蛇行して避けにくいweaverをここで初登場させる。
             enemyKinds: ["shooter", "dasher", "dasher", "weaver"],
+            obstacleKinds: INFERNO_OBSTACLE_KINDS,
             // 地獄の中心へ向かう地中トンネルの演出。天井にも地面と同じ
             // 紋様を配置し、上下を地面で挟まれたトンネル内を進んでいる
             // ように見せる(buildCeiling参照)。
@@ -863,6 +907,7 @@
             tomosEnabled: true,
             // weaverの比率を上げ、終盤らしい回避難度にする。
             enemyKinds: ["shooter", "dasher", "weaver", "weaver"],
+            obstacleKinds: ANCIENT_OBSTACLE_KINDS,
           },
           {
             id: 9,
@@ -912,6 +957,7 @@
             // 最終ステージなので、これまでに登場した敵種を全て使い切る
             // 最も厳しい編成にする。
             enemyKinds: ["shooter", "dasher", "dasher", "weaver", "weaver"],
+            obstacleKinds: ABYSS_OBSTACLE_KINDS,
           },
         ];
 
@@ -32368,6 +32414,370 @@
           return group;
         }
 
+        // クリスタルシャード(FANTASY ZONE専用): 半透明の青白い結晶。
+        // 幻想的な魔法の世界観に合わせ、汎用の"rock"の代わりに使う。
+        function buildCrystalShardMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0xaee0ff,
+            emissive: 0x6fc4ff,
+            emissiveIntensity: 0.5,
+            transparent: true,
+            opacity: 0.85,
+            roughness: 0.1,
+            metalness: 0.2,
+          });
+          var shapes = [
+            { r: 1.3, h: 3.5, rot: 0.1 },
+            { r: 0.8, h: 2.3, rot: -0.4 },
+            { r: 0.6, h: 1.8, rot: 0.5 },
+          ];
+          for (var i = 0; i < shapes.length; i++) {
+            var s = shapes[i];
+            var shard = new THREE.Mesh(
+              new THREE.ConeGeometry(s.r, s.h, 5),
+              mat,
+            );
+            shard.position.set((i - 1) * 0.9, s.h / 2 - 1.5, (i - 1) * 0.3);
+            shard.rotation.z = s.rot;
+            group.add(shard);
+          }
+          return group;
+        }
+
+        // 虹のアーチ(FANTASY ZONE専用): 小さな装飾的アーチ。幻想世界らしい
+        // 華やかさを加える。
+        function buildRainbowArchMesh() {
+          var group = new THREE.Group();
+          var colors = [
+            0xff6666, 0xffcc66, 0xffff66, 0x66ff99, 0x66ccff, 0xcc66ff,
+          ];
+          for (var i = 0; i < colors.length; i++) {
+            var mat = new THREE.MeshBasicMaterial({ color: colors[i] });
+            var ring = new THREE.Mesh(
+              new THREE.TorusGeometry(1.6 - i * 0.12, 0.08, 6, 16, Math.PI),
+              mat,
+            );
+            group.add(ring);
+          }
+          return group;
+        }
+
+        // 枯れ木(VOID GARDEN専用): 虚無の庭園にふさわしい、葉のない
+        // ねじれた木のシルエット。
+        function buildWitheredTreeMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({ color: 0x2a1f1a });
+          var trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.35, 0.55, 5, 7),
+            mat,
+          );
+          trunk.position.y = -1;
+          group.add(trunk);
+          var branchConfigs = [
+            { x: 0.6, y: 1.2, rotZ: -0.8, len: 1.8 },
+            { x: -0.5, y: 1.8, rotZ: 0.9, len: 1.5 },
+            { x: 0.3, y: 2.6, rotZ: -0.4, len: 1.2 },
+          ];
+          for (var i = 0; i < branchConfigs.length; i++) {
+            var b = branchConfigs[i];
+            var branch = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.08, 0.18, b.len, 5),
+              mat,
+            );
+            branch.position.set(b.x, b.y, 0);
+            branch.rotation.z = b.rotZ;
+            group.add(branch);
+          }
+          return group;
+        }
+
+        // 石灯籠(VOID GARDEN専用): 庭園の名残を感じさせる石灯籠。
+        function buildStoneLanternMesh() {
+          var group = new THREE.Group();
+          var stoneMat = new THREE.MeshStandardMaterial({ color: 0x556655 });
+          var glowMat = new THREE.MeshStandardMaterial({
+            color: 0xffddaa,
+            emissive: 0xffcc66,
+            emissiveIntensity: 0.8,
+          });
+          var base = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.9, 1.1, 0.6, 8),
+            stoneMat,
+          );
+          base.position.y = -2.5;
+          group.add(base);
+          var pillar = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.35, 0.4, 3, 8),
+            stoneMat,
+          );
+          pillar.position.y = -0.7;
+          group.add(pillar);
+          var firebox = new THREE.Mesh(
+            new THREE.BoxGeometry(1.1, 1.1, 1.1),
+            stoneMat,
+          );
+          firebox.position.y = 1.2;
+          group.add(firebox);
+          var light = new THREE.Mesh(
+            new THREE.SphereGeometry(0.4, 8, 8),
+            glowMat,
+          );
+          light.position.y = 1.2;
+          group.add(light);
+          var roof = new THREE.Mesh(
+            new THREE.ConeGeometry(1, 0.7, 4),
+            stoneMat,
+          );
+          roof.position.y = 2.1;
+          roof.rotation.y = Math.PI / 4;
+          group.add(roof);
+          return group;
+        }
+
+        // 氷の結晶クラスター(FROZEN NEBULA専用): 汎用の"rock"の代わりに
+        // 使う、角ばった透明感のある氷の塊。
+        function buildIceCrystalMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0xdff5ff,
+            emissive: 0x99ddff,
+            emissiveIntensity: 0.3,
+            transparent: true,
+            opacity: 0.88,
+            roughness: 0.05,
+            metalness: 0.1,
+          });
+          var main = new THREE.Mesh(new THREE.OctahedronGeometry(1.5, 0), mat);
+          group.add(main);
+          var subConfigs = [
+            { pos: [1.1, -0.5, 0.3], r: 0.7 },
+            { pos: [-1, 0.3, -0.4], r: 0.55 },
+            { pos: [0.2, 0.9, 0.6], r: 0.45 },
+          ];
+          for (var i = 0; i < subConfigs.length; i++) {
+            var c = subConfigs[i];
+            var sub = new THREE.Mesh(new THREE.OctahedronGeometry(c.r, 0), mat);
+            sub.position.set(c.pos[0], c.pos[1], c.pos[2]);
+            group.add(sub);
+          }
+          return group;
+        }
+
+        // つらら群(FROZEN NEBULA専用): 上から垂れ下がる氷柱の集まり。
+        function buildIcicleClusterMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0xcaf0ff,
+            emissive: 0x88ccee,
+            emissiveIntensity: 0.25,
+            transparent: true,
+            opacity: 0.85,
+          });
+          var count = 6;
+          for (var i = 0; i < count; i++) {
+            var t = i / (count - 1);
+            var len = 1.2 + Math.abs(t - 0.5) * -1.5 + 2.2;
+            var icicle = new THREE.Mesh(
+              new THREE.ConeGeometry(0.22, len, 6),
+              mat,
+            );
+            icicle.position.set((t - 0.5) * 3.2, -len / 2 + 1, 0);
+            icicle.rotation.x = Math.PI;
+            group.add(icicle);
+          }
+          return group;
+        }
+
+        // データモノリス(CRYSTAL CANYON専用): デジタル空間らしい、
+        // 発光するワイヤーフレーム風の平たい石版。
+        function buildDataMonolithMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0x001a33,
+            emissive: 0x00ddff,
+            emissiveIntensity: 0.6,
+            metalness: 0.7,
+            roughness: 0.3,
+          });
+          var slab = new THREE.Mesh(new THREE.BoxGeometry(1.6, 4.5, 0.4), mat);
+          group.add(slab);
+          var wireMat = new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            wireframe: true,
+          });
+          var wire = new THREE.Mesh(
+            new THREE.BoxGeometry(1.7, 4.6, 0.5),
+            wireMat,
+          );
+          group.add(wire);
+          return group;
+        }
+
+        // グリッチキューブ(CRYSTAL CANYON専用): 不安定に明滅する小さな
+        // 立方体の集合。
+        function buildGlitchCubeMesh() {
+          var group = new THREE.Group();
+          var colors = [0x00ffff, 0xff00ff, 0xffffff];
+          for (var i = 0; i < 4; i++) {
+            var mat = new THREE.MeshBasicMaterial({
+              color: colors[i % colors.length],
+              transparent: true,
+              opacity: 0.75,
+            });
+            var cube = new THREE.Mesh(
+              new THREE.BoxGeometry(0.7, 0.7, 0.7),
+              mat,
+            );
+            cube.position.set(
+              (Math.random() - 0.5) * 1.6,
+              (Math.random() - 0.5) * 1.6,
+              (Math.random() - 0.5) * 0.6,
+            );
+            group.add(cube);
+          }
+          return group;
+        }
+
+        // マグマの巨岩(INFERNO CORE専用): 汎用の"rock"の代わりに使う、
+        // ひび割れて内部が発光する溶岩石。
+        function buildMagmaBoulderMesh() {
+          var group = new THREE.Group();
+          var rockMat = new THREE.MeshStandardMaterial({
+            color: 0x2a1108,
+            roughness: 0.9,
+          });
+          var rock = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(1.5, 0),
+            rockMat,
+          );
+          group.add(rock);
+          var crackMat = new THREE.MeshStandardMaterial({
+            color: 0xff5500,
+            emissive: 0xff5500,
+            emissiveIntensity: 1.5,
+          });
+          var crackPositions = [
+            [0.5, 0.3, 1.1],
+            [-0.6, -0.2, 0.9],
+            [0.1, -0.8, 1.0],
+          ];
+          for (var i = 0; i < crackPositions.length; i++) {
+            var crack = new THREE.Mesh(
+              new THREE.SphereGeometry(0.22, 6, 6),
+              crackMat,
+            );
+            crack.position.set(
+              crackPositions[i][0],
+              crackPositions[i][1],
+              crackPositions[i][2],
+            );
+            group.add(crack);
+          }
+          return group;
+        }
+
+        // 黒曜石の棘(INFERNO CORE専用): 鋭く尖った黒い火山ガラスの塊。
+        function buildObsidianSpikeMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0x0a0508,
+            emissive: 0x330011,
+            emissiveIntensity: 0.4,
+            metalness: 0.6,
+            roughness: 0.15,
+          });
+          var spikeConfigs = [
+            { r: 0.6, h: 3.5, x: 0, rotZ: 0 },
+            { r: 0.35, h: 2.4, x: 0.7, rotZ: -0.25 },
+            { r: 0.3, h: 2, x: -0.6, rotZ: 0.3 },
+          ];
+          for (var i = 0; i < spikeConfigs.length; i++) {
+            var c = spikeConfigs[i];
+            var spike = new THREE.Mesh(
+              new THREE.ConeGeometry(c.r, c.h, 6),
+              mat,
+            );
+            spike.position.set(c.x, c.h / 2 - 1.8, 0);
+            spike.rotation.z = c.rotZ;
+            group.add(spike);
+          }
+          return group;
+        }
+
+        // 倒れた石像(RUINS OF THE ANCIENTS専用): MOAIボスと呼応する、
+        // 崩れ落ちた古代の石像の頭部。
+        function buildFallenStatueMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0x8a7a5f,
+            roughness: 0.85,
+          });
+          var head = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.1, 1.3, 3, 8),
+            mat,
+          );
+          head.rotation.z = Math.PI / 2.2;
+          head.position.y = -1.8;
+          group.add(head);
+          var browMat = new THREE.MeshStandardMaterial({ color: 0x6a5a45 });
+          var brow = new THREE.Mesh(
+            new THREE.BoxGeometry(2.4, 0.4, 1.2),
+            browMat,
+          );
+          brow.position.set(0.3, -1.1, 0);
+          brow.rotation.z = Math.PI / 2.2;
+          group.add(brow);
+          return group;
+        }
+
+        // ヴォイドリフト(ABYSS ZERO専用): 「闇そのもの」を表す、空間の
+        // 裂け目のような紫の発光する亀裂。
+        function buildVoidRiftMesh() {
+          var group = new THREE.Group();
+          var coreMat = new THREE.MeshBasicMaterial({ color: 0x0a0014 });
+          var core = new THREE.Mesh(
+            new THREE.SphereGeometry(1.2, 10, 10),
+            coreMat,
+          );
+          core.scale.set(0.3, 1.5, 0.3);
+          group.add(core);
+          var glowMat = new THREE.MeshBasicMaterial({
+            color: 0x9933ff,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide,
+          });
+          var glow = new THREE.Mesh(
+            new THREE.SphereGeometry(1.4, 10, 10),
+            glowMat,
+          );
+          glow.scale.set(0.35, 1.6, 0.35);
+          group.add(glow);
+          return group;
+        }
+
+        // 崩れた石柱(ABYSS ZERO専用): 汎用"pillar"の破損版。すべてが
+        // 崩れ落ちていく最終ステージの緊迫感を出す。
+        function buildBrokenPillarMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({ color: 0x776666 });
+          var lower = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.8, 0.8, 5.5, 8),
+            mat,
+          );
+          lower.position.y = -2;
+          group.add(lower);
+          var upper = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.75, 0.8, 3, 8),
+            mat,
+          );
+          upper.position.set(0.5, 2.5, 0.2);
+          upper.rotation.z = 0.4;
+          group.add(upper);
+          return group;
+        }
+
         // 石柱: 専用ビルダーを持たない最もシンプルな障害物("pillar"種別)。
         function buildPillarMesh() {
           var geo = new THREE.CylinderGeometry(0.8, 0.8, 10, 8);
@@ -32414,34 +32824,96 @@
           } else if (kind === "mushroom") {
             mesh = buildMushroomMesh();
             mesh.position.set(laneX, -1.5, -160);
+          } else if (kind === "crystal_shard") {
+            mesh = buildCrystalShardMesh();
+            mesh.position.set(laneX, Math.random() * 2 + 1, -160);
+          } else if (kind === "rainbow_arch") {
+            mesh = buildRainbowArchMesh();
+            mesh.position.set(laneX, 2, -160);
+          } else if (kind === "withered_tree") {
+            mesh = buildWitheredTreeMesh();
+            mesh.position.set(laneX, 1, -160);
+          } else if (kind === "stone_lantern") {
+            mesh = buildStoneLanternMesh();
+            mesh.position.set(laneX, -1, -160);
+          } else if (kind === "ice_crystal") {
+            mesh = buildIceCrystalMesh();
+            mesh.position.set(laneX, -3, -160);
+          } else if (kind === "icicle_cluster") {
+            mesh = buildIcicleClusterMesh();
+            mesh.position.set(laneX, 3, -160);
+          } else if (kind === "data_monolith") {
+            mesh = buildDataMonolithMesh();
+            mesh.position.set(laneX, 1, -160);
+          } else if (kind === "glitch_cube") {
+            mesh = buildGlitchCubeMesh();
+            mesh.position.set(laneX, Math.random() * 3 - 1, -160);
+          } else if (kind === "magma_boulder") {
+            mesh = buildMagmaBoulderMesh();
+            mesh.position.set(laneX, -3, -160);
+          } else if (kind === "obsidian_spike") {
+            mesh = buildObsidianSpikeMesh();
+            mesh.position.set(laneX, 1, -160);
+          } else if (kind === "fallen_statue") {
+            mesh = buildFallenStatueMesh();
+            mesh.position.set(laneX, -3, -160);
+          } else if (kind === "void_rift") {
+            mesh = buildVoidRiftMesh();
+            mesh.position.set(laneX, Math.random() * 2, -160);
+          } else if (kind === "broken_pillar") {
+            mesh = buildBrokenPillarMesh();
+            mesh.position.set(laneX, 1, -160);
           } else {
             mesh = buildRockMesh();
             mesh.position.set(laneX, -3.5, -160);
           }
           scene.add(mesh);
-          var isFullHeight =
-            kind === "pillar" ||
-            kind === "ruins" ||
-            kind === "sotoba" ||
-            kind === "bamboo" ||
-            kind === "heart_pillar";
+          var fullHeightKinds = [
+            "pillar",
+            "ruins",
+            "sotoba",
+            "bamboo",
+            "heart_pillar",
+            "withered_tree",
+            "data_monolith",
+            "obsidian_spike",
+            "broken_pillar",
+          ];
+          var isFullHeight = fullHeightKinds.indexOf(kind) !== -1;
+          var narrowRadiusKinds = [
+            "pillar",
+            "ruins",
+            "sotoba",
+            "obsidian_spike",
+          ];
+          var midRadiusKinds = [
+            "bamboo",
+            "heart_pillar",
+            "stone_lantern",
+            "data_monolith",
+            "broken_pillar",
+          ];
+          var wideRadiusKinds = ["mushroom", "icicle_cluster"];
+          var radius =
+            narrowRadiusKinds.indexOf(kind) !== -1
+              ? 1.2
+              : midRadiusKinds.indexOf(kind) !== -1
+                ? 1.3
+                : wideRadiusKinds.indexOf(kind) !== -1
+                  ? 1.6
+                  : 1.4;
+          var tallHitKinds = ["floating_island", "flower_arch", "rainbow_arch"];
+          var hitHeight = isFullHeight
+            ? 999
+            : tallHitKinds.indexOf(kind) !== -1
+              ? 2.5
+              : kind === "mushroom" || kind === "icicle_cluster"
+                ? 3.5
+                : 1.6;
           obstacles.push({
             mesh: mesh,
-            radius:
-              kind === "pillar" || kind === "ruins" || kind === "sotoba"
-                ? 1.2
-                : kind === "bamboo" || kind === "heart_pillar"
-                  ? 1.3
-                  : kind === "mushroom"
-                    ? 1.6
-                    : 1.4,
-            hitHeight: isFullHeight
-              ? 999
-              : kind === "floating_island" || kind === "flower_arch"
-                ? 2.5
-                : kind === "mushroom"
-                  ? 3.5
-                  : 1.6,
+            radius: radius,
+            hitHeight: hitHeight,
             speed: 26,
           });
         }
