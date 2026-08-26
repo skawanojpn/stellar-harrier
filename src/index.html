@@ -27573,80 +27573,185 @@
             roughness: 0.4,
           });
 
-          // 3. 極細のトゲ付き茎
-          var stem = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.045, 0.07, 3.8, 8),
-            new THREE.MeshStandardMaterial({
-              color: 0x200a2a,
-              emissive: 0x120318,
-              roughness: 0.7,
-            }),
-          );
-          stem.position.y = -1.9;
-          group.add(stem);
+          var stemMat = new THREE.MeshStandardMaterial({
+            color: 0x200a2a,
+            emissive: 0x120318,
+            roughness: 0.7,
+          });
 
-          var stemThornGeo = new THREE.ConeGeometry(0.035, 0.2, 4);
-          for (var st = 0; st < 28; st++) {
-            var stRatio = st / 28;
-            var stAngle = stRatio * Math.PI * 10;
-            var stemThorn = new THREE.Mesh(stemThornGeo, thornMat);
-            stemThorn.position.set(
-              Math.cos(stAngle) * 0.06,
-              -0.4 - stRatio * 3.0,
-              Math.sin(stAngle) * 0.06,
+          // --- 3. 地面に向かって太くどっしりとした歪み大茎 (Gnarled Heavy Base Stem) ---
+          var stemGroup = new THREE.Group();
+          stemGroup.position.z = -0.45;
+
+          // 上部(花びら裏)は繊細に、下部(地面側)へ向かうにつれて半径を大幅に拡大 (0.07 -> 0.38)
+          var stemSegments = [
+            {
+              radiusTop: 0.07,
+              radiusBot: 0.11,
+              height: 0.8,
+              x: 0.0,
+              y: -0.4,
+              z: 0.0,
+              rotZ: 0.12,
+              rotX: -0.08,
+            },
+            {
+              radiusTop: 0.11,
+              radiusBot: 0.17,
+              height: 0.85,
+              x: -0.08,
+              y: -1.18,
+              z: -0.05,
+              rotZ: -0.18,
+              rotX: 0.14,
+            },
+            {
+              radiusTop: 0.17,
+              radiusBot: 0.24,
+              height: 0.9,
+              x: 0.07,
+              y: -2.0,
+              z: -0.12,
+              rotZ: 0.22,
+              rotX: -0.12,
+            },
+            {
+              radiusTop: 0.24,
+              radiusBot: 0.32,
+              height: 0.95,
+              x: -0.06,
+              y: -2.85,
+              z: -0.18,
+              rotZ: -0.15,
+              rotX: 0.18,
+            },
+            {
+              radiusTop: 0.32,
+              radiusBot: 0.42,
+              height: 1.0,
+              x: 0.05,
+              y: -3.75,
+              z: -0.22,
+              rotZ: 0.16,
+              rotX: -0.1,
+            },
+          ];
+
+          for (var stI = 0; stI < stemSegments.length; stI++) {
+            var ss = stemSegments[stI];
+            var stemSeg = new THREE.Mesh(
+              new THREE.CylinderGeometry(
+                ss.radiusTop,
+                ss.radiusBot,
+                ss.height,
+                9,
+              ),
+              stemMat,
             );
-            stemThorn.rotation.z = -Math.PI / 2;
-            stemThorn.rotation.y = -stAngle;
-            group.add(stemThorn);
+            stemSeg.position.set(ss.x, ss.y, ss.z);
+            stemSeg.rotation.z = ss.rotZ;
+            stemSeg.rotation.x = ss.rotX;
+            stemGroup.add(stemSeg);
+
+            // 茎の関節ノード (下部ほど巨大化)
+            var knot = new THREE.Mesh(
+              new THREE.SphereGeometry(ss.radiusBot * 1.2, 8, 8),
+              stemMat,
+            );
+            knot.position.set(ss.x, ss.y - ss.height / 2, ss.z);
+            stemGroup.add(knot);
           }
 
-          // 4. 茎から伸びる3本のトゲ付き鞭蔓
+          // 最下部・地面近くのどっしりとした根張り (Root Flare)
+          var baseRootPlinth = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.42, 0.65, 0.45, 10),
+            stemMat,
+          );
+          baseRootPlinth.position.set(0.06, -4.35, -0.24);
+          stemGroup.add(baseRootPlinth);
+
+          // 茎のトゲ (下部ほど巨大な不規則トゲに成長)
+          var stemThornGeo = new THREE.ConeGeometry(0.045, 0.25, 4);
+          for (var st = 0; st < 40; st++) {
+            var stRatio = st / 40;
+            var stAngle = stRatio * Math.PI * 12 + Math.sin(stRatio * 10) * 0.5;
+            var stemThorn = new THREE.Mesh(stemThornGeo, thornMat);
+            var thornY = -0.3 - stRatio * 3.8;
+            // 茎の太さに応じた半径位置
+            var currentStemRadius = 0.08 + stRatio * 0.32;
+            var thornRadius = currentStemRadius + 0.02;
+
+            stemThorn.position.set(
+              Math.cos(stAngle) * thornRadius,
+              thornY,
+              Math.sin(stAngle) * thornRadius - stRatio * 0.15,
+            );
+            stemThorn.scale.set(
+              1.0 + stRatio * 0.8,
+              1.0 + stRatio * 0.8,
+              1.0 + stRatio * 0.8,
+            );
+            stemThorn.rotation.z = -Math.PI / 2 + (Math.random() - 0.5) * 0.4;
+            stemThorn.rotation.y = -stAngle;
+            stemGroup.add(stemThorn);
+          }
+          group.add(stemGroup);
+
+          // --- 4. 花びらの向こう側(奥)から伸びるトゲ鞭蔓 (Tendrils x 6) ---
           var tendrils = [];
           var tendrilMat = new THREE.MeshStandardMaterial({
             color: 0x4a1854,
             emissive: 0x2e0c35,
-            emissiveIntensity: 0.6,
-            roughness: 0.6,
+            emissiveIntensity: 0.65,
+            roughness: 0.55,
           });
 
-          for (var tIdx = 0; tIdx < 3; tIdx++) {
-            var baseAngle = (tIdx / 3) * Math.PI * 2 + Math.PI / 6;
+          var tendrilCount = 6;
+          var segCount = 18;
+
+          for (var tIdx = 0; tIdx < tendrilCount; tIdx++) {
+            var baseAngle =
+              (tIdx / tendrilCount) * Math.PI * 2 + (tIdx % 2) * 0.2;
             var tendrilGroup = new THREE.Group();
+            // 太くなった茎の周囲（下部〜中部のどっしりした位置）から分岐
+            var attachY = -1.8 - (tIdx % 3) * 0.5;
+            var attachRadius = 0.22 + (tIdx % 3) * 0.06;
+
             tendrilGroup.position.set(
-              Math.cos(baseAngle) * 0.08,
-              -1.8,
-              Math.sin(baseAngle) * 0.08,
+              Math.cos(baseAngle) * attachRadius,
+              attachY,
+              -0.45 + Math.sin(baseAngle) * attachRadius,
             );
 
             var segments = [];
-            var segCount = 10;
             var prevParent = tendrilGroup;
 
             for (var s = 0; s < segCount; s++) {
-              var segTaper = 1.0 - (s / segCount) * 0.75;
+              var segTaper = 1.0 - (s / segCount) * 0.78;
+              var segLen = 0.35;
               var segGeo = new THREE.CylinderGeometry(
-                0.035 * segTaper,
                 0.045 * segTaper,
-                0.35,
+                0.058 * segTaper,
+                segLen,
                 6,
               );
-              segGeo.translate(0, -0.175, 0);
+              segGeo.translate(0, -segLen / 2, 0);
 
               var segMesh = new THREE.Mesh(segGeo, tendrilMat);
-              if (s > 0) segMesh.position.y = -0.32;
+              if (s > 0) segMesh.position.y = -segLen * 0.92;
 
               for (var th = 0; th < 2; th++) {
                 var thThorn = new THREE.Mesh(
-                  new THREE.ConeGeometry(0.022 * segTaper, 0.14 * segTaper, 4),
+                  new THREE.ConeGeometry(0.026 * segTaper, 0.16 * segTaper, 4),
                   thornMat,
                 );
-                var thAngle = th * Math.PI + s * 0.8;
+                var thAngle = th * Math.PI + s * 0.75;
                 thThorn.position.set(
-                  Math.cos(thAngle) * 0.04 * segTaper,
-                  -0.175,
-                  Math.sin(thAngle) * 0.04 * segTaper,
+                  Math.cos(thAngle) * 0.048 * segTaper,
+                  -segLen / 2,
+                  Math.sin(thAngle) * 0.048 * segTaper,
                 );
-                thThorn.rotation.z = Math.PI / 2.5;
+                thThorn.rotation.z = Math.PI / 2.4;
                 thThorn.rotation.y = -thAngle;
                 segMesh.add(thThorn);
               }
@@ -27661,11 +27766,12 @@
               group: tendrilGroup,
               segments: segments,
               angleOffset: baseAngle,
-              phaseOffset: tIdx * 2.1,
+              phaseOffset: tIdx * 1.05,
+              speedMult: 1.0 + (tIdx % 3) * 0.15,
             });
           }
 
-          // 5. 中央光源
+          // --- 5. 中央光源 ---
           var coreLight = new THREE.PointLight(0x00ffff, 3.5, 7.0, 1.2);
           coreLight.position.set(0, 0, 0.5);
           group.add(coreLight);
@@ -27674,11 +27780,11 @@
           coreSubLight.position.set(0, 0, 0.3);
           group.add(coreSubLight);
 
-          // 6. 口型の蕾
+          // --- 6. 口型の蕾 ---
           var mouthBud = createFemaleMouthBud();
           group.add(mouthBud);
 
-          // 7. 花弁（6枚）
+          // --- 7. 花弁（6枚: 手前・前面に開花） ---
           var petals = [];
           var petalCount = 6;
           var petalShape = new THREE.Shape();
@@ -27758,6 +27864,7 @@
             petals.push({ pivot: pivot, petal: petal });
           }
 
+          // --- 8. アニメーション更新関数 (updateLoop) ---
           group.userData.updateLoop = function (time, bloomVal) {
             var mouthOpen = bloomVal * 0.65;
             mouthBud.userData.upperLipPivot.rotation.x = -mouthOpen;
@@ -27769,13 +27876,21 @@
 
             for (var t = 0; t < tendrils.length; t++) {
               var td = tendrils[t];
-              var tPhase = time * 2.8 + td.phaseOffset;
+              var tPhase = time * 3.2 * td.speedMult + td.phaseOffset;
+
               for (var s = 0; s < td.segments.length; s++) {
                 var seg = td.segments[s];
-                var waveX = Math.sin(tPhase + s * 0.45) * 0.12;
-                var waveZ = Math.cos(tPhase + s * 0.4) * 0.14;
-                seg.rotation.x = waveX + 0.06;
-                seg.rotation.z = waveZ + Math.sin(td.angleOffset) * 0.08;
+                var sFactor = (s + 1) / td.segments.length;
+
+                var waveX =
+                  Math.sin(tPhase + s * 0.38) * (0.14 + sFactor * 0.08);
+                var waveZ =
+                  Math.cos(tPhase * 0.8 + s * 0.42) * (0.16 + sFactor * 0.1);
+                var waveY = Math.sin(tPhase * 1.2 + s * 0.25) * 0.05;
+
+                seg.rotation.x = waveX + 0.05;
+                seg.rotation.z = waveZ + Math.sin(td.angleOffset) * 0.07;
+                seg.rotation.y = waveY;
               }
             }
           };
@@ -29417,22 +29532,310 @@
         // なし・THREE.Group()を返す、という形は変えないこと。
         function buildMarbleStatueMesh() {
           var group = new THREE.Group();
+
+          // マテリアル定義
+          // 1. メイン大理石 (静謐で美しい乳白色)
           var marbleMat = new THREE.MeshStandardMaterial({
-            color: 0xe8e4da,
-            roughness: 0.6,
+            color: 0xf4f0e6,
+            roughness: 0.38,
             metalness: 0.05,
           });
-          var torso = new THREE.Mesh(
-            new THREE.CapsuleGeometry(0.4, 1.1, 4, 8),
+
+          // 2. 布地・陰影用大理石 (ほんのりトーンの違う大理石)
+          var clothMat = new THREE.MeshStandardMaterial({
+            color: 0xe6e1d5,
+            roughness: 0.52,
+            metalness: 0.02,
+          });
+
+          // 3. 神秘的な金箔・光輪トリム
+          var goldMat = new THREE.MeshStandardMaterial({
+            color: 0xd4af37,
+            roughness: 0.25,
+            metalness: 0.75,
+          });
+
+          var statueGroup = new THREE.Group();
+
+          // --- 1. 脚部 (Legs - 浮遊姿勢) ---
+          // 右脚 (軸足: すっきりと伸びた美脚)
+          var rightThigh = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.135, 0.11, 0.46, 8),
             marbleMat,
           );
-          group.add(torso);
-          var head = new THREE.Mesh(
-            new THREE.SphereGeometry(0.32, 10, 8),
+          rightThigh.position.set(0.14, 0.76, 0.02);
+          statueGroup.add(rightThigh);
+
+          var rightCalf = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.11, 0.075, 0.44, 8),
             marbleMat,
           );
-          head.position.y = 0.95;
-          group.add(head);
+          rightCalf.position.set(0.14, 0.34, 0.01);
+          statueGroup.add(rightCalf);
+
+          // 右足先 (浮遊するように尖らせたつま先)
+          var rightFoot = new THREE.Mesh(
+            new THREE.ConeGeometry(0.07, 0.16, 6),
+            marbleMat,
+          );
+          rightFoot.rotation.x = 0.5;
+          rightFoot.position.set(0.14, 0.08, 0.04);
+          statueGroup.add(rightFoot);
+
+          // 左脚 (遊足: 軽やかに曲げて浮遊感を強調)
+          var leftThigh = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.13, 0.105, 0.44, 8),
+            marbleMat,
+          );
+          leftThigh.position.set(-0.13, 0.74, 0.06);
+          leftThigh.rotation.z = 0.16;
+          leftThigh.rotation.x = -0.15;
+          statueGroup.add(leftThigh);
+
+          var leftCalf = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.105, 0.07, 0.42, 8),
+            marbleMat,
+          );
+          leftCalf.position.set(-0.19, 0.33, 0.13);
+          leftCalf.rotation.z = 0.09;
+          leftCalf.rotation.x = 0.12;
+          statueGroup.add(leftCalf);
+
+          // 左足先
+          var leftFoot = new THREE.Mesh(
+            new THREE.ConeGeometry(0.065, 0.15, 6),
+            marbleMat,
+          );
+          leftFoot.rotation.x = 0.6;
+          leftFoot.position.set(-0.21, 0.07, 0.18);
+          statueGroup.add(leftFoot);
+
+          // --- 2. 腰布・たなびくドレープ (Floating Drapery) ---
+          // 腰回りの流れるドレープ
+          var hipCloth = new THREE.Mesh(
+            new THREE.TorusGeometry(0.23, 0.075, 8, 14),
+            clothMat,
+          );
+          hipCloth.rotation.x = Math.PI / 2 + 0.25;
+          hipCloth.rotation.y = -0.15;
+          hipCloth.position.set(0.01, 0.95, 0.01);
+          statueGroup.add(hipCloth);
+
+          // 風になびく裾布 (後方に流れる幾何学的なドレープ)
+          var flowingCloth = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.22, 0.6, 6, 1, true),
+            clothMat,
+          );
+          flowingCloth.position.set(-0.05, 0.55, -0.12);
+          flowingCloth.rotation.z = -0.3;
+          flowingCloth.rotation.x = -0.4;
+          statueGroup.add(flowingCloth);
+
+          // --- 3. 骨盤・胴体 (Pelvis & Torso) ---
+          var pelvis = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.21, 0.19, 0.22, 8),
+            marbleMat,
+          );
+          pelvis.position.set(0.01, 1.02, 0.01);
+          statueGroup.add(pelvis);
+
+          // 腹筋部 (S字ライン)
+          var abs = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.22, 0.2, 0.32, 8),
+            marbleMat,
+          );
+          abs.position.set(0.02, 1.25, 0.01);
+          abs.rotation.z = -0.08;
+          statueGroup.add(abs);
+
+          // 胸筋部 (厚みのある胸板)
+          var chest = new THREE.Mesh(
+            new THREE.BoxGeometry(0.46, 0.32, 0.27),
+            marbleMat,
+          );
+          chest.position.set(0.01, 1.52, 0.02);
+          chest.rotation.z = 0.05;
+          statueGroup.add(chest);
+
+          // 大胸筋
+          var pecsLeft = new THREE.Mesh(
+            new THREE.SphereGeometry(0.125, 8, 8),
+            marbleMat,
+          );
+          pecsLeft.scale.set(1.2, 0.9, 0.7);
+          pecsLeft.position.set(-0.11, 1.5, 0.13);
+          statueGroup.add(pecsLeft);
+
+          var pecsRight = new THREE.Mesh(
+            new THREE.SphereGeometry(0.125, 8, 8),
+            marbleMat,
+          );
+          pecsRight.scale.set(1.2, 0.9, 0.7);
+          pecsRight.position.set(0.13, 1.51, 0.13);
+          statueGroup.add(pecsRight);
+
+          // --- 4. 腕部 (Arms) ---
+          // 左腕 (自然に下げた手)
+          var leftShoulder = new THREE.Mesh(
+            new THREE.SphereGeometry(0.105, 8, 8),
+            marbleMat,
+          );
+          leftShoulder.position.set(-0.26, 1.62, 0.02);
+          statueGroup.add(leftShoulder);
+
+          var leftUpperArm = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.07, 0.38, 8),
+            marbleMat,
+          );
+          leftUpperArm.position.set(-0.28, 1.4, 0.03);
+          leftUpperArm.rotation.z = 0.12;
+          statueGroup.add(leftUpperArm);
+
+          var leftForeArm = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.07, 0.055, 0.36, 8),
+            marbleMat,
+          );
+          leftForeArm.position.set(-0.26, 1.06, 0.08);
+          leftForeArm.rotation.x = -0.25;
+          statueGroup.add(leftForeArm);
+
+          // 右腕 (胸の前で曲げたポーズ)
+          var rightShoulder = new THREE.Mesh(
+            new THREE.SphereGeometry(0.105, 8, 8),
+            marbleMat,
+          );
+          rightShoulder.position.set(0.27, 1.64, 0.02);
+          statueGroup.add(rightShoulder);
+
+          var rightUpperArm = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.085, 0.075, 0.36, 8),
+            marbleMat,
+          );
+          rightUpperArm.position.set(0.25, 1.44, 0.1);
+          rightUpperArm.rotation.x = -0.4;
+          rightUpperArm.rotation.z = -0.3;
+          statueGroup.add(rightUpperArm);
+
+          var rightForeArm = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.075, 0.06, 0.35, 8),
+            marbleMat,
+          );
+          rightForeArm.position.set(0.13, 1.56, 0.24);
+          rightForeArm.rotation.x = -0.8;
+          rightForeArm.rotation.y = -0.6;
+          rightForeArm.rotation.z = 0.7;
+          statueGroup.add(rightForeArm);
+
+          var rightHand = new THREE.Mesh(
+            new THREE.BoxGeometry(0.075, 0.085, 0.075),
+            marbleMat,
+          );
+          rightHand.position.set(0.04, 1.66, 0.21);
+          statueGroup.add(rightHand);
+
+          // 肩から流れるたすき掛けのドレープ
+          var sashCloth = new THREE.Mesh(
+            new THREE.TorusGeometry(0.31, 0.038, 6, 16),
+            clothMat,
+          );
+          sashCloth.rotation.y = 0.5;
+          sashCloth.rotation.x = 1.1;
+          sashCloth.position.set(0.0, 1.52, 0.0);
+          statueGroup.add(sashCloth);
+
+          // --- 5. 首・頭部・髪 (Head & Hair) ---
+          var neck = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.085, 0.095, 0.18, 8),
+            marbleMat,
+          );
+          neck.position.set(0.01, 1.74, 0.02);
+          neck.rotation.x = 0.05;
+          statueGroup.add(neck);
+
+          var headCore = new THREE.Mesh(
+            new THREE.SphereGeometry(0.175, 12, 10),
+            marbleMat,
+          );
+          headCore.scale.set(0.9, 1.1, 0.95);
+          headCore.position.set(0.01, 1.91, 0.03);
+          headCore.rotation.y = -0.35;
+          statueGroup.add(headCore);
+
+          var nose = new THREE.Mesh(
+            new THREE.ConeGeometry(0.032, 0.11, 4),
+            marbleMat,
+          );
+          nose.position.set(-0.06, 1.89, 0.17);
+          nose.rotation.x = 0.2;
+          nose.rotation.y = -0.35;
+          statueGroup.add(nose);
+
+          var chin = new THREE.Mesh(
+            new THREE.SphereGeometry(0.048, 6, 6),
+            marbleMat,
+          );
+          chin.position.set(-0.04, 1.8, 0.15);
+          statueGroup.add(chin);
+
+          // 縮れ髪
+          var hairGroup = new THREE.Group();
+          var hairPos = [
+            [0.0, 2.04, 0.02, 0.075],
+            [-0.08, 2.02, 0.05, 0.065],
+            [0.08, 2.02, 0.05, 0.065],
+            [-0.12, 1.96, 0.03, 0.06],
+            [0.12, 1.96, 0.03, 0.06],
+            [0.0, 2.05, -0.06, 0.07],
+            [-0.07, 2.0, -0.07, 0.065],
+            [0.07, 2.0, -0.07, 0.065],
+            [-0.05, 2.04, 0.09, 0.055],
+            [0.04, 2.04, 0.09, 0.055],
+          ];
+
+          for (var i = 0; i < hairPos.length; i++) {
+            var hp = hairPos[i];
+            var curl = new THREE.Mesh(
+              new THREE.DodecahedronGeometry(hp[3], 0),
+              marbleMat,
+            );
+            curl.position.set(hp[0], hp[1], hp[2]);
+            hairGroup.add(curl);
+          }
+          statueGroup.add(hairGroup);
+
+          // --- 6. 神秘的な浮遊光輪・金の輪 (Orbital Rings) ---
+          // 頭上・頭部の光輪 (Halo)
+          var topHalo = new THREE.Mesh(
+            new THREE.TorusGeometry(0.22, 0.012, 8, 24),
+            goldMat,
+          );
+          topHalo.rotation.x = Math.PI / 2 + 0.1;
+          topHalo.position.set(0.01, 2.16, 0.02);
+          statueGroup.add(topHalo);
+
+          // 足元で交差して浮遊する神聖な金のリング (浮遊感を強調)
+          var feetRing1 = new THREE.Mesh(
+            new THREE.TorusGeometry(0.35, 0.015, 8, 24),
+            goldMat,
+          );
+          feetRing1.rotation.x = Math.PI / 3;
+          feetRing1.rotation.y = 0.4;
+          feetRing1.position.set(0.0, 0.2, 0.05);
+          statueGroup.add(feetRing1);
+
+          var feetRing2 = new THREE.Mesh(
+            new THREE.TorusGeometry(0.42, 0.012, 8, 24),
+            goldMat,
+          );
+          feetRing2.rotation.x = -Math.PI / 4;
+          feetRing2.rotation.y = -0.3;
+          feetRing2.position.set(0.0, 0.12, 0.02);
+          statueGroup.add(feetRing2);
+
+          // 全体のバウンディング・中心位置調整 (地面から浮かび上がった位置)
+          statueGroup.position.y = -0.9;
+
+          group.add(statueGroup);
           return group;
         }
 
@@ -33483,28 +33886,241 @@
         // ねじれた木のシルエット。
         function buildWitheredTreeMesh() {
           var group = new THREE.Group();
-          var mat = new THREE.MeshStandardMaterial({ color: 0x2a1f1a });
-          var trunk = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.35, 0.55, 5, 7),
-            mat,
-          );
-          trunk.position.y = -1;
-          group.add(trunk);
-          var branchConfigs = [
-            { x: 0.6, y: 1.2, rotZ: -0.8, len: 1.8 },
-            { x: -0.5, y: 1.8, rotZ: 0.9, len: 1.5 },
-            { x: 0.3, y: 2.6, rotZ: -0.4, len: 1.2 },
+
+          // マテリアル定義
+          // 1. 樹皮 (古木肌の落ち着いたダークブラウン)
+          var barkMat = new THREE.MeshStandardMaterial({
+            color: 0x483c32,
+            roughness: 0.8,
+            metalness: 0.05,
+          });
+
+          // 2. 枝・節目 (濃い古木)
+          var branchMat = new THREE.MeshStandardMaterial({
+            color: 0x362c24,
+            roughness: 0.85,
+            metalness: 0.02,
+          });
+
+          // 3. メイン葉房 (地中海オリーブ / セージグリーン)
+          var leafMainMat = new THREE.MeshStandardMaterial({
+            color: 0x3d593c,
+            roughness: 0.65,
+            metalness: 0.05,
+          });
+
+          // 4. 若葉・先端ハイライト (明るい銀緑)
+          var leafBrightMat = new THREE.MeshStandardMaterial({
+            color: 0x5d805c,
+            roughness: 0.55,
+            metalness: 0.02,
+          });
+
+          // 5. 枯れ葉・アンティークリーフ (深みのあるゴールドグリーン)
+          var leafDryMat = new THREE.MeshStandardMaterial({
+            color: 0x827d45,
+            roughness: 0.7,
+            metalness: 0.1,
+          });
+
+          // 6. 神秘的な金のツタアクセント
+          var goldMat = new THREE.MeshStandardMaterial({
+            color: 0xc8a648,
+            roughness: 0.3,
+            metalness: 0.7,
+          });
+
+          var treeGroup = new THREE.Group();
+
+          // --- 1. 根張り (Root Structure) ---
+          var rootPositions = [
+            [0.35, 0.12, 0.25, 0.45, -0.4, 0.5],
+            [-0.38, 0.1, -0.22, 0.4, 0.5, -0.3],
+            [0.15, 0.1, -0.35, 0.38, 0.2, 0.6],
+            [-0.28, 0.12, 0.32, 0.42, -0.6, -0.2],
           ];
-          for (var i = 0; i < branchConfigs.length; i++) {
-            var b = branchConfigs[i];
-            var branch = new THREE.Mesh(
-              new THREE.CylinderGeometry(0.08, 0.18, b.len, 5),
-              mat,
+
+          for (var r = 0; r < rootPositions.length; r++) {
+            var rp = rootPositions[r];
+            var root = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.1, 0.26, rp[3], 6),
+              barkMat,
             );
-            branch.position.set(b.x, b.y, 0);
-            branch.rotation.z = b.rotZ;
-            group.add(branch);
+            root.position.set(rp[0], rp[1], rp[2]);
+            root.rotation.z = rp[4];
+            root.rotation.x = rp[5];
+            treeGroup.add(root);
           }
+
+          // --- 2. ねじれた主幹 (Gnarled Olive Trunk) ---
+          // 下部主幹
+          var trunkBottom = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.38, 0.52, 1.0, 8),
+            barkMat,
+          );
+          trunkBottom.position.set(0.02, 0.6, 0);
+          trunkBottom.rotation.z = -0.08;
+          treeGroup.add(trunkBottom);
+
+          // 幹の瘤 (こぶ・ねじれ表現)
+          var knot1 = new THREE.Mesh(
+            new THREE.SphereGeometry(0.32, 8, 8),
+            barkMat,
+          );
+          knot1.scale.set(1.1, 0.8, 1.2);
+          knot1.position.set(0.08, 0.85, 0.05);
+          treeGroup.add(knot1);
+
+          // 中部主幹
+          var trunkMid = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.28, 0.36, 1.1, 8),
+            barkMat,
+          );
+          trunkMid.position.set(-0.04, 1.5, 0.02);
+          trunkMid.rotation.z = 0.12;
+          trunkMid.rotation.x = -0.06;
+          treeGroup.add(trunkMid);
+
+          // 金の帯リング (西洋庭園の神秘的な樹木アクセント)
+          var trunkGoldRing = new THREE.Mesh(
+            new THREE.TorusGeometry(0.31, 0.015, 8, 16),
+            goldMat,
+          );
+          trunkGoldRing.rotation.x = Math.PI / 2 + 0.1;
+          trunkGoldRing.position.set(0.0, 1.1, 0.03);
+          treeGroup.add(trunkGoldRing);
+
+          // 上部主幹
+          var trunkTop = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.27, 1.0, 8),
+            barkMat,
+          );
+          trunkTop.position.set(0.06, 2.35, -0.02);
+          trunkTop.rotation.z = -0.1;
+          treeGroup.add(trunkTop);
+
+          // --- 3. 枝分かれ (Main Branches) ---
+          var branchConfigs = [
+            {
+              x: -0.32,
+              y: 2.1,
+              z: 0.15,
+              rotZ: 0.6,
+              rotX: 0.2,
+              len: 1.1,
+              rTop: 0.08,
+              rBot: 0.18,
+            },
+            {
+              x: 0.35,
+              y: 2.4,
+              z: -0.1,
+              rotZ: -0.5,
+              rotX: -0.15,
+              len: 1.2,
+              rTop: 0.07,
+              rBot: 0.16,
+            },
+            {
+              x: 0.0,
+              y: 2.7,
+              z: 0.28,
+              rotZ: -0.1,
+              rotX: -0.5,
+              len: 1.0,
+              rTop: 0.06,
+              rBot: 0.14,
+            },
+            {
+              x: -0.15,
+              y: 3.1,
+              z: -0.2,
+              rotZ: 0.3,
+              rotX: 0.4,
+              len: 0.9,
+              rTop: 0.05,
+              rBot: 0.12,
+            },
+          ];
+
+          for (var b = 0; b < branchConfigs.length; b++) {
+            var bc = branchConfigs[b];
+            var branch = new THREE.Mesh(
+              new THREE.CylinderGeometry(bc.rTop, bc.rBot, bc.len, 6),
+              branchMat,
+            );
+            branch.position.set(bc.x, bc.y, bc.z);
+            branch.rotation.z = bc.rotZ;
+            branch.rotation.x = bc.rotX;
+            treeGroup.add(branch);
+          }
+
+          // 小さな枯れ枝
+          var twigConfigs = [
+            { x: -0.65, y: 2.3, z: 0.25, rotZ: 1.1, len: 0.5 },
+            { x: 0.68, y: 2.7, z: -0.18, rotZ: -1.0, len: 0.6 },
+            { x: 0.1, y: 3.6, z: 0.35, rotZ: 0.2, rotX: -0.8, len: 0.45 },
+          ];
+
+          for (var t = 0; t < twigConfigs.length; t++) {
+            var tc = twigConfigs[t];
+            var twig = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.015, 0.04, tc.len, 4),
+              branchMat,
+            );
+            twig.position.set(tc.x, tc.y, tc.z);
+            twig.rotation.z = tc.rotZ;
+            if (tc.rotX) twig.rotation.x = tc.rotX;
+            treeGroup.add(twig);
+          }
+
+          // --- 4. 糸杉/オリーブ風の洗練された樹冠ノード (Cypress / Olive Canopy) ---
+          var canopyNodes = [
+            [-0.6, 2.5, 0.2, 0.55, leafMainMat],
+            [0.62, 2.75, -0.15, 0.52, leafMainMat],
+            [0.0, 2.9, 0.48, 0.48, leafDryMat],
+            [-0.45, 2.85, -0.4, 0.5, leafMainMat],
+            [-0.35, 3.2, 0.15, 0.6, leafMainMat],
+            [0.38, 3.35, 0.1, 0.58, leafBrightMat],
+            [0.1, 3.45, -0.3, 0.52, leafMainMat],
+            [-0.2, 3.6, -0.15, 0.55, leafBrightMat],
+            [0.0, 3.95, 0.02, 0.5, leafBrightMat],
+            [-0.1, 4.35, 0.0, 0.42, leafBrightMat],
+            [0.05, 4.7, 0.0, 0.32, leafBrightMat],
+            [0.0, 4.95, 0.0, 0.2, leafBrightMat],
+          ];
+
+          for (var c = 0; c < canopyNodes.length; c++) {
+            var cn = canopyNodes[c];
+            var canopyNode = new THREE.Mesh(
+              new THREE.DodecahedronGeometry(cn[3], 0),
+              cn[4],
+            );
+            canopyNode.position.set(cn[0], cn[1], cn[2]);
+            canopyNode.scale.set(0.9, 1.35, 0.9);
+            treeGroup.add(canopyNode);
+          }
+
+          var subLeafPos = [
+            [-0.8, 2.4, 0.3, 0.22, leafBrightMat],
+            [0.8, 2.65, -0.2, 0.24, leafDryMat],
+            [-0.55, 3.4, 0.35, 0.26, leafBrightMat],
+            [0.52, 3.6, 0.25, 0.25, leafMainMat],
+          ];
+
+          for (var sl = 0; sl < subLeafPos.length; sl++) {
+            var slp = subLeafPos[sl];
+            var subNode = new THREE.Mesh(
+              new THREE.DodecahedronGeometry(slp[3], 0),
+              slp[4],
+            );
+            subNode.position.set(slp[0], slp[1], slp[2]);
+            treeGroup.add(subNode);
+          }
+
+          treeGroup.position.y = -1.5;
+
+          group.add(treeGroup);
           return group;
         }
 
@@ -33555,28 +34171,291 @@
         // 刈り込み仕立ての生垣。
         function buildTopiaryMesh() {
           var group = new THREE.Group();
-          var trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a4632 });
-          var trunk = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.25, 0.3, 1.2, 8),
-            trunkMat,
+
+          // マテリアル定義
+          // 1. 大理石 (古美た乳白色)
+          var marbleMat = new THREE.MeshStandardMaterial({
+            color: 0xf0ede6,
+            roughness: 0.45,
+            metalness: 0.05,
+          });
+
+          // 2. 影・台座用大理石
+          var marbleDarkMat = new THREE.MeshStandardMaterial({
+            color: 0xdfd9cd,
+            roughness: 0.55,
+            metalness: 0.02,
+          });
+
+          // 3. 蔓・茎 (深みのある木質・緑蔓)
+          var vineStemMat = new THREE.MeshStandardMaterial({
+            color: 0x3d3024,
+            roughness: 0.7,
+            metalness: 0.0,
+          });
+
+          // 4. ツタの葉 (エメラルドグリーン)
+          var leafMat = new THREE.MeshStandardMaterial({
+            color: 0x327a44,
+            roughness: 0.6,
+            metalness: 0.05,
+          });
+
+          // 5. 新緑の若葉・アクセント
+          var leafBrightMat = new THREE.MeshStandardMaterial({
+            color: 0x54ab69,
+            roughness: 0.5,
+            metalness: 0.02,
+          });
+
+          // 6. 金箔・古典刻印トリム
+          var goldMat = new THREE.MeshStandardMaterial({
+            color: 0xcaaa56,
+            roughness: 0.3,
+            metalness: 0.7,
+          });
+
+          var mainGroup = new THREE.Group();
+
+          // --- 1. 土台・ベース (Base Plinths) ---
+          // 左右の土台ブロック
+          var baseLeft = new THREE.Mesh(
+            new THREE.BoxGeometry(0.7, 0.35, 0.7),
+            marbleDarkMat,
           );
-          trunk.position.y = -2.4;
-          group.add(trunk);
-          var leafMat = new THREE.MeshStandardMaterial({ color: 0x3d7a3d });
-          var tierConfigs = [
-            { y: -1.2, radius: 1.3 },
-            { y: 0.4, radius: 1.0 },
-            { y: 1.7, radius: 0.65 },
-          ];
-          for (var i = 0; i < tierConfigs.length; i++) {
-            var tier = tierConfigs[i];
-            var ball = new THREE.Mesh(
-              new THREE.SphereGeometry(tier.radius, 10, 8),
-              leafMat,
+          baseLeft.position.set(-1.1, 0.175, 0);
+          mainGroup.add(baseLeft);
+
+          var baseRight = new THREE.Mesh(
+            new THREE.BoxGeometry(0.7, 0.35, 0.7),
+            marbleDarkMat,
+          );
+          baseRight.position.set(1.1, 0.175, 0);
+          mainGroup.add(baseRight);
+
+          // 金のベースリング
+          var ringLeft = new THREE.Mesh(
+            new THREE.BoxGeometry(0.72, 0.04, 0.72),
+            goldMat,
+          );
+          ringLeft.position.set(-1.1, 0.36, 0);
+          mainGroup.add(ringLeft);
+
+          var ringRight = new THREE.Mesh(
+            new THREE.BoxGeometry(0.72, 0.04, 0.72),
+            goldMat,
+          );
+          ringRight.position.set(1.1, 0.36, 0);
+          mainGroup.add(ringRight);
+
+          // --- 2. 古代ローマ風大理石柱 (Roman Columns) ---
+          function buildColumn(xPos) {
+            var colGroup = new THREE.Group();
+            colGroup.position.set(xPos, 0.38, 0);
+
+            // 柱脚 (Base Cushion)
+            var colBase = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.28, 0.32, 0.12, 12),
+              marbleMat,
             );
-            ball.position.y = tier.y;
-            group.add(ball);
+            colBase.position.y = 0.06;
+            colGroup.add(colBase);
+
+            // 柱身 (Main Shaft - エンタシスと縦溝の質感)
+            var colShaft = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.22, 0.26, 2.2, 12),
+              marbleMat,
+            );
+            colShaft.position.y = 1.22;
+            colGroup.add(colShaft);
+
+            // 柱身の縦ライン飾り (フルーティングの視覚的表現)
+            for (var a = 0; a < 6; a++) {
+              var angle = (a * Math.PI) / 3;
+              var flute = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.02, 0.02, 2.18, 4),
+                marbleDarkMat,
+              );
+              flute.position.set(
+                Math.cos(angle) * 0.23,
+                1.22,
+                Math.sin(angle) * 0.23,
+              );
+              colGroup.add(flute);
+            }
+
+            // 柱頭 (Capital - イオニア/コーリンス調の頭部)
+            var capitalBase = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.3, 0.23, 0.15, 12),
+              marbleMat,
+            );
+            capitalBase.position.y = 2.385;
+            colGroup.add(capitalBase);
+
+            var capitalTop = new THREE.Mesh(
+              new THREE.BoxGeometry(0.68, 0.12, 0.68),
+              marbleMat,
+            );
+            capitalTop.position.y = 2.51;
+            colGroup.add(capitalTop);
+
+            // 柱頭の金リング
+            var capitalGold = new THREE.Mesh(
+              new THREE.TorusGeometry(0.28, 0.015, 8, 16),
+              goldMat,
+            );
+            capitalGold.rotation.x = Math.PI / 2;
+            capitalGold.position.y = 2.45;
+            colGroup.add(capitalGold);
+
+            return colGroup;
           }
+
+          mainGroup.add(buildColumn(-1.1));
+          mainGroup.add(buildColumn(1.1));
+
+          // --- 3. 上部アーキトレーヴ・梁・パーゴラ格子 (Entablature & Beams) ---
+          // 主横梁 (Main Architrave Beam)
+          var mainBeam = new THREE.Mesh(
+            new THREE.BoxGeometry(3.0, 0.28, 0.55),
+            marbleMat,
+          );
+          mainBeam.position.set(0, 3.09, 0);
+          mainGroup.add(mainBeam);
+
+          // 梁の縁モールディング (Gold Trim Line)
+          var beamGoldLine = new THREE.Mesh(
+            new THREE.BoxGeometry(3.04, 0.03, 0.57),
+            goldMat,
+          );
+          beamGoldLine.position.set(0, 3.24, 0);
+          mainGroup.add(beamGoldLine);
+
+          // 上部のパーゴラ格子アタッチメント (パーゴラクロスビーム 5本)
+          var raftersCount = 5;
+          var rafterStartX = -1.1;
+          var rafterSpacing = 0.55;
+          for (var r = 0; r < raftersCount; r++) {
+            var rx = rafterStartX + r * rafterSpacing;
+            var rafter = new THREE.Mesh(
+              new THREE.BoxGeometry(0.12, 0.16, 1.2),
+              marbleMat,
+            );
+            rafter.position.set(rx, 3.33, 0);
+            mainGroup.add(rafter);
+          }
+
+          // --- 4. 絡みつくツタ・蔓と葉 (Overgrown Ivy & Vines) ---
+          var vineGroup = new THREE.Group();
+
+          // 柱に巻きつくメインの太い蔓 (螺旋状)
+          function addVineToColumn(xPos, isReverse) {
+            var dir = isReverse ? -1 : 1;
+            var steps = 14;
+            for (var s = 0; s < steps; s++) {
+              var progress = s / steps;
+              var y = 0.45 + progress * 2.1;
+              var radius = 0.27 + Math.sin(progress * Math.PI) * 0.03;
+              var angle = progress * Math.PI * 4 * dir;
+
+              var stemSegment = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.035, 0.04, 0.2, 6),
+                vineStemMat,
+              );
+              stemSegment.position.set(
+                xPos + Math.cos(angle) * radius,
+                y,
+                Math.sin(angle) * radius,
+              );
+              stemSegment.rotation.z = Math.cos(angle) * 0.3;
+              stemSegment.rotation.x = Math.sin(angle) * 0.3;
+              vineGroup.add(stemSegment);
+
+              // 蔓の分岐ポイントに葉っぱ群を茂らせる
+              if (s % 2 === 0) {
+                var leafClusterCount = 3;
+                for (var lc = 0; lc < leafClusterCount; lc++) {
+                  var mat = (s + lc) % 3 === 0 ? leafBrightMat : leafMat;
+                  var leaf = new THREE.Mesh(
+                    new THREE.DodecahedronGeometry(0.08 + (lc % 2) * 0.03, 0),
+                    mat,
+                  );
+                  var lx = xPos + Math.cos(angle + lc * 0.8) * (radius + 0.06);
+                  var ly = y + (lc - 1) * 0.05;
+                  var lz = Math.sin(angle + lc * 0.8) * (radius + 0.06);
+                  leaf.position.set(lx, ly, lz);
+                  vineGroup.add(leaf);
+                }
+              }
+            }
+          }
+
+          addVineToColumn(-1.1, false);
+          addVineToColumn(1.1, true);
+
+          // 梁の上に無造作に覆いかぶさるツタの群生 (Top Canopy Foliage)
+          var topFoliagePos = [
+            [-1.2, 3.42, 0.1, 0.22],
+            [-0.8, 3.45, -0.2, 0.25],
+            [-0.4, 3.4, 0.25, 0.2],
+            [0.0, 3.46, -0.1, 0.28],
+            [0.4, 3.41, 0.2, 0.22],
+            [0.8, 3.44, -0.15, 0.26],
+            [1.2, 3.43, 0.15, 0.21],
+            [-1.0, 3.25, 0.3, 0.18],
+            [0.2, 3.22, 0.32, 0.19],
+            [1.0, 3.24, -0.3, 0.17],
+          ];
+
+          for (var f = 0; f < topFoliagePos.length; f++) {
+            var fp = topFoliagePos[f];
+            var fMat = f % 2 === 0 ? leafMat : leafBrightMat;
+            var foliageNode = new THREE.Mesh(
+              new THREE.DodecahedronGeometry(fp[3], 0),
+              fMat,
+            );
+            foliageNode.position.set(fp[0], fp[1], fp[2]);
+            vineGroup.add(foliageNode);
+          }
+
+          // 垂れ下がるツタの蔓 (Hanging Ivy Vines)
+          var hangingVines = [
+            [-0.85, 3.0, 0.32, 0.6],
+            [-0.3, 2.9, -0.3, 0.5],
+            [0.55, 2.85, 0.31, 0.7],
+            [1.15, 2.95, 0.32, 0.55],
+          ];
+
+          for (var h = 0; h < hangingVines.length; h++) {
+            var hv = hangingVines[h];
+            var hangStem = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.02, 0.015, hv[3], 6),
+              vineStemMat,
+            );
+            hangStem.position.set(hv[0], hv[1] - hv[3] / 2, hv[2]);
+            vineGroup.add(hangStem);
+
+            for (var hl = 0; hl < 4; hl++) {
+              var hLeafMat = hl % 2 === 0 ? leafBrightMat : leafMat;
+              var hLeaf = new THREE.Mesh(
+                new THREE.DodecahedronGeometry(0.07, 0),
+                hLeafMat,
+              );
+              hLeaf.position.set(
+                hv[0] + (hl % 2 === 0 ? 0.04 : -0.04),
+                hv[1] - (hl * hv[3]) / 4,
+                hv[2] + 0.02,
+              );
+              vineGroup.add(hLeaf);
+            }
+          }
+
+          mainGroup.add(vineGroup);
+
+          // 全体の原点・バウンディング調整 (足元が原点付近に来るように)
+          mainGroup.position.y = -1.6;
+
+          group.add(mainGroup);
           return group;
         }
 
@@ -33584,41 +34463,287 @@
         // 水盤+中央のポールから水しぶき(半透明の水色球)が湧き上がる形。
         function buildFountainMesh() {
           var group = new THREE.Group();
-          var stoneMat = new THREE.MeshStandardMaterial({ color: 0x99988a });
-          var basin = new THREE.Mesh(
-            new THREE.CylinderGeometry(1.6, 1.8, 0.8, 12),
-            stoneMat,
-          );
-          basin.position.y = -3.2;
-          group.add(basin);
-          var waterMat = new THREE.MeshStandardMaterial({
-            color: 0x88ccee,
+
+          // マテリアル定義
+          // 1. 大理石 (古美た白大理石)
+          var marbleMat = new THREE.MeshStandardMaterial({
+            color: 0xf2eee5,
+            roughness: 0.42,
+            metalness: 0.05,
+          });
+
+          // 2. 陰影・縁用ダーク大理石
+          var marbleDarkMat = new THREE.MeshStandardMaterial({
+            color: 0xdfd8cb,
+            roughness: 0.55,
+            metalness: 0.02,
+          });
+
+          // 3. 古典飾りの金箔
+          var goldMat = new THREE.MeshStandardMaterial({
+            color: 0xd4af37,
+            roughness: 0.28,
+            metalness: 0.75,
+          });
+
+          // 4. 水面マテリアル (クリアなエメラルドブルー)
+          var poolWaterMat = new THREE.MeshStandardMaterial({
+            color: 0x3bbce8,
+            roughness: 0.08,
+            metalness: 0.15,
+            transparent: true,
+            opacity: 0.82,
+          });
+
+          // 5. 落ちる水カーテン・水柱 (透明度の高い水流)
+          var cascadeMat = new THREE.MeshStandardMaterial({
+            color: 0x8be4ff,
+            roughness: 0.05,
+            metalness: 0.0,
+            transparent: true,
+            opacity: 0.65,
+          });
+
+          // 6. 頂点水しぶき・水滴 (白く輝く泡立ち)
+          var foamMat = new THREE.MeshStandardMaterial({
+            color: 0xe0f7ff,
+            roughness: 0.2,
+            metalness: 0.0,
             transparent: true,
             opacity: 0.75,
           });
-          var waterSurface = new THREE.Mesh(
-            new THREE.CylinderGeometry(1.4, 1.4, 0.15, 12),
-            waterMat,
+
+          var fountainGroup = new THREE.Group();
+
+          // --- 1. 下段大水盤 (Lower Main Basin) ---
+          // 土台ベース八角台座
+          var basePlinth = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.75, 1.85, 0.2, 8),
+            marbleDarkMat,
           );
-          waterSurface.position.y = -2.85;
-          group.add(waterSurface);
-          var pole = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.2, 0.25, 2.2, 8),
-            stoneMat,
+          basePlinth.position.y = 0.1;
+          fountainGroup.add(basePlinth);
+
+          var baseGoldRing = new THREE.Mesh(
+            new THREE.TorusGeometry(1.76, 0.02, 8, 24),
+            goldMat,
           );
-          pole.position.y = -1.9;
-          group.add(pole);
-          var sprayMat = new THREE.MeshStandardMaterial({
-            color: 0xccf0ff,
-            transparent: true,
-            opacity: 0.6,
-          });
-          var spray = new THREE.Mesh(
-            new THREE.SphereGeometry(0.5, 8, 8),
-            sprayMat,
+          baseGoldRing.rotation.x = Math.PI / 2;
+          baseGoldRing.position.y = 0.2;
+          fountainGroup.add(baseGoldRing);
+
+          // 下段水盤の外壁 (八角モールディング付き外枠)
+          var outerWall = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.65, 1.55, 0.65, 12, 1, true),
+            marbleMat,
           );
-          spray.position.y = -0.5;
-          group.add(spray);
+          outerWall.position.y = 0.525;
+          fountainGroup.add(outerWall);
+
+          // 水盤の上フチ (リム / 縁)
+          var basinRim = new THREE.Mesh(
+            new THREE.TorusGeometry(1.65, 0.08, 8, 24),
+            marbleMat,
+          );
+          basinRim.rotation.x = Math.PI / 2;
+          basinRim.position.y = 0.85;
+          fountainGroup.add(basinRim);
+
+          // 水盤底面
+          var poolBottom = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.5, 1.5, 0.1, 12),
+            marbleDarkMat,
+          );
+          poolBottom.position.y = 0.35;
+          fountainGroup.add(poolBottom);
+
+          // 下段プール水面
+          var mainWaterSurface = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.58, 1.58, 0.05, 16),
+            poolWaterMat,
+          );
+          mainWaterSurface.position.y = 0.72;
+          fountainGroup.add(mainWaterSurface);
+
+          // 水面の波紋リング (Ripple Rings)
+          var ripple1 = new THREE.Mesh(
+            new THREE.TorusGeometry(0.7, 0.015, 6, 24),
+            foamMat,
+          );
+          ripple1.rotation.x = Math.PI / 2;
+          ripple1.position.y = 0.75;
+          fountainGroup.add(ripple1);
+
+          var ripple2 = new THREE.Mesh(
+            new THREE.TorusGeometry(1.2, 0.015, 6, 24),
+            foamMat,
+          );
+          ripple2.rotation.x = Math.PI / 2;
+          ripple2.position.y = 0.75;
+          fountainGroup.add(ripple2);
+
+          // --- 2. 中央彫刻支柱 (Center Pedestal Shaft) ---
+          // 下部受け台
+          var colPedestal = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.38, 0.48, 0.45, 12),
+            marbleMat,
+          );
+          colPedestal.position.y = 0.55;
+          fountainGroup.add(colPedestal);
+
+          // 中間のくびれ柱 (バルスター彫刻)
+          var colBulb = new THREE.Mesh(
+            new THREE.SphereGeometry(0.34, 12, 10),
+            marbleMat,
+          );
+          colBulb.scale.set(0.85, 1.25, 0.85);
+          colBulb.position.y = 1.25;
+          fountainGroup.add(colBulb);
+
+          var colGoldBelt = new THREE.Mesh(
+            new THREE.TorusGeometry(0.3, 0.018, 8, 16),
+            goldMat,
+          );
+          colGoldBelt.rotation.x = Math.PI / 2;
+          colGoldBelt.position.y = 1.25;
+          fountainGroup.add(colGoldBelt);
+
+          var colUpper = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.24, 0.28, 0.5, 12),
+            marbleMat,
+          );
+          colUpper.position.y = 1.75;
+          fountainGroup.add(colUpper);
+
+          // --- 3. 上段小水盤 (Upper Small Tier Basin) ---
+          // 上段水盤の裏面受け皿
+          var upperBasinOuter = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.85, 0.32, 0.28, 12),
+            marbleMat,
+          );
+          upperBasinOuter.position.y = 2.08;
+          fountainGroup.add(upperBasinOuter);
+
+          // 上段水盤のフチ (リム)
+          var upperRim = new THREE.Mesh(
+            new THREE.TorusGeometry(0.85, 0.05, 8, 20),
+            marbleMat,
+          );
+          upperRim.rotation.x = Math.PI / 2;
+          upperRim.position.y = 2.22;
+          fountainGroup.add(upperRim);
+
+          // 上段水盤フチの金トリム
+          var upperRimGold = new THREE.Mesh(
+            new THREE.TorusGeometry(0.86, 0.012, 8, 20),
+            goldMat,
+          );
+          upperRimGold.rotation.x = Math.PI / 2;
+          upperRimGold.position.y = 2.23;
+          fountainGroup.add(upperRimGold);
+
+          // 上段プール水面
+          var upperWaterSurface = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.81, 0.81, 0.04, 16),
+            poolWaterMat,
+          );
+          upperWaterSurface.position.y = 2.19;
+          fountainGroup.add(upperWaterSurface);
+
+          // --- 4. 最上部噴出口・フィニアル (Top Spout Finial) ---
+          var topPedestal = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.18, 0.22, 0.35, 10),
+            marbleMat,
+          );
+          topPedestal.position.y = 2.38;
+          fountainGroup.add(topPedestal);
+
+          // 金の松かさ/オーブ噴出口 (Golden Spout Orb)
+          var topOrb = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(0.16, 0),
+            goldMat,
+          );
+          topOrb.position.y = 2.62;
+          fountainGroup.add(topOrb);
+
+          // --- 5. 水流・水しぶき・瀑布エフェクト (Water Jets & Cascades) ---
+          // A. 最上部から中央へ噴き出すメイン水柱 (Central Water Jet)
+          var mainJet = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.04, 0.1, 0.75, 8),
+            cascadeMat,
+          );
+          mainJet.position.y = 2.95;
+          fountainGroup.add(mainJet);
+
+          // 頂点で舞い上がる水しぶきドーム
+          var topSprayDome = new THREE.Mesh(
+            new THREE.SphereGeometry(0.28, 10, 8),
+            foamMat,
+          );
+          topSprayDome.scale.set(1.2, 0.8, 1.2);
+          topSprayDome.position.y = 3.35;
+          fountainGroup.add(topSprayDome);
+
+          // 頂点から飛び散る無数の水滴ノード
+          var dropletsGroup = new THREE.Group();
+          var dropletPos = [
+            [0.15, 3.42, 0.1, 0.05],
+            [-0.18, 3.38, 0.12, 0.04],
+            [0.05, 3.45, -0.16, 0.055],
+            [-0.12, 3.41, -0.15, 0.045],
+            [0.22, 3.32, -0.08, 0.04],
+            [-0.24, 3.3, 0.05, 0.045],
+            [0.0, 3.52, 0.0, 0.06],
+          ];
+          for (var d = 0; d < dropletPos.length; d++) {
+            var dp = dropletPos[d];
+            var drop = new THREE.Mesh(
+              new THREE.SphereGeometry(dp[3], 6, 6),
+              foamMat,
+            );
+            drop.position.set(dp[0], dp[1], dp[2]);
+            dropletsGroup.add(drop);
+          }
+          fountainGroup.add(dropletsGroup);
+
+          // B. 上段水盤から最上部へと弧を描く4本の小噴水 (Arching Corner Streams)
+          for (var c = 0; c < 4; c++) {
+            var cAngle = (c * Math.PI) / 2 + Math.PI / 4;
+            var stream = new THREE.Mesh(
+              new THREE.TorusGeometry(0.32, 0.022, 6, 12, Math.PI * 0.85),
+              cascadeMat,
+            );
+            stream.rotation.z = Math.PI / 2;
+            stream.rotation.y = cAngle;
+            stream.position.set(
+              Math.cos(cAngle) * 0.28,
+              2.7,
+              Math.sin(cAngle) * 0.28,
+            );
+            fountainGroup.add(stream);
+          }
+
+          // C. 上段水盤から下段大水盤へ全周360度に溢れ落ちるカーテン瀑布 (Cascading Water Wall)
+          var waterfallCurtain = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.86, 1.48, 1.42, 16, 1, true),
+            cascadeMat,
+          );
+          waterfallCurtain.position.y = 1.48;
+          fountainGroup.add(waterfallCurtain);
+
+          // 瀑布が下段水面に激しく着水する白泡リング
+          var splashRing = new THREE.Mesh(
+            new THREE.TorusGeometry(1.46, 0.05, 6, 24),
+            foamMat,
+          );
+          splashRing.rotation.x = Math.PI / 2;
+          splashRing.position.y = 0.77;
+          fountainGroup.add(splashRing);
+
+          // 全体の原点・バウンディング調整 (足元が原点付近に来るように)
+          fountainGroup.position.y = -1.6;
+
+          group.add(fountainGroup);
           return group;
         }
 
