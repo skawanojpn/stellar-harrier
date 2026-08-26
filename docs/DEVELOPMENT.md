@@ -146,14 +146,15 @@ stellar-harrier/
 - 実装（`src/index.html`）とドキュメントに差分が生まれたら、都度ドキュメントを更新する。
 - 各ディレクトリに`README.md`（ファイル一覧表・運用ルール・共通仕様）を必ず置く。
 
-| ディレクトリ                                       | 内容                                                             |
-| -------------------------------------------------- | ---------------------------------------------------------------- |
-| [`docs/boss-behaviors/`](boss-behaviors/README.md) | 各ボスの技・攻撃パターンの仕様                                   |
-| [`docs/boss-defeats/`](boss-defeats/README.md)     | 各ボスの撃破演出・断末魔SEの仕様                                 |
-| [`docs/enemies/`](enemies/README.md)               | ボス以外のエネミーの移動・攻撃・HP・スコア仕様（全20種）         |
-| [`docs/stages/`](stages/README.md)                 | 各ステージのコンセプト・配色・登場エネミー/障害物ロースター      |
-| [`docs/TODO-renaming.md`](TODO-renaming.md)        | コード上の内部識別子と表示名の不一致一覧（実装未着手、参照専用） |
-| `docs/DEVELOPMENT.md`                              | このファイル                                                     |
+| ディレクトリ                                                        | 内容                                                             |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [`docs/boss-behaviors/`](boss-behaviors/README.md)                  | 各ボスの技・攻撃パターンの仕様                                   |
+| [`docs/boss-defeats/`](boss-defeats/README.md)                      | 各ボスの撃破演出・断末魔SEの仕様                                 |
+| [`docs/enemies/`](enemies/README.md)                                | ボス以外のエネミーの移動・攻撃・HP・スコア仕様（全21種）         |
+| [`docs/stages/`](stages/README.md)                                  | 各ステージのコンセプト・配色・登場エネミー/障害物ロースター      |
+| [`docs/TODO-renaming.md`](TODO-renaming.md)                         | コード上の内部識別子と表示名の不一致一覧（実装未着手、参照専用） |
+| [`docs/gemini-agent-instructions.md`](gemini-agent-instructions.md) | キャラクター/障害物デザインをGemini等に委託する際の作業指示書    |
+| `docs/DEVELOPMENT.md`                                               | このファイル                                                     |
 
 ### 設定・ビルド・デプロイ関連ファイル
 
@@ -248,6 +249,12 @@ cerberus → fairy_queen → barbarian`（`final`は含まれない。エンデ�
 5. 大きな仕様変更・修正依頼を行う際は、このファイル（`docs/DEVELOPMENT.md`）の
    「今後の課題」セクションに事前にメモしておくと、セッションをまたいでも文脈が
    引き継がれやすい。
+6. キャラクター/障害物の**見た目のデザイン**は、`assets/characters/`配下の
+   `.js`ファイル（1関数=1ファイルの編集用複製）に限り、Gemini等の他の
+   AIエージェントに委託できる。委託する場合は
+   [`docs/gemini-agent-instructions.md`](gemini-agent-instructions.md)を
+   あわせて渡す。統合・`npm run verify`・実機確認・コミット/デプロイは
+   引き続きClaude Codeが担当する。
 
 ---
 

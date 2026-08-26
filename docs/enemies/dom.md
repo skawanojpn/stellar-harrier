@@ -1,7 +1,9 @@
 # オービター（`kind: "dom"`）
 
-- 登場: `domEnabled`フラグが立っているステージ（2, 3, 4, 6, 8, 10）。
+- 登場: `domEnabled`フラグが立っているステージ（3, 4, 6, 8, 10）。
   `enemyKinds`配列には現れず、ステージ設定の`domEnabled: true`によって出現が有効になる。
+  ステージ2（VOID GARDEN）は西洋庭園の世界観に合わせて`domEnabled: false`に変更し、
+  代わりに大理石像（`marble_statue`、`docs/enemies/marble_statue.md`参照）を追加した。
 - HP: 2（グラント等の1HP勢とは異なり唯一の2HP。弾2発で撃破） / スコア: 400（全エネミー中最高）
 - 移動速度基準値: 14（全エネミー中最も遅い）
 - メッシュ: `buildDomEnemyMesh()`（size=0.9、ドーム型）

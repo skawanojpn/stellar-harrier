@@ -894,6 +894,7 @@
           if (kind === "ember_imp") return 230;
           if (kind === "guardian_relic") return 450;
           if (kind === "shade") return 300;
+          if (kind === "marble_statue") return 350;
           return 5000;
         }
 
@@ -1003,10 +1004,19 @@
             enemySpeedMultiplier: 1.1,
             bossType: "tomos",
             bossName: "TOMOS",
-            domEnabled: true,
+            // オービター(dom)は無機質な機械デザインで西洋庭園の世界観と
+            // 噛み合わないため無効化し、代わりに庭園の彫像らしい
+            // marble_statue(大理石像)を出す。
+            domEnabled: false,
             tomosEnabled: false,
             // shooterの比率を上げ、撃ってくる敵への対応に慣れさせる。
-            enemyKinds: ["grunt", "grunt", "shooter", "shooter"],
+            enemyKinds: [
+              "grunt",
+              "grunt",
+              "shooter",
+              "shooter",
+              "marble_statue",
+            ],
             obstacleKinds: VOID_OBSTACLE_KINDS,
           },
           {
@@ -29400,6 +29410,32 @@
           return group;
         }
 
+        // 大理石像(VOID GARDEN専用、暫定プレースホルダー):
+        // 「大理石のダビデ像のような敵」というコンセプトの仮メッシュ。
+        // 見た目は docs/enemies/marble_statue.md の指示に基づき別途
+        // (Geminiサブエージェント経由で)差し替える予定。関数名・引数
+        // なし・THREE.Group()を返す、という形は変えないこと。
+        function buildMarbleStatueMesh() {
+          var group = new THREE.Group();
+          var marbleMat = new THREE.MeshStandardMaterial({
+            color: 0xe8e4da,
+            roughness: 0.6,
+            metalness: 0.05,
+          });
+          var torso = new THREE.Mesh(
+            new THREE.CapsuleGeometry(0.4, 1.1, 4, 8),
+            marbleMat,
+          );
+          group.add(torso);
+          var head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.32, 10, 8),
+            marbleMat,
+          );
+          head.position.y = 0.95;
+          group.add(head);
+          return group;
+        }
+
         // シェイド(ABYSS ZERO専用): 半透明の影の化身。近接するタイミングで
         // 一時的にほぼ透明になる。
         function buildShadeMesh() {
@@ -32201,6 +32237,12 @@
           {
             category: "enemy",
             categoryLabel: "エネミー",
+            key: "marble_statue",
+            label: "大理石像",
+          },
+          {
+            category: "enemy",
+            categoryLabel: "エネミー",
             key: "tomos",
             label: "トモス兵",
           },
@@ -32654,6 +32696,8 @@
               return buildGuardianRelicMesh();
             case "shade":
               return buildShadeMesh();
+            case "marble_statue":
+              return buildMarbleStatueMesh();
             case "tomos":
               return buildTomosEnemyMesh();
             case "aida":
@@ -32810,7 +32854,9 @@
                         ? 0.4
                         : kind === "guardian_relic"
                           ? 1.1
-                          : 1;
+                          : kind === "marble_statue"
+                            ? 1
+                            : 1;
 
           if (kind === "boss") {
             mesh = buildBossMeshByType(bossType);
@@ -32850,6 +32896,8 @@
             mesh = buildGuardianRelicMesh();
           } else if (kind === "shade") {
             mesh = buildShadeMesh();
+          } else if (kind === "marble_statue") {
+            mesh = buildMarbleStatueMesh();
           } else {
             mesh = buildGenericEnemyMesh(size, kind === "shooter");
           }
@@ -32890,7 +32938,9 @@
                                   ? 10
                                   : kind === "shade"
                                     ? 24
-                                    : 22) *
+                                    : kind === "marble_statue"
+                                      ? 16
+                                      : 22) *
               currentStage.enemySpeedMultiplier *
               getDifficultyMultiplier(),
             hp:

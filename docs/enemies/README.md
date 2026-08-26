@@ -13,28 +13,29 @@
 
 ## ファイル一覧
 
-| ファイル                               | `kind`           | 表示名               | HP  | スコア                         | 登場ステージ                           |
-| -------------------------------------- | ---------------- | -------------------- | --- | ------------------------------ | -------------------------------------- |
-| [grunt.md](grunt.md)                   | `grunt`          | グラント             | 1   | 100                            | 1, 2, 3, 4                             |
-| [shooter.md](shooter.md)               | `shooter`        | シューター           | 1   | 200                            | 1, 2, 3, 4, 6, 8, 10                   |
-| [dasher.md](dasher.md)                 | `dasher`         | ダッシャー           | 1   | 150                            | 3, 4, 6, 8, 10                         |
-| [weaver.md](weaver.md)                 | `weaver`         | ウィーバー           | 1   | 250                            | 6, 8, 10                               |
-| [dom.md](dom.md)                       | `dom`            | オービター           | 2   | 400                            | `domEnabled`のステージ（2,3,4,6,8,10） |
-| [tomos_mob.md](tomos_mob.md)           | `tomos`          | トモス兵             | 1   | 未設定（要修正候補、下記参照） | `tomosEnabled`のステージ（8,10）       |
-| [princess.md](princess.md)             | `princess`       | 姫                   | 1   | 300                            | 5（YOZAKURA）                          |
-| [yoshitsune.md](yoshitsune.md)         | `yoshitsune`     | 義経                 | 1   | 220                            | 5（YOZAKURA）                          |
-| [frog.md](frog.md)                     | `frog`           | 河童                 | 1   | 120                            | 5（YOZAKURA）                          |
-| [biwa_hoshi.md](biwa_hoshi.md)         | `biwa_hoshi`     | 琵琶法師             | 1   | 280                            | 5（YOZAKURA）                          |
-| [fairy.md](fairy.md)                   | `fairy`          | フェアリー           | 1   | 260                            | 7（SWEETHEART GROVE）                  |
-| [pixie.md](pixie.md)                   | `pixie`          | ピクシー             | 1   | 180                            | 7（SWEETHEART GROVE）                  |
-| [cupid.md](cupid.md)                   | `cupid`          | キューピッド         | 1   | 320                            | 7（SWEETHEART GROVE）                  |
-| [imp.md](imp.md)                       | `imp`            | インプ               | 1   | 150                            | 7（SWEETHEART GROVE）                  |
-| [sprite.md](sprite.md)                 | `sprite`         | スプライト           | 1   | 130                            | 1（FANTASY ZONE）                      |
-| [frost_wisp.md](frost_wisp.md)         | `frost_wisp`     | フロストウィスプ     | 1   | 240                            | 3（FROZEN NEBULA）                     |
-| [glitch_drone.md](glitch_drone.md)     | `glitch_drone`   | グリッチドローン     | 1   | 270                            | 4（CRYSTAL CANYON）                    |
-| [ember_imp.md](ember_imp.md)           | `ember_imp`      | エンバーインプ       | 1   | 230                            | 6（INFERNO CORE）                      |
-| [guardian_relic.md](guardian_relic.md) | `guardian_relic` | ガーディアンレリック | 2   | 450                            | 8（RUINS OF THE ANCIENTS）             |
-| [shade.md](shade.md)                   | `shade`          | シェイド             | 1   | 300                            | 10（ABYSS ZERO）                       |
+| ファイル                               | `kind`           | 表示名               | HP  | スコア                         | 登場ステージ                         |
+| -------------------------------------- | ---------------- | -------------------- | --- | ------------------------------ | ------------------------------------ |
+| [grunt.md](grunt.md)                   | `grunt`          | グラント             | 1   | 100                            | 1, 2, 3, 4                           |
+| [shooter.md](shooter.md)               | `shooter`        | シューター           | 1   | 200                            | 1, 2, 3, 4, 6, 8, 10                 |
+| [dasher.md](dasher.md)                 | `dasher`         | ダッシャー           | 1   | 150                            | 3, 4, 6, 8, 10                       |
+| [weaver.md](weaver.md)                 | `weaver`         | ウィーバー           | 1   | 250                            | 6, 8, 10                             |
+| [dom.md](dom.md)                       | `dom`            | オービター           | 2   | 400                            | `domEnabled`のステージ（3,4,6,8,10） |
+| [tomos_mob.md](tomos_mob.md)           | `tomos`          | トモス兵             | 1   | 未設定（要修正候補、下記参照） | `tomosEnabled`のステージ（8,10）     |
+| [princess.md](princess.md)             | `princess`       | 姫                   | 1   | 300                            | 5（YOZAKURA）                        |
+| [yoshitsune.md](yoshitsune.md)         | `yoshitsune`     | 義経                 | 1   | 220                            | 5（YOZAKURA）                        |
+| [frog.md](frog.md)                     | `frog`           | 河童                 | 1   | 120                            | 5（YOZAKURA）                        |
+| [biwa_hoshi.md](biwa_hoshi.md)         | `biwa_hoshi`     | 琵琶法師             | 1   | 280                            | 5（YOZAKURA）                        |
+| [fairy.md](fairy.md)                   | `fairy`          | フェアリー           | 1   | 260                            | 7（SWEETHEART GROVE）                |
+| [pixie.md](pixie.md)                   | `pixie`          | ピクシー             | 1   | 180                            | 7（SWEETHEART GROVE）                |
+| [cupid.md](cupid.md)                   | `cupid`          | キューピッド         | 1   | 320                            | 7（SWEETHEART GROVE）                |
+| [imp.md](imp.md)                       | `imp`            | インプ               | 1   | 150                            | 7（SWEETHEART GROVE）                |
+| [sprite.md](sprite.md)                 | `sprite`         | スプライト           | 1   | 130                            | 1（FANTASY ZONE）                    |
+| [frost_wisp.md](frost_wisp.md)         | `frost_wisp`     | フロストウィスプ     | 1   | 240                            | 3（FROZEN NEBULA）                   |
+| [glitch_drone.md](glitch_drone.md)     | `glitch_drone`   | グリッチドローン     | 1   | 270                            | 4（CRYSTAL CANYON）                  |
+| [ember_imp.md](ember_imp.md)           | `ember_imp`      | エンバーインプ       | 1   | 230                            | 6（INFERNO CORE）                    |
+| [guardian_relic.md](guardian_relic.md) | `guardian_relic` | ガーディアンレリック | 2   | 450                            | 8（RUINS OF THE ANCIENTS）           |
+| [shade.md](shade.md)                   | `shade`          | シェイド             | 1   | 300                            | 10（ABYSS ZERO）                     |
+| [marble_statue.md](marble_statue.md)   | `marble_statue`  | 大理石像             | 1   | 350                            | 2（VOID GARDEN、見た目は暫定）       |
 
 `aida`（`buildAidaMesh`、ギャラリー表示名「アイーダ護衛兵」）は実装・メッシュとも存在するが、
 現在どのステージの`enemyKinds`にも含まれておらず、隠しコマンドのCharacter Galleryでのみ確認できる

@@ -18,10 +18,14 @@
 
 ## 登場エネミー
 
-`enemyKinds: ["grunt", "grunt", "shooter", "shooter"]`
+`enemyKinds: ["grunt", "grunt", "shooter", "shooter", "marble_statue"]`
 
 - shooterの比率を上げ、撃ってくる敵への対応に慣れさせる。
-- `domEnabled: true`のため、`dom`（オービター）も別途抽選対象になる。
+- オービター（`dom`）は無機質な機械デザインで西洋庭園の世界観と噛み合わない
+  ため`domEnabled: false`に変更し、代わりに大理石像（`marble_statue`、
+  `docs/enemies/marble_statue.md`参照）を追加した。見た目は暫定プレースホルダーで、
+  最終的な「大理石のダビデ像のような敵」デザインは
+  `docs/gemini-agent-instructions.md`の指示に沿って別途差し替える予定。
 
 ## 登場障害物
 
