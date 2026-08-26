@@ -309,24 +309,112 @@
         align-items: center;
         justify-content: center;
         color: #ffcc00;
-        text-shadow: 0 0 10px rgba(255, 150, 0, 0.9);
         z-index: 26;
-        background: rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.78);
       }
       #pause-overlay.hidden {
         display: none;
       }
-      #pause-overlay h1 {
-        font-size: 36px;
+      #pause-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: min(420px, 88vw);
+        max-height: 88vh;
+        overflow-y: auto;
+        padding: 22px 28px 26px;
+        background: rgba(6, 12, 28, 0.92);
+        border: 2px solid #ffcc00;
+        border-radius: 8px;
+        box-shadow:
+          0 0 0 1px rgba(255, 204, 0, 0.25),
+          0 0 28px rgba(255, 150, 0, 0.35);
+      }
+      #pause-panel h1 {
+        font-size: 30px;
         letter-spacing: 6px;
-        margin: 0 0 8px;
+        margin: 0 0 4px;
+        text-shadow: 0 0 10px rgba(255, 150, 0, 0.9);
       }
-      #pause-overlay p {
-        font-size: 14px;
-        opacity: 0.8;
+      #pause-panel .pause-hint {
+        font-size: 12px;
+        opacity: 0.7;
+        margin: 0 0 18px;
       }
-      #pause-overlay button {
-        margin-top: 20px;
+      .settings-section {
+        width: 100%;
+        margin-bottom: 16px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(255, 204, 0, 0.25);
+      }
+      .settings-section:last-of-type {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+      .settings-section-title {
+        font-size: 11px;
+        letter-spacing: 2px;
+        opacity: 0.65;
+        margin: 0 0 10px;
+      }
+      .settings-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      .settings-row:last-child {
+        margin-bottom: 0;
+      }
+      .settings-row label {
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .settings-row input[type="range"] {
+        flex: 1;
+        accent-color: #ffcc00;
+        cursor: pointer;
+      }
+      .settings-value {
+        font-size: 12px;
+        width: 3ch;
+        text-align: right;
+        opacity: 0.85;
+      }
+      #settings-sound-toggle {
+        background: rgba(0, 0, 0, 0.4);
+        color: #ffcc00;
+        border: 1px solid #ffcc00;
+        border-radius: 4px;
+        padding: 5px 14px;
+        font-family: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .settings-controls-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: 12px;
+        line-height: 1.7;
+        opacity: 0.85;
+      }
+      .settings-controls-list kbd {
+        display: inline-block;
+        min-width: 1.4em;
+        padding: 1px 5px;
+        margin: 0 2px;
+        font-family: inherit;
+        font-size: 11px;
+        color: #ffcc00;
+        background: rgba(255, 204, 0, 0.12);
+        border: 1px solid rgba(255, 204, 0, 0.5);
+        border-radius: 3px;
+      }
+      #pause-overlay button.pause-primary-button {
+        margin-top: 4px;
         padding: 8px 24px;
         font-size: 15px;
         font-family: inherit;
@@ -486,9 +574,64 @@
       <div id="combo-display"></div>
       <div id="flash-overlay"></div>
       <div id="pause-overlay" class="hidden">
-        <h1>PAUSED</h1>
-        <p>Pキーで再開</p>
-        <button id="pause-quit-button" type="button">QUIT TO TITLE</button>
+        <div id="pause-panel">
+          <h1>PAUSED</h1>
+          <p class="pause-hint">Pキーで再開</p>
+
+          <div class="settings-section">
+            <p class="settings-section-title">SOUND</p>
+            <div class="settings-row">
+              <label for="settings-sound-toggle">サウンド</label>
+              <button id="settings-sound-toggle" type="button">ON</button>
+            </div>
+            <div class="settings-row">
+              <label for="settings-bgm-volume">BGM音量</label>
+              <input
+                id="settings-bgm-volume"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+              />
+              <span id="settings-bgm-volume-value" class="settings-value"
+                >100</span
+              >
+            </div>
+            <div class="settings-row">
+              <label for="settings-sfx-volume">SE音量</label>
+              <input
+                id="settings-sfx-volume"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+              />
+              <span id="settings-sfx-volume-value" class="settings-value"
+                >100</span
+              >
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <p class="settings-section-title">CONTROLS</p>
+            <ul class="settings-controls-list">
+              <li>
+                移動: <kbd>&#8593;</kbd><kbd>&#8595;</kbd><kbd>&#8592;</kbd
+                ><kbd>&#8594;</kbd> / <kbd>WASD</kbd> / マウスドラッグ
+              </li>
+              <li>ショット: <kbd>SPACE</kbd> / マウスクリック</li>
+              <li>ポーズ: <kbd>P</kbd></li>
+            </ul>
+          </div>
+
+          <button
+            id="pause-quit-button"
+            class="pause-primary-button"
+            type="button"
+          >
+            QUIT TO TITLE
+          </button>
+        </div>
       </div>
       <div id="stage-select-overlay" class="hidden">
         <h1 id="stage-select-title">STAGE SELECT</h1>
@@ -1007,6 +1150,57 @@
         var AudioCtx = window.AudioContext || window.webkitAudioContext;
         var audioCtx = null;
         var soundEnabled = true;
+        // 設定メニューのBGM/SE音量スライダー用(0〜1、既定1=フル音量)。
+        // どちらもlocalStorageに保存し、次回起動時に復元する。
+        var bgmVolumeSetting = loadVolumeSetting("stellarHarrierBgmVolume", 1);
+        var sfxVolumeSetting = loadVolumeSetting("stellarHarrierSfxVolume", 1);
+        var sfxMasterGain = null;
+
+        function loadVolumeSetting(key, fallback) {
+          try {
+            var raw = window.localStorage.getItem(key);
+            if (raw === null) return fallback;
+            var parsed = parseFloat(raw);
+            if (isNaN(parsed)) return fallback;
+            return Math.min(1, Math.max(0, parsed));
+          } catch (e) {
+            return fallback;
+          }
+        }
+
+        function saveVolumeSetting(key, value) {
+          try {
+            window.localStorage.setItem(key, String(value));
+          } catch (e) {
+            // localStorageが使用できない環境(プライベートブラウズ等)では
+            // 保存をあきらめ、今回のセッション内の音量調整のみ有効にする。
+          }
+        }
+
+        function getSfxMasterGain(ctx) {
+          if (!sfxMasterGain) {
+            sfxMasterGain = ctx.createGain();
+            sfxMasterGain.gain.value = sfxVolumeSetting;
+            sfxMasterGain.connect(ctx.destination);
+          }
+          return sfxMasterGain;
+        }
+
+        function setBgmVolume(value) {
+          bgmVolumeSetting = Math.min(1, Math.max(0, value));
+          saveVolumeSetting("stellarHarrierBgmVolume", bgmVolumeSetting);
+          if (typeof stellarAudio !== "undefined" && stellarAudio.volumeGain) {
+            stellarAudio.volumeGain.gain.value = bgmVolumeSetting;
+          }
+        }
+
+        function setSfxVolume(value) {
+          sfxVolumeSetting = Math.min(1, Math.max(0, value));
+          saveVolumeSetting("stellarHarrierSfxVolume", sfxVolumeSetting);
+          if (sfxMasterGain) {
+            sfxMasterGain.gain.value = sfxVolumeSetting;
+          }
+        }
 
         // SE用/BGM用で共通のAudioContextを確保する。Safariはページ内で
         // AudioContextを複数生成すると2つ目以降が正しく鳴らないことが
@@ -1056,7 +1250,7 @@
             ctx.currentTime + duration,
           );
           osc.connect(gain);
-          gain.connect(destinationNode || ctx.destination);
+          gain.connect(destinationNode || getSfxMasterGain(ctx));
           osc.start();
           osc.stop(ctx.currentTime + duration);
         }
@@ -1080,7 +1274,7 @@
           var gain = ctx.createGain();
           gain.gain.value = 0.2;
           noise.connect(gain);
-          gain.connect(ctx.destination);
+          gain.connect(getSfxMasterGain(ctx));
           noise.start();
         }
 
@@ -1114,7 +1308,7 @@
           noiseGain.gain.value = 0.35;
           noise.connect(noiseFilter);
           noiseFilter.connect(noiseGain);
-          noiseGain.connect(ctx.destination);
+          noiseGain.connect(getSfxMasterGain(ctx));
           noise.start();
 
           var osc = ctx.createOscillator();
@@ -1128,7 +1322,7 @@
             ctx.currentTime + 0.3,
           );
           osc.connect(oscGain);
-          oscGain.connect(ctx.destination);
+          oscGain.connect(getSfxMasterGain(ctx));
           osc.start();
           osc.stop(ctx.currentTime + 0.3);
         }
@@ -1203,7 +1397,7 @@
             subOsc.connect(subGain);
             subGain.connect(sirenGain);
 
-            sirenGain.connect(ctx.destination);
+            sirenGain.connect(getSfxMasterGain(ctx));
 
             // オシレーターの発音開始・終了スケジュール
             osc1.start(t);
@@ -1291,7 +1485,7 @@
             fg.connect(vocalGain);
           });
 
-          vocalGain.connect(ctx.destination);
+          vocalGain.connect(getSfxMasterGain(ctx));
 
           osc.start(now);
           osc.stop(now + duration + 0.02);
@@ -1320,7 +1514,7 @@
 
           noise.connect(noiseFilter);
           noiseFilter.connect(noiseGain);
-          noiseGain.connect(ctx.destination);
+          noiseGain.connect(getSfxMasterGain(ctx));
 
           noise.start(now);
           noise.stop(now + duration);
@@ -1360,7 +1554,7 @@
             ctx.currentTime + duration,
           );
           osc.connect(oscGain);
-          oscGain.connect(ctx.destination);
+          oscGain.connect(getSfxMasterGain(ctx));
           osc.start();
           osc.stop(ctx.currentTime + duration);
 
@@ -1389,7 +1583,7 @@
           );
           noise.connect(noiseFilter);
           noiseFilter.connect(noiseGain);
-          noiseGain.connect(ctx.destination);
+          noiseGain.connect(getSfxMasterGain(ctx));
           noise.start();
         }
 
@@ -23411,6 +23605,12 @@
             this.masterGain = ctx.createGain();
             this.masterGain.gain.value = 0.72;
 
+            // ユーザーが設定メニューで調整するBGM音量(0〜1、既定1)。
+            // masterGainのフェードイン/アウト処理とは独立させるため、
+            // 別ノードとしてmasterGainの後段に挟む。
+            this.volumeGain = ctx.createGain();
+            this.volumeGain.gain.value = bgmVolumeSetting;
+
             this.delayNode = ctx.createDelay();
             this.delayNode.delayTime.value = (60 / this.bpm) * 0.75;
             this.delayGain = ctx.createGain();
@@ -23432,7 +23632,8 @@
             this.analyser = ctx.createAnalyser();
             this.analyser.fftSize = 256;
 
-            this.masterGain.connect(this.subFilter);
+            this.masterGain.connect(this.volumeGain);
+            this.volumeGain.connect(this.subFilter);
             this.subFilter.connect(this.analyser);
             this.analyser.connect(ctx.destination);
             return ctx;
@@ -23819,9 +24020,7 @@
 
         function toggleSound() {
           soundEnabled = !soundEnabled;
-          document.getElementById("mute-button").textContent = soundEnabled
-            ? "SOUND: ON"
-            : "SOUND: OFF";
+          syncSoundUi();
           if (soundEnabled && state === STATE_PLAYING) {
             startBgm();
           } else {
@@ -23830,6 +24029,40 @@
               window.speechSynthesis.cancel();
             }
           }
+        }
+
+        // HUDのSOUNDボタンと、設定パネル(ポーズ画面)内のサウンドトグル
+        // ボタンは同じsoundEnabledを表示する2つの入り口なので、どちらかを
+        // 操作したら両方の表示をここで揃える。
+        function syncSoundUi() {
+          document.getElementById("mute-button").textContent = soundEnabled
+            ? "SOUND: ON"
+            : "SOUND: OFF";
+          var settingsToggle = document.getElementById("settings-sound-toggle");
+          if (settingsToggle) {
+            settingsToggle.textContent = soundEnabled ? "ON" : "OFF";
+          }
+        }
+
+        // 設定パネルの音量スライダー(0〜100の整数)を、内部で使う0〜1の
+        // 音量値と紐付ける共通セットアップ。sliderId/valueLabelIdの2要素と
+        // onChange(0〜1の値を受け取るsetter)をまとめて初期化する。
+        function initVolumeSlider(
+          sliderId,
+          valueLabelId,
+          initialValue,
+          onChange,
+        ) {
+          var slider = document.getElementById(sliderId);
+          var valueLabel = document.getElementById(valueLabelId);
+          var initialPercent = Math.round(initialValue * 100);
+          slider.value = String(initialPercent);
+          valueLabel.textContent = String(initialPercent);
+          slider.addEventListener("input", function () {
+            var percent = parseInt(slider.value, 10);
+            valueLabel.textContent = String(percent);
+            onChange(percent / 100);
+          });
         }
 
         // ============================================================
@@ -24487,6 +24720,21 @@
           document.getElementById("mute-button").onclick = toggleSound;
           document.getElementById("pause-button").onclick = togglePause;
           document.getElementById("pause-quit-button").onclick = quitToTitle;
+          document.getElementById("settings-sound-toggle").onclick =
+            toggleSound;
+          initVolumeSlider(
+            "settings-bgm-volume",
+            "settings-bgm-volume-value",
+            bgmVolumeSetting,
+            setBgmVolume,
+          );
+          initVolumeSlider(
+            "settings-sfx-volume",
+            "settings-sfx-volume-value",
+            sfxVolumeSetting,
+            setSfxVolume,
+          );
+          syncSoundUi();
           document
             .querySelectorAll(".stage-select-tab")
             .forEach(function (tab) {
