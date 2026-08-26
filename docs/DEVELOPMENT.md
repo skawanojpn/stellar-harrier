@@ -356,6 +356,31 @@ cerberus → fairy_queen → barbarian`（`final`は含まれない。エンデ�
      更新されない不具合）と、未収録だった障害物15種の追加登録（全57種を網羅）
    - 隠しENDINGタブをSTAGEタブのリスト末尾に統合、`impeccable audit`による
      隠しページUIの技術監査とレスポンシブ/ARIA対応の修正
+7. **SCALERの体型・当たり判定調整**（2026-08-26、`7954ccf`）:
+   - サイズを1.5倍(`SCALER_VISUAL_SCALE`)、胴体の横幅を1.25倍(`SCALER_BODY_WIDTH_SCALE`)に拡大
+   - 折り返し時に本体衝突で理不尽に被弾する問題を、Playwrightで自機を完全追従させる
+     専用デバッグリグで検証。当初「折り返し直後を無敵にするタイマー方式」で実装したが、
+     実際の被弾は往路（折り返し前）に起きていたと判明したため撤回し、Z距離ベースの
+     対称的な無敵判定（`SCALER_NEAR_COLLISION_SAFE_DISTANCE`）に置き換え
+8. **Stage2エネミー刷新とGemini連携指示書の新設**（2026-08-26、`38cfc6b`）:
+   - Stage2（VOID GARDEN）から機械的な意匠の`dom`（オービター）を除外
+     （`domEnabled: false`）、代わりに新規`marble_statue`（大理石像）を追加。
+     見た目は暫定プレースホルダー、動きの仕様（HP/スコア/移動）は確定
+   - `docs/gemini-agent-instructions.md`を新設。キャラクター/障害物の見た目
+     デザインをGemini等の他AIエージェントに委託するための恒久的な作業指示書
+     （編集してよい範囲・厳守ルール・受け渡しフロー・サイズ感の目安を網羅）
+   - `assets/characters/obstacles/`の同期漏れ16ファイルを発見し一括修正
+9. **Gemini制作の西洋庭園デザイン統合**（2026-08-26、`fd603cb`）:
+   - Geminiサブエージェントが`assets/characters/`配下で制作した5つのメッシュ
+     デザインを`src/index.html`へ統合（`docs/gemini-handover.md`が引き渡し文書）
+   - `buildMarbleStatueMesh`: ダビデ像風のコントラポスト浮遊像＋金の光輪
+   - `buildTopiaryMesh`: 古代ローマ風の双柱パーゴラ＋巻きつくアイビー
+   - `buildFountainMesh`: 2段式大理石噴水＋滝カーテン・水しぶき
+   - `buildWitheredTreeMesh`: ねじれたオリーブ幹＋糸杉風の炎状樹冠
+   - `buildTomosBossMesh`: 茎を花弁の奥(-Z)に配置し根張りを強化、鞭蔓を
+     3本→6本・長さ約2倍に拡張、常時うねるアニメーションに変更
+   - `npm run verify`全通過、Playwrightで実機確認（Stage2実プレイ+Character
+     Galleryで5体全て個別レンダリング確認、コンソールエラーなし）
 
 ## 今後の課題
 
