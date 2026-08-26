@@ -4,7 +4,6 @@ coverage/
 .DS_Store
 
 # 開発時の参考資料・メモ(ゲーム実行には使わない)
+# ARCHITECTURE.md/STAGE_LIST.md/追加修正.mdはdocs/DEVELOPMENT.mdへ統合済みのため削除
 assets/
-STAGE_LIST.md
-ARCHITECTURE.md
 music/
