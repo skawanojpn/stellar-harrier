@@ -668,6 +668,12 @@
           if (kind === "pixie") return 180;
           if (kind === "cupid") return 320;
           if (kind === "imp") return 150;
+          if (kind === "sprite") return 130;
+          if (kind === "frost_wisp") return 240;
+          if (kind === "glitch_drone") return 270;
+          if (kind === "ember_imp") return 230;
+          if (kind === "guardian_relic") return 450;
+          if (kind === "shade") return 300;
           return 5000;
         }
 
@@ -755,7 +761,7 @@
             tomosEnabled: false,
             // 導入ステージなので、高速なdasher・大きく蛇行するweaverは
             // まだ出さず、grunt/shooterの基礎編成のみにする。
-            enemyKinds: ["grunt", "grunt", "shooter"],
+            enemyKinds: ["grunt", "grunt", "shooter", "sprite"],
             obstacleKinds: FANTASY_OBSTACLE_KINDS,
           },
           {
@@ -799,7 +805,7 @@
             domEnabled: true,
             tomosEnabled: false,
             // 高速で直線的に突っ込んでくるdasherをここで初登場させる。
-            enemyKinds: ["grunt", "shooter", "shooter", "dasher"],
+            enemyKinds: ["grunt", "shooter", "shooter", "dasher", "frost_wisp"],
             obstacleKinds: FROZEN_OBSTACLE_KINDS,
           },
           {
@@ -820,7 +826,13 @@
             domEnabled: true,
             tomosEnabled: false,
             // dasherの比率を上げ、高速突撃への回避に慣れさせる。
-            enemyKinds: ["grunt", "shooter", "dasher", "dasher"],
+            enemyKinds: [
+              "grunt",
+              "shooter",
+              "dasher",
+              "dasher",
+              "glitch_drone",
+            ],
             obstacleKinds: CRYSTAL_OBSTACLE_KINDS,
           },
           {
@@ -861,7 +873,7 @@
             domEnabled: true,
             tomosEnabled: false,
             // 大きく蛇行して避けにくいweaverをここで初登場させる。
-            enemyKinds: ["shooter", "dasher", "dasher", "weaver"],
+            enemyKinds: ["shooter", "dasher", "dasher", "weaver", "ember_imp"],
             obstacleKinds: INFERNO_OBSTACLE_KINDS,
             // 地獄の中心へ向かう地中トンネルの演出。天井にも地面と同じ
             // 紋様を配置し、上下を地面で挟まれたトンネル内を進んでいる
@@ -906,7 +918,13 @@
             domEnabled: true,
             tomosEnabled: true,
             // weaverの比率を上げ、終盤らしい回避難度にする。
-            enemyKinds: ["shooter", "dasher", "weaver", "weaver"],
+            enemyKinds: [
+              "shooter",
+              "dasher",
+              "weaver",
+              "weaver",
+              "guardian_relic",
+            ],
             obstacleKinds: ANCIENT_OBSTACLE_KINDS,
           },
           {
@@ -956,7 +974,14 @@
             tomosEnabled: true,
             // 最終ステージなので、これまでに登場した敵種を全て使い切る
             // 最も厳しい編成にする。
-            enemyKinds: ["shooter", "dasher", "dasher", "weaver", "weaver"],
+            enemyKinds: [
+              "shooter",
+              "dasher",
+              "dasher",
+              "weaver",
+              "weaver",
+              "shade",
+            ],
             obstacleKinds: ABYSS_OBSTACLE_KINDS,
           },
         ];
@@ -28677,6 +28702,170 @@
           return group;
         }
 
+        // スプライト(FANTASY ZONE専用): 小さな鬼火のような光の玉。
+        // タイトな8の字を描いて舞う俊敏な導入用エネミー。
+        function buildSpriteMesh() {
+          var group = new THREE.Group();
+          var coreMat = new THREE.MeshBasicMaterial({ color: 0xfff9c4 });
+          var core = new THREE.Mesh(
+            new THREE.SphereGeometry(0.22, 8, 8),
+            coreMat,
+          );
+          group.add(core);
+          var glowMat = new THREE.MeshBasicMaterial({
+            color: 0xffe066,
+            transparent: true,
+            opacity: 0.4,
+          });
+          var glow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.4, 8, 8),
+            glowMat,
+          );
+          group.add(glow);
+          return group;
+        }
+
+        // フロストウィスプ(FROZEN NEBULA専用): ゆっくり漂う氷の精霊。
+        function buildFrostWispMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0xcdf3ff,
+            emissive: 0x66ccee,
+            emissiveIntensity: 0.5,
+            transparent: true,
+            opacity: 0.85,
+          });
+          var body = new THREE.Mesh(new THREE.OctahedronGeometry(0.5, 0), mat);
+          group.add(body);
+          var ringMat = new THREE.MeshBasicMaterial({
+            color: 0xaaeeff,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide,
+          });
+          var ring = new THREE.Mesh(
+            new THREE.TorusGeometry(0.65, 0.05, 6, 16),
+            ringMat,
+          );
+          ring.rotation.x = Math.PI / 2.5;
+          group.add(ring);
+          return group;
+        }
+
+        // グリッチドローン(CRYSTAL CANYON専用): 角ばった小型ドローン。
+        function buildGlitchDroneMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0x001a33,
+            emissive: 0x00ffff,
+            emissiveIntensity: 0.9,
+            metalness: 0.6,
+            roughness: 0.3,
+          });
+          var body = new THREE.Mesh(
+            new THREE.BoxGeometry(0.55, 0.55, 0.55),
+            mat,
+          );
+          group.add(body);
+          var eyeMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+          var eye = new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 6, 6),
+            eyeMat,
+          );
+          eye.position.z = 0.3;
+          group.add(eye);
+          return group;
+        }
+
+        // エンバーインプ(INFERNO CORE専用): 炎の尾を引く小さな飛行悪魔。
+        function buildEmberImpMesh() {
+          var group = new THREE.Group();
+          var bodyMat = new THREE.MeshStandardMaterial({
+            color: 0xff5522,
+            emissive: 0xff3300,
+            emissiveIntensity: 0.6,
+          });
+          var body = new THREE.Mesh(
+            new THREE.ConeGeometry(0.3, 0.7, 6),
+            bodyMat,
+          );
+          body.rotation.x = Math.PI;
+          group.add(body);
+          var wingMat = new THREE.MeshBasicMaterial({
+            color: 0xffaa33,
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide,
+          });
+          for (var sign = -1; sign <= 1; sign += 2) {
+            var wing = new THREE.Mesh(
+              new THREE.CircleGeometry(0.35, 8),
+              wingMat,
+            );
+            wing.position.set(sign * 0.35, 0.1, 0);
+            wing.rotation.y = sign * 0.6;
+            group.add(wing);
+          }
+          return group;
+        }
+
+        // ガーディアンレリック(RUINS OF THE ANCIENTS専用): MOAIボスの
+        // 縮小版のような、浮遊する石の守護者の頭部。
+        function buildGuardianRelicMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0x998866,
+            roughness: 0.85,
+          });
+          var head = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.5, 0.6, 1.1, 8),
+            mat,
+          );
+          group.add(head);
+          var browMat = new THREE.MeshStandardMaterial({ color: 0x776644 });
+          var brow = new THREE.Mesh(
+            new THREE.BoxGeometry(1.0, 0.18, 0.5),
+            browMat,
+          );
+          brow.position.y = 0.3;
+          group.add(brow);
+          var eyeMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+          for (var sign2 = -1; sign2 <= 1; sign2 += 2) {
+            var eye2 = new THREE.Mesh(
+              new THREE.SphereGeometry(0.08, 6, 6),
+              eyeMat,
+            );
+            eye2.position.set(sign2 * 0.2, 0.3, 0.4);
+            group.add(eye2);
+          }
+          return group;
+        }
+
+        // シェイド(ABYSS ZERO専用): 半透明の影の化身。近接するタイミングで
+        // 一時的にほぼ透明になる。
+        function buildShadeMesh() {
+          var group = new THREE.Group();
+          var mat = new THREE.MeshStandardMaterial({
+            color: 0x220033,
+            emissive: 0x110022,
+            emissiveIntensity: 0.4,
+            transparent: true,
+            opacity: 0.8,
+          });
+          var body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 10), mat);
+          body.scale.set(0.8, 1.2, 0.8);
+          group.add(body);
+          var eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0066 });
+          var eye = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08, 6, 6),
+            eyeMat,
+          );
+          eye.position.set(0, 0.15, 0.4);
+          group.add(eye);
+          group.userData.bodyMat = mat;
+          return group;
+        }
+
         // アイダ: 赤目の仏頂面モアイ。複数体が編隊で本体(バーバリアン)を守る。
         function buildAidaMesh() {
           var group = new THREE.Group();
@@ -31405,6 +31594,42 @@
           {
             category: "enemy",
             categoryLabel: "エネミー",
+            key: "sprite",
+            label: "スプライト",
+          },
+          {
+            category: "enemy",
+            categoryLabel: "エネミー",
+            key: "frost_wisp",
+            label: "フロストウィスプ",
+          },
+          {
+            category: "enemy",
+            categoryLabel: "エネミー",
+            key: "glitch_drone",
+            label: "グリッチドローン",
+          },
+          {
+            category: "enemy",
+            categoryLabel: "エネミー",
+            key: "ember_imp",
+            label: "エンバーインプ",
+          },
+          {
+            category: "enemy",
+            categoryLabel: "エネミー",
+            key: "guardian_relic",
+            label: "ガーディアンレリック",
+          },
+          {
+            category: "enemy",
+            categoryLabel: "エネミー",
+            key: "shade",
+            label: "シェイド",
+          },
+          {
+            category: "enemy",
+            categoryLabel: "エネミー",
             key: "tomos",
             label: "トモス兵",
           },
@@ -31726,6 +31951,18 @@
               return buildCupidMesh();
             case "imp":
               return buildImpMesh();
+            case "sprite":
+              return buildSpriteMesh();
+            case "frost_wisp":
+              return buildFrostWispMesh();
+            case "glitch_drone":
+              return buildGlitchDroneMesh();
+            case "ember_imp":
+              return buildEmberImpMesh();
+            case "guardian_relic":
+              return buildGuardianRelicMesh();
+            case "shade":
+              return buildShadeMesh();
             case "tomos":
               return buildTomosEnemyMesh();
             case "aida":
@@ -31878,7 +32115,11 @@
                     ? 0.55
                     : kind === "weaver"
                       ? 0.7
-                      : 1;
+                      : kind === "sprite"
+                        ? 0.4
+                        : kind === "guardian_relic"
+                          ? 1.1
+                          : 1;
 
           if (kind === "boss") {
             mesh = buildBossMeshByType(bossType);
@@ -31906,6 +32147,18 @@
             mesh = buildCupidMesh();
           } else if (kind === "imp") {
             mesh = buildImpMesh();
+          } else if (kind === "sprite") {
+            mesh = buildSpriteMesh();
+          } else if (kind === "frost_wisp") {
+            mesh = buildFrostWispMesh();
+          } else if (kind === "glitch_drone") {
+            mesh = buildGlitchDroneMesh();
+          } else if (kind === "ember_imp") {
+            mesh = buildEmberImpMesh();
+          } else if (kind === "guardian_relic") {
+            mesh = buildGuardianRelicMesh();
+          } else if (kind === "shade") {
+            mesh = buildShadeMesh();
           } else {
             mesh = buildGenericEnemyMesh(size, kind === "shooter");
           }
@@ -31934,11 +32187,33 @@
                       ? 42
                       : kind === "weaver"
                         ? 20
-                        : 22) *
+                        : kind === "sprite"
+                          ? 18
+                          : kind === "frost_wisp"
+                            ? 12
+                            : kind === "glitch_drone"
+                              ? 16
+                              : kind === "ember_imp"
+                                ? 30
+                                : kind === "guardian_relic"
+                                  ? 10
+                                  : kind === "shade"
+                                    ? 24
+                                    : 22) *
               currentStage.enemySpeedMultiplier *
               getDifficultyMultiplier(),
-            hp: kind === "boss" ? bossHp : kind === "dom" ? 2 : 1,
-            maxHp: kind === "boss" ? bossHp : kind === "dom" ? 2 : 1,
+            hp:
+              kind === "boss"
+                ? bossHp
+                : kind === "dom" || kind === "guardian_relic"
+                  ? 2
+                  : 1,
+            maxHp:
+              kind === "boss"
+                ? bossHp
+                : kind === "dom" || kind === "guardian_relic"
+                  ? 2
+                  : 1,
             fireTimer: Math.random() * 2,
             baseX: laneX,
             baseY: Math.random() * 3,
@@ -33361,6 +33636,33 @@
             // ウィーバーは大蛇行しながら接近する分、弾も直進ではなく
             // ホーミング弾にすることで回避難度を保つ。
             spawnHomingMissile(enemy.mesh.position);
+            return;
+          }
+
+          if (enemy.kind === "frost_wisp") {
+            // 低速漂う氷精霊: 短射程の放射状ミニ弾幕を撒く。
+            fireFan(enemy.mesh.position, 5, Math.PI * 0.5, 0xaaeeff);
+            return;
+          }
+
+          if (enemy.kind === "glitch_drone") {
+            // テレポート直後の単発ショット。
+            var dgDir = new THREE.Vector3()
+              .subVectors(playerGroup.position, enemy.mesh.position)
+              .normalize();
+            spawnEnemyBulletAt(
+              enemy.mesh.position,
+              dgDir,
+              null,
+              0.22,
+              0x00ffff,
+            );
+            return;
+          }
+
+          if (enemy.kind === "guardian_relic") {
+            // MOAIボスに呼応した低速ホーミング弾を放つ。
+            spawnHomingMissile(enemy.mesh.position, 0xcc9955);
             return;
           }
 
@@ -35204,11 +35506,29 @@
               en.mesh.position.z += en.speed * dt;
               en.wavePhase += en.waveSpeed * dt;
               en.verticalWavePhase += en.verticalWaveSpeed * dt;
+              if (en.kind === "ember_imp") {
+                // 自機の最終既知X座標へダイブし、通り過ぎたら撤退するような
+                // 挙動: baseXを自機のXへゆっくり追従させることで実現する。
+                en.baseX +=
+                  (playerGroup.position.x - en.baseX) * Math.min(1, dt * 1.5);
+              }
               en.mesh.position.x =
                 en.baseX + Math.sin(en.wavePhase) * en.waveAmplitude;
               en.mesh.position.y =
                 en.baseY +
                 Math.sin(en.verticalWavePhase) * en.verticalWaveAmplitude;
+              if (en.kind === "ember_imp") {
+                en.flameTrailTimer = (en.flameTrailTimer || 0) - dt;
+                if (en.flameTrailTimer <= 0) {
+                  spawnParticleBurst(en.mesh.position, {
+                    count: 2,
+                    color: 0xff6622,
+                    speed: 1,
+                    life: 0.3,
+                  });
+                  en.flameTrailTimer = 0.08;
+                }
+              }
             }
 
             if (en.kind === "dom") {
@@ -35240,6 +35560,29 @@
               // 全パーツ(浮遊・袖/裾のなびき・扇/弓/杖の演出・発光脈動等)を
               // まとめてアニメーションするため、専用メッシュ側に委譲する。
               en.mesh.userData.updateLoop(elapsedTime);
+            } else if (en.kind === "glitch_drone") {
+              // 約1.5秒ごとに瞬間移動する。連続移動ではなく、その場に
+              // 留まった後に画面内の別のX/Y位置へ瞬間的に飛ぶ。
+              en.glitchTeleportTimer = (en.glitchTeleportTimer || 0) - dt;
+              if (
+                en.glitchTeleportTimer === undefined ||
+                en.glitchTeleportTimer <= 0
+              ) {
+                en.baseX = (Math.random() - 0.5) * 16;
+                en.baseY = Math.random() * 4;
+                en.mesh.position.x = en.baseX;
+                en.mesh.position.y = en.baseY;
+                en.glitchTeleportTimer = 1.5;
+                en.fireTimer = Math.min(en.fireTimer, 0.15);
+              }
+              en.mesh.rotation.y += dt * 2;
+            } else if (en.kind === "shade") {
+              // 接近中(手前寄り)に一瞬ほぼ透明になってから発射するような
+              // 挙動を、Zに応じた不透明度の脈動で表現する。
+              var shadePulse =
+                0.5 + 0.5 * Math.sin(elapsedTime * 2.2 + en.wavePhase);
+              en.mesh.userData.bodyMat.opacity = 0.25 + shadePulse * 0.55;
+              en.mesh.rotation.y += dt * 1.2;
             } else if (!isScaler && en.kind !== "boss") {
               en.mesh.rotation.y += dt * 2;
             }
@@ -35266,7 +35609,10 @@
               en.kind === "princess" ||
               en.kind === "biwa_hoshi" ||
               en.kind === "fairy" ||
-              en.kind === "cupid";
+              en.kind === "cupid" ||
+              en.kind === "frost_wisp" ||
+              en.kind === "glitch_drone" ||
+              en.kind === "guardian_relic";
             var zThreshold = isScaler ? SCALER_DEEP_RETREAT_Z : -100;
             if (
               canFire &&
