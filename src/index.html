@@ -82,6 +82,28 @@
       #stage-banner.visible {
         opacity: 1;
       }
+      #ending-recap-label {
+        position: absolute;
+        top: 78%;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        color: #ffcc00;
+        text-shadow: 0 0 12px rgba(255, 150, 0, 0.9);
+        font-size: 26px;
+        font-weight: bold;
+        letter-spacing: 6px;
+        z-index: 15;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.25s ease;
+      }
+      #ending-recap-label.visible {
+        opacity: 1;
+      }
+      #ending-recap-label.hidden {
+        display: none;
+      }
       #boss-warning {
         position: absolute;
         top: 38%;
@@ -563,6 +585,7 @@
         <span id="lives-display">LIVES: 3</span>
       </div>
       <div id="stage-banner"></div>
+      <div id="ending-recap-label" class="hidden"></div>
       <div id="boss-warning">
         <div id="boss-warning-label">WARNING</div>
         <div id="boss-warning-name"></div>
@@ -24246,8 +24269,23 @@
         var ENDING_GROUND_COLOR = 0x66ccff;
         var ENDING_CRUISE_SECONDS = 4;
         var ENDING_FLY_AWAY_SECONDS = 3.5;
+        // 撃破した8体のボスを1体ずつ振り返る回想演出(飛び去り演出の直後、
+        // テキスト画面へ入る前に挟む)の1体あたりの表示時間。
+        var ENDING_RECAP_SECONDS_PER_BOSS = 0.85;
+        var ENDING_RECAP_BOSS_TYPES = [
+          "scaler",
+          "tomos",
+          "godani",
+          "sarpedon",
+          "sumo",
+          "cerberus",
+          "fairy_queen",
+          "barbarian",
+        ];
         var endingTimer = 0;
         var endingPhase = null;
+        var endingRecapIndex = 0;
+        var endingRecapMesh = null;
         // ボス警告演出の表示時間(ミリ秒)。この間はボスの出現を遅らせる。
         // 警戒音(playBossWarningSound)が鳴り終わってからボスが出現する
         // よう、siren全体の長さ((count-1)*step + duration = 3*1.15+0.95
@@ -25721,6 +25759,11 @@
           scene.fog = new THREE.Fog(0xaee0ff, 80, 260);
           endingPhase = "cruise";
           endingTimer = ENDING_CRUISE_SECONDS;
+          endingRecapIndex = 0;
+          if (endingRecapMesh) {
+            scene.remove(endingRecapMesh);
+            endingRecapMesh = null;
+          }
         }
 
         function updateEnding(dt) {
@@ -25759,8 +25802,103 @@
             if (endingTimer <= 0) {
               camera.fov = BASE_FOV;
               camera.updateProjectionMatrix();
-              showAllStagesClearResult();
+              startEndingRecap();
             }
+          } else if (endingPhase === "recap") {
+            updateEndingRecap(dt);
+          }
+        }
+
+        // 撃破した8体のボスを1体ずつ振り返る回想演出。自機は既に画面外へ
+        // 飛び去った後なので、カメラは正面据え置きのまま、ボスのメッシュ
+        // だけを1体ずつ画面中央に出し、名前ラベルとともに短時間見せて
+        // 次のボスへ切り替える(フィルムストリップのような単純な演出)。
+        function startEndingRecap() {
+          endingPhase = "recap";
+          endingRecapIndex = 0;
+          endingTimer = ENDING_RECAP_SECONDS_PER_BOSS;
+          showEndingRecapBoss(endingRecapIndex);
+        }
+
+        function showEndingRecapBoss(index) {
+          if (endingRecapMesh) {
+            scene.remove(endingRecapMesh);
+            endingRecapMesh = null;
+          }
+          var bossType = ENDING_RECAP_BOSS_TYPES[index];
+          endingRecapMesh = buildBossMeshByType(bossType);
+          var recapScale = 2.5 / Math.max(1, BOSS_SIZE_BY_TYPE[bossType] ?? 3);
+          endingRecapMesh.scale.multiplyScalar(recapScale);
+          endingRecapMesh.position.set(0, 2, -8);
+          scene.add(endingRecapMesh);
+          var label = document.getElementById("ending-recap-label");
+          label.textContent = BOSS_NAME_BY_TYPE[bossType] || "BOSS";
+          label.classList.remove("hidden");
+          label.classList.add("visible");
+        }
+
+        function updateEndingRecap(dt) {
+          if (endingRecapMesh) {
+            endingRecapMesh.rotation.y += dt * 1.6;
+          }
+          endingTimer -= dt;
+          if (endingTimer <= 0) {
+            endingRecapIndex += 1;
+            if (endingRecapIndex >= ENDING_RECAP_BOSS_TYPES.length) {
+              if (endingRecapMesh) {
+                scene.remove(endingRecapMesh);
+                endingRecapMesh = null;
+              }
+              var recapLabel = document.getElementById("ending-recap-label");
+              recapLabel.classList.remove("visible");
+              recapLabel.classList.add("hidden");
+              showAllStagesClearResult();
+              return;
+            }
+            endingTimer = ENDING_RECAP_SECONDS_PER_BOSS;
+            showEndingRecapBoss(endingRecapIndex);
+          }
+        }
+
+        // 各色の花火/紙吹雪を数発、時間差でシーン各所に打ち上げる祝福演出。
+        // 打ち上げの間だけALL STAGES CLEARの結果画面より手前で見えるよう、
+        // spawnParticleBurst(explosions配列)を流用する。
+        var ENDING_FIREWORK_COLORS = [
+          0xff5555, 0xffdd55, 0x55ddff, 0x66ff88, 0xff88ee,
+        ];
+        function launchEndingFireworks() {
+          var burstCount = 6;
+          for (var i = 0; i < burstCount; i++) {
+            (function (delayIndex) {
+              setTimeout(function () {
+                var origin = new THREE.Vector3(
+                  (Math.random() - 0.5) * 12,
+                  4 + Math.random() * 4,
+                  -6 - Math.random() * 6,
+                );
+                var color =
+                  ENDING_FIREWORK_COLORS[
+                    delayIndex % ENDING_FIREWORK_COLORS.length
+                  ];
+                spawnParticleBurst(origin, {
+                  count: 26,
+                  color: color,
+                  life: 1.1,
+                  maxLife: 1.1,
+                  gravity: 2.5,
+                  velocity: function () {
+                    var angle = Math.random() * Math.PI * 2;
+                    var upSpread = Math.random() * 5 + 1;
+                    var radial = Math.random() * 5;
+                    return new THREE.Vector3(
+                      Math.cos(angle) * radial,
+                      upSpread,
+                      Math.sin(angle) * radial,
+                    );
+                  },
+                });
+              }, delayIndex * 260);
+            })(i);
           }
         }
 
@@ -25769,12 +25907,15 @@
           endingPhase = null;
           stopBgmAndSilence();
           startBgm("ed_clear");
+          launchEndingFireworks();
           var previousHigh = loadHighScore();
           var newHigh = saveHighScoreIfBeaten(score);
           var isNewRecord = newHigh > previousHigh;
           var overlay = document.getElementById("message-overlay");
           overlay.innerHTML =
             "<h1>ALL STAGES CLEAR!</h1>" +
+            '<p style="opacity:0.85">数多の脅威を退け、銀河にふたたび静けさが戻った。' +
+            "君の操縦は、まさに星々を駆けるハリアーそのものだった。</p>" +
             (isNewRecord
               ? '<p style="color:#66ddff">NEW HIGH SCORE!</p>'
               : "") +
