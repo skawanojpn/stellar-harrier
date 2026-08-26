@@ -481,6 +481,7 @@
         align-items: flex-start;
         gap: 20px;
         max-width: 96vw;
+        max-height: 78vh;
       }
       #stage-select-list {
         display: flex;
@@ -497,6 +498,17 @@
         border-radius: 4px;
         cursor: pointer;
         text-align: center;
+        /* role="option"用に<button>化したため、既存のdiv時代と同じ
+           見た目になるようブラウザ既定のボタンスタイルを打ち消す。 */
+        background: transparent;
+        color: inherit;
+        font-family: inherit;
+        display: block;
+        width: 100%;
+      }
+      .stage-select-item:focus-visible {
+        outline: 2px solid #ffcc00;
+        outline-offset: 2px;
       }
       .stage-select-item.selected {
         border-color: #ffcc00;
@@ -516,6 +528,25 @@
         border-radius: 4px;
         background: rgba(0, 0, 0, 0.4);
         touch-action: none;
+      }
+      /* モバイル幅では#stage-select-bodyの2カラム(リスト+3Dビューア)が
+         横に収まらず崩れるため、縦積みに切り替える。CHARACTER GALLERY
+         タブ以外ではビューア自体がhidden(非表示)のため影響しない。 */
+      @media (max-width: 700px) {
+        #stage-select-body {
+          flex-direction: column;
+          align-items: center;
+          max-height: 82vh;
+          overflow-y: auto;
+        }
+        #stage-select-list {
+          max-height: 34vh;
+          width: 92vw;
+        }
+        #character-gallery-viewer {
+          width: 92vw;
+          height: 40vh;
+        }
       }
       #character-gallery-viewer.hidden {
         display: none;
@@ -548,6 +579,10 @@
         opacity: 1;
         border-color: #ffcc00;
         background: rgba(255, 204, 0, 0.15);
+      }
+      .stage-select-tab:focus-visible {
+        outline: 2px solid #ffcc00;
+        outline-offset: 2px;
       }
       .score-popup {
         position: absolute;
@@ -659,36 +694,55 @@
       <div id="stage-select-overlay" class="hidden">
         <h1 id="stage-select-title">STAGE SELECT</h1>
         <p>↑↓で選択、スペース/クリックで決定、Escでキャンセル、←→でタブ切替</p>
-        <div id="stage-select-tabs">
+        <div id="stage-select-tabs" role="tablist">
           <button
             class="stage-select-tab active"
             type="button"
+            role="tab"
+            aria-selected="true"
             data-tab="stage"
           >
             STAGE
           </button>
-          <button class="stage-select-tab" type="button" data-tab="boss">
+          <button
+            class="stage-select-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-tab="boss"
+          >
             BOSS TEST
           </button>
-          <button class="stage-select-tab" type="button" data-tab="ending">
-            ENDING
-          </button>
-          <button class="stage-select-tab" type="button" data-tab="soundtest">
+          <button
+            class="stage-select-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-tab="soundtest"
+          >
             SOUND TEST
           </button>
-          <button class="stage-select-tab" type="button" data-tab="sfxgallery">
+          <button
+            class="stage-select-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-tab="sfxgallery"
+          >
             SFX GALLERY
           </button>
           <button
             class="stage-select-tab"
             type="button"
+            role="tab"
+            aria-selected="false"
             data-tab="charagallery"
           >
             CHARACTER GALLERY
           </button>
         </div>
         <div id="stage-select-body">
-          <div id="stage-select-list"></div>
+          <div id="stage-select-list" role="listbox"></div>
           <div id="character-gallery-viewer" class="hidden">
             <canvas id="character-gallery-canvas"></canvas>
           </div>
@@ -857,7 +911,12 @@
           "frog",
           "biwa_hoshi",
         ];
-        var YOKAI_OBSTACLE_KINDS = ["sotoba", "gravestone", "bamboo"];
+        var YOKAI_OBSTACLE_KINDS = [
+          "sotoba",
+          "gravestone",
+          "bamboo",
+          "stone_lantern",
+        ];
         var FAIRY_ENEMY_KINDS = ["fairy", "pixie", "cupid", "imp"];
         var FAIRY_OBSTACLE_KINDS = [
           "heart_pillar",
@@ -877,11 +936,7 @@
           "floating_island",
           "rainbow_arch",
         ];
-        var VOID_OBSTACLE_KINDS = [
-          "withered_tree",
-          "stone_lantern",
-          "floating_island",
-        ];
+        var VOID_OBSTACLE_KINDS = ["topiary", "fountain", "withered_tree"];
         var FROZEN_OBSTACLE_KINDS = ["pillar", "ice_crystal", "icicle_cluster"];
         var CRYSTAL_OBSTACLE_KINDS = [
           "data_monolith",
@@ -937,8 +992,11 @@
             spawnIntervalSeconds: 1.9,
             obstacleIntervalSeconds: 3.5,
             bossAtSeconds: 60,
-            // 幻想世界(FANTASY ZONE)に到着したと思ったら虚無だった、という
-            // 肩透かしの庭園。深緑を基調にした静かで空虚な色調にする。
+            // 幻想世界(FANTASY ZONE)に到着したと思ったら、人の手が入って
+            // いたはずの西洋庭園が主のいないまま静まり返っていた、という
+            // 肩透かしの庭園。トピアリー(刈り込み仕立ての生垣)や噴水など
+            // 西洋庭園らしい意匠を配しつつ、深緑を基調にした静かで空虚な
+            // 色調にする。
             groundColor: 0x99ff66,
             skyColorTop: 0x0a1a00,
             skyColorBottom: 0x335500,
@@ -24267,11 +24325,20 @@
         var ENDING_SKY_COLOR_TOP = 0x1a5fcc;
         var ENDING_SKY_COLOR_BOTTOM = 0xaee0ff;
         var ENDING_GROUND_COLOR = 0x66ccff;
+        // ボス撃破直後(最終ステージの暗い配色)からエンディングの明るい
+        // 配色へ切り替わる際、唐突にならないよう挟む色フェードの長さ。
+        // ステージ間遷移の色フェードと同じ長さ(STAGE_TRANSITION_SECONDS)
+        // に揃える。
+        var ENDING_TRANSITION_SECONDS = STAGE_TRANSITION_SECONDS;
+        var endingTransitionFrom = null;
+        var endingTransitionTo = null;
+        var endingTransitionStepTimer = 0;
         var ENDING_CRUISE_SECONDS = 4;
         var ENDING_FLY_AWAY_SECONDS = 3.5;
-        // 撃破した8体のボスを1体ずつ振り返る回想演出(飛び去り演出の直後、
-        // テキスト画面へ入る前に挟む)の1体あたりの表示時間。
-        var ENDING_RECAP_SECONDS_PER_BOSS = 0.85;
+        // 撃破した9体のボス(最終ボス含む)を1体ずつ振り返る回想演出
+        // (飛び去り演出の直後、テキスト画面へ入る前に挟む)の1体あたりの
+        // 表示時間。
+        var ENDING_RECAP_SECONDS_PER_BOSS = 1.3;
         var ENDING_RECAP_BOSS_TYPES = [
           "scaler",
           "tomos",
@@ -24281,6 +24348,7 @@
           "cerberus",
           "fairy_queen",
           "barbarian",
+          "final",
         ];
         var endingTimer = 0;
         var endingPhase = null;
@@ -24972,19 +25040,18 @@
 
         function currentStageSelectEntries() {
           if (stageSelectTab === "boss") return BOSS_TEST_ENTRIES;
-          if (stageSelectTab === "ending") return ENDING_ENTRIES;
           if (stageSelectTab === "soundtest") return SOUND_TEST_ENTRIES;
           if (stageSelectTab === "sfxgallery") return SFX_GALLERY_ENTRIES;
           if (stageSelectTab === "charagallery")
             return CHARACTER_GALLERY_ENTRIES;
-          return STAGES;
+          return STAGE_SELECT_STAGE_ENTRIES;
         }
 
         function stageSelectItemLabel(entry) {
           if (stageSelectTab === "boss") {
             return "BOSS: " + BOSS_NAME_BY_TYPE[entry.bossType];
           }
-          if (stageSelectTab === "ending") {
+          if (entry.isEndingPreview) {
             return entry.label;
           }
           if (stageSelectTab === "soundtest") {
@@ -25007,23 +25074,20 @@
         function renderStageSelectTabs() {
           var tabs = document.querySelectorAll(".stage-select-tab");
           tabs.forEach(function (tab) {
-            tab.classList.toggle(
-              "active",
-              tab.getAttribute("data-tab") === stageSelectTab,
-            );
+            var isActive = tab.getAttribute("data-tab") === stageSelectTab;
+            tab.classList.toggle("active", isActive);
+            tab.setAttribute("aria-selected", isActive ? "true" : "false");
           });
           document.getElementById("stage-select-title").textContent =
             stageSelectTab === "boss"
               ? "BOSS TEST SELECT"
-              : stageSelectTab === "ending"
-                ? "ENDING SELECT"
-                : stageSelectTab === "soundtest"
-                  ? "SOUND TEST"
-                  : stageSelectTab === "sfxgallery"
-                    ? "SFX GALLERY"
-                    : stageSelectTab === "charagallery"
-                      ? "CHARACTER GALLERY"
-                      : "STAGE SELECT";
+              : stageSelectTab === "soundtest"
+                ? "SOUND TEST"
+                : stageSelectTab === "sfxgallery"
+                  ? "SFX GALLERY"
+                  : stageSelectTab === "charagallery"
+                    ? "CHARACTER GALLERY"
+                    : "STAGE SELECT";
         }
 
         function switchStageSelectTab(tab) {
@@ -25073,7 +25137,13 @@
               header.textContent = entry.categoryLabel || entry.category;
               list.appendChild(header);
             }
-            var item = document.createElement("div");
+            var item = document.createElement("button");
+            item.type = "button";
+            item.setAttribute("role", "option");
+            item.setAttribute(
+              "aria-selected",
+              i === selectedStageIndex ? "true" : "false",
+            );
             item.className =
               "stage-select-item" +
               (i === selectedStageIndex ? " selected" : "");
@@ -25099,7 +25169,6 @@
         var STAGE_SELECT_TAB_ORDER = [
           "stage",
           "boss",
-          "ending",
           "soundtest",
           "sfxgallery",
           "charagallery",
@@ -25110,7 +25179,7 @@
           var entry = entries[selectedStageIndex];
           if (stageSelectTab === "boss") {
             startBossTestMode(entry.bossType, entry.stageId);
-          } else if (stageSelectTab === "ending") {
+          } else if (entry.isEndingPreview) {
             startEndingPreview();
           } else if (stageSelectTab === "soundtest") {
             playSoundTestTrack(entry.key);
@@ -25196,9 +25265,15 @@
             selectedStageIndex =
               (selectedStageIndex - 1 + entries.length) % entries.length;
             renderStageSelectList();
+            if (stageSelectTab === "charagallery") {
+              showCharacterGalleryEntry(entries[selectedStageIndex]);
+            }
           } else if (code === "ArrowDown") {
             selectedStageIndex = (selectedStageIndex + 1) % entries.length;
             renderStageSelectList();
+            if (stageSelectTab === "charagallery") {
+              showCharacterGalleryEntry(entries[selectedStageIndex]);
+            }
           } else if (code === "ArrowLeft" || code === "ArrowRight") {
             var currentIndex = STAGE_SELECT_TAB_ORDER.indexOf(stageSelectTab);
             var delta = code === "ArrowLeft" ? -1 : 1;
@@ -25738,8 +25813,9 @@
         }
 
         // 最終ボス撃破後のエンディング演出を開始する。残っていた敵・弾・
-        // 障害物を消し、晴れ渡ったクリーンな配色の空と地面に切り替えたうえ
-        // で、しばらく巡航スクロールさせた後に自機を奥・上方へ飛ばす。
+        // 障害物を消し、最終ステージの配色から晴れ渡ったクリーンな
+        // エンディング配色へなめらかにフェードしたうえで、しばらく巡航
+        // スクロールさせた後に自機を奥・上方へ飛ばす。
         function startEndingSequence() {
           state = STATE_ENDING;
           stopBgmAndSilence();
@@ -25750,15 +25826,23 @@
           popEnemyBullets();
           clearGroup(obstacles);
           hideBossHpBar();
-          buildSky({
-            skyColorTop: ENDING_SKY_COLOR_TOP,
-            skyColorBottom: ENDING_SKY_COLOR_BOTTOM,
-          });
-          buildGround({ groundColor: ENDING_GROUND_COLOR });
           setYokaiSceneryVisible(false);
-          scene.fog = new THREE.Fog(0xaee0ff, 80, 260);
-          endingPhase = "cruise";
-          endingTimer = ENDING_CRUISE_SECONDS;
+          // ボス撃破直後の暗い配色から、いきなりエンディングの明るい配色に
+          // 切り替わると唐突に見えるため、色フェードを挟む(ステージ間
+          // 遷移で使うstageColorFadeActiveと同じ仕組みを流用する)。
+          endingTransitionFrom = {
+            ground: new THREE.Color(currentStage.groundColor),
+            skyTop: new THREE.Color(currentStage.skyColorTop),
+            skyBottom: new THREE.Color(currentStage.skyColorBottom),
+          };
+          endingTransitionTo = {
+            ground: new THREE.Color(ENDING_GROUND_COLOR),
+            skyTop: new THREE.Color(ENDING_SKY_COLOR_TOP),
+            skyBottom: new THREE.Color(ENDING_SKY_COLOR_BOTTOM),
+          };
+          endingPhase = "transition";
+          endingTimer = ENDING_TRANSITION_SECONDS;
+          endingTransitionStepTimer = 0;
           endingRecapIndex = 0;
           if (endingRecapMesh) {
             scene.remove(endingRecapMesh);
@@ -25776,7 +25860,45 @@
           // 更新だけは継続する。
           updateExplosions(dt);
 
-          if (endingPhase === "cruise") {
+          if (endingPhase === "transition") {
+            endingTransitionStepTimer += dt;
+            endingTimer -= dt;
+            var transitionT = Math.min(
+              1,
+              1 - Math.max(0, endingTimer) / ENDING_TRANSITION_SECONDS,
+            );
+            if (
+              transitionT >= 1 ||
+              endingTransitionStepTimer >= STAGE_COLOR_FADE_STEP_SECONDS
+            ) {
+              endingTransitionStepTimer = 0;
+              var lerpGround = new THREE.Color().lerpColors(
+                endingTransitionFrom.ground,
+                endingTransitionTo.ground,
+                transitionT,
+              );
+              var lerpSkyTop = new THREE.Color().lerpColors(
+                endingTransitionFrom.skyTop,
+                endingTransitionTo.skyTop,
+                transitionT,
+              );
+              var lerpSkyBottom = new THREE.Color().lerpColors(
+                endingTransitionFrom.skyBottom,
+                endingTransitionTo.skyBottom,
+                transitionT,
+              );
+              buildGround({ groundColor: lerpGround.getHex() });
+              buildSky({
+                skyColorTop: lerpSkyTop.getHex(),
+                skyColorBottom: lerpSkyBottom.getHex(),
+              });
+            }
+            if (transitionT >= 1) {
+              scene.fog = new THREE.Fog(0xaee0ff, 80, 260);
+              endingPhase = "cruise";
+              endingTimer = ENDING_CRUISE_SECONDS;
+            }
+          } else if (endingPhase === "cruise") {
             // 飛び去るまでの間は通常プレイと同じ操作性(キーボード/マウス/
             // タッチ)で自機を動かせるようにする。
             updatePlayerMovement(dt);
@@ -25902,6 +26024,39 @@
           }
         }
 
+        // オールクリア画面の締めのメッセージ候補。無傷クリアなら
+        // 「戦友への謝辞」を優先し、被弾が多かった場合は「静かな余韻」
+        // (苦戦の末に切り抜けた感じ)、それ以外は「静けさの帰還」と
+        // 「星への帰路」からランダムに選ぶことで、周回のたびに違う締めの
+        // 一言を見せる。
+        var ENDING_MESSAGE_QUIET_RETURN =
+          "数多の脅威を退け、銀河にふたたび静けさが戻った。" +
+          "君の操縦は、まさに星々を駆けるハリアーそのものだった。";
+        var ENDING_MESSAGE_ROAD_TO_STARS =
+          "銀河の危機は去った。だが、宇宙はまだ広い。" +
+          "また新たな脅威が生まれる時、君は再びハリアーとなるだろう。";
+        var ENDING_MESSAGE_QUIET_AFTERGLOW =
+          "エンジンを止め、振り返る。" +
+          "焼け跡の星々の向こうに、新しい夜明けが見えた。<br>" +
+          "――STELLAR HARRIER、帰還。";
+        var ENDING_MESSAGE_THANKS_TO_COMRADE =
+          "長い戦いだった。幾多のボスを退け、幾多の弾をかいくぐり、" +
+          "君はついに銀河を救った。<br>お疲れ様、パイロット。";
+
+        function pickEndingMessage() {
+          if (stats.hitsTaken === 0) {
+            return ENDING_MESSAGE_THANKS_TO_COMRADE;
+          }
+          if (stats.hitsTaken >= 8) {
+            return ENDING_MESSAGE_QUIET_AFTERGLOW;
+          }
+          var randomPool = [
+            ENDING_MESSAGE_QUIET_RETURN,
+            ENDING_MESSAGE_ROAD_TO_STARS,
+          ];
+          return randomPool[Math.floor(Math.random() * randomPool.length)];
+        }
+
         function showAllStagesClearResult() {
           state = STATE_STAGE_CLEAR;
           endingPhase = null;
@@ -25914,8 +26069,9 @@
           var overlay = document.getElementById("message-overlay");
           overlay.innerHTML =
             "<h1>ALL STAGES CLEAR!</h1>" +
-            '<p style="opacity:0.85">数多の脅威を退け、銀河にふたたび静けさが戻った。' +
-            "君の操縦は、まさに星々を駆けるハリアーそのものだった。</p>" +
+            '<p style="opacity:0.85">' +
+            pickEndingMessage() +
+            "</p>" +
             (isNewRecord
               ? '<p style="color:#66ddff">NEW HIGH SCORE!</p>'
               : "") +
@@ -31804,6 +31960,11 @@
         // 各ボスが接近して留まる交戦距離の範囲(手前ほど密着して危険)。
         // 初回接近時にこの範囲からランダムに1点を抽選し、そこで往復の
         // 折り返し地点とする(戦うたびに間合いが変わり単調にならない)。
+        // 雑魚エネミー(ボス以外)が発射を許可される最大Z座標。自機は
+        // playerGroup.position.z = 2に常駐しており、これより手前
+        // (値が大きい側)では反応時間なしに被弾する不可避弾になるため、
+        // 自機より確実に奥にいる間だけ発射させる。
+        var ENEMY_FIRE_MAX_Z = -3;
         var BOSS_ENGAGE_RANGE_BY_TYPE = {
           godani: [-18, -8],
           tomos: [-15, -5],
@@ -31876,7 +32037,14 @@
         // 隠しコマンドのENDINGタブ用。エントリーは1件のみで、選択すると
         // 最終ボス撃破直後のエンディング演出(巡航→飛び去り→結果画面)を
         // 単体で確認できる。
-        var ENDING_ENTRIES = [{ label: "ENDING SEQUENCE" }];
+        // かつては独立した"ENDING"タブだったが、STAGEタブのリスト末尾に
+        // 統合した。STAGESの全ステージに続けて表示される特殊エントリで、
+        // isEndingPreviewフラグで通常ステージと区別する。
+        var ENDING_PREVIEW_ENTRY = {
+          isEndingPreview: true,
+          label: "ENDING SEQUENCE (PREVIEW)",
+        };
+        var STAGE_SELECT_STAGE_ENTRIES = STAGES.concat([ENDING_PREVIEW_ENTRY]);
 
         // 隠しコマンドのSOUND TESTタブ用。STELLAR_TRACK_DATAの全23曲を
         // 収録順のまま一覧表示し、選択するとその場でstellarAudioが直接
@@ -32169,6 +32337,96 @@
             key: "rock",
             label: "岩(汎用)",
           },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "crystal_shard",
+            label: "クリスタルシャード",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "rainbow_arch",
+            label: "虹のアーチ",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "topiary",
+            label: "トピアリー",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "fountain",
+            label: "噴水",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "withered_tree",
+            label: "枯れ木",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "stone_lantern",
+            label: "石灯籠",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "ice_crystal",
+            label: "氷の結晶クラスター",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "icicle_cluster",
+            label: "つらら群",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "data_monolith",
+            label: "データモノリス",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "glitch_cube",
+            label: "グリッチキューブ",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "magma_boulder",
+            label: "マグマの巨岩",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "obsidian_spike",
+            label: "黒曜石の棘",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "fallen_statue",
+            label: "倒れた石像",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "void_rift",
+            label: "ヴォイドリフト",
+          },
+          {
+            category: "obstacle",
+            categoryLabel: "障害物",
+            key: "broken_pillar",
+            label: "崩れた石柱",
+          },
         ];
 
         function buildBossMeshByType(bossType) {
@@ -32312,6 +32570,36 @@
                 return buildMushroomMesh();
               case "pillar":
                 return buildPillarMesh();
+              case "crystal_shard":
+                return buildCrystalShardMesh();
+              case "rainbow_arch":
+                return buildRainbowArchMesh();
+              case "topiary":
+                return buildTopiaryMesh();
+              case "fountain":
+                return buildFountainMesh();
+              case "withered_tree":
+                return buildWitheredTreeMesh();
+              case "stone_lantern":
+                return buildStoneLanternMesh();
+              case "ice_crystal":
+                return buildIceCrystalMesh();
+              case "icicle_cluster":
+                return buildIcicleClusterMesh();
+              case "data_monolith":
+                return buildDataMonolithMesh();
+              case "glitch_cube":
+                return buildGlitchCubeMesh();
+              case "magma_boulder":
+                return buildMagmaBoulderMesh();
+              case "obsidian_spike":
+                return buildObsidianSpikeMesh();
+              case "fallen_statue":
+                return buildFallenStatueMesh();
+              case "void_rift":
+                return buildVoidRiftMesh();
+              case "broken_pillar":
+                return buildBrokenPillarMesh();
               default:
                 return buildRockMesh();
             }
@@ -33199,6 +33487,77 @@
           return group;
         }
 
+        // トピアリー(VOID GARDEN専用): 西洋庭園らしい、球を3段重ねた
+        // 刈り込み仕立ての生垣。
+        function buildTopiaryMesh() {
+          var group = new THREE.Group();
+          var trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a4632 });
+          var trunk = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.25, 0.3, 1.2, 8),
+            trunkMat,
+          );
+          trunk.position.y = -2.4;
+          group.add(trunk);
+          var leafMat = new THREE.MeshStandardMaterial({ color: 0x3d7a3d });
+          var tierConfigs = [
+            { y: -1.2, radius: 1.3 },
+            { y: 0.4, radius: 1.0 },
+            { y: 1.7, radius: 0.65 },
+          ];
+          for (var i = 0; i < tierConfigs.length; i++) {
+            var tier = tierConfigs[i];
+            var ball = new THREE.Mesh(
+              new THREE.SphereGeometry(tier.radius, 10, 8),
+              leafMat,
+            );
+            ball.position.y = tier.y;
+            group.add(ball);
+          }
+          return group;
+        }
+
+        // 噴水(VOID GARDEN専用): 西洋庭園の象徴として、石造りの円形の
+        // 水盤+中央のポールから水しぶき(半透明の水色球)が湧き上がる形。
+        function buildFountainMesh() {
+          var group = new THREE.Group();
+          var stoneMat = new THREE.MeshStandardMaterial({ color: 0x99988a });
+          var basin = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.6, 1.8, 0.8, 12),
+            stoneMat,
+          );
+          basin.position.y = -3.2;
+          group.add(basin);
+          var waterMat = new THREE.MeshStandardMaterial({
+            color: 0x88ccee,
+            transparent: true,
+            opacity: 0.75,
+          });
+          var waterSurface = new THREE.Mesh(
+            new THREE.CylinderGeometry(1.4, 1.4, 0.15, 12),
+            waterMat,
+          );
+          waterSurface.position.y = -2.85;
+          group.add(waterSurface);
+          var pole = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.25, 2.2, 8),
+            stoneMat,
+          );
+          pole.position.y = -1.9;
+          group.add(pole);
+          var sprayMat = new THREE.MeshStandardMaterial({
+            color: 0xccf0ff,
+            transparent: true,
+            opacity: 0.6,
+          });
+          var spray = new THREE.Mesh(
+            new THREE.SphereGeometry(0.5, 8, 8),
+            sprayMat,
+          );
+          spray.position.y = -0.5;
+          group.add(spray);
+          return group;
+        }
+
         // 氷の結晶クラスター(FROZEN NEBULA専用): 汎用の"rock"の代わりに
         // 使う、角ばった透明感のある氷の塊。
         function buildIceCrystalMesh() {
@@ -33449,6 +33808,15 @@
           return new THREE.Mesh(geo, mat);
         }
 
+        // INFERNO CORE専用の柱: このステージだけ天井(buildCeiling、Y=10)が
+        // あるため、通常のpillar(高さ10、Y=-4〜6止まり)では天井まで届かず
+        // 浮いて見える。地面(Y=-4)から天井(Y=10)まで届く高さ14の柱にする。
+        function buildInfernoPillarMesh() {
+          var geo = new THREE.CylinderGeometry(0.8, 0.8, 14, 8);
+          var mat = new THREE.MeshStandardMaterial({ color: 0x554433 });
+          return new THREE.Mesh(geo, mat);
+        }
+
         // 岩: OBSTACLE_KINDSに含まれない既定(fallback)の障害物("rock"種別)。
         function buildRockMesh() {
           var rockGeo = new THREE.DodecahedronGeometry(1.4, 0);
@@ -33459,8 +33827,13 @@
         function spawnObstacle(kind, laneX) {
           var mesh;
           if (kind === "pillar") {
-            mesh = buildPillarMesh();
-            mesh.position.set(laneX, 1, -160);
+            if (currentStage.theme === "inferno") {
+              mesh = buildInfernoPillarMesh();
+              mesh.position.set(laneX, 3, -160);
+            } else {
+              mesh = buildPillarMesh();
+              mesh.position.set(laneX, 1, -160);
+            }
           } else if (kind === "ruins") {
             mesh = buildRuinsMesh();
             mesh.position.set(laneX, 0, -160);
@@ -33499,6 +33872,12 @@
             mesh.position.set(laneX, 1, -160);
           } else if (kind === "stone_lantern") {
             mesh = buildStoneLanternMesh();
+            mesh.position.set(laneX, -1, -160);
+          } else if (kind === "topiary") {
+            mesh = buildTopiaryMesh();
+            mesh.position.set(laneX, 1, -160);
+          } else if (kind === "fountain") {
+            mesh = buildFountainMesh();
             mesh.position.set(laneX, -1, -160);
           } else if (kind === "ice_crystal") {
             mesh = buildIceCrystalMesh();
@@ -33556,6 +33935,8 @@
             "stone_lantern",
             "data_monolith",
             "broken_pillar",
+            "topiary",
+            "fountain",
           ];
           var wideRadiusKinds = ["mushroom", "icicle_cluster"];
           var radius =
@@ -33571,7 +33952,9 @@
             ? 999
             : tallHitKinds.indexOf(kind) !== -1
               ? 2.5
-              : kind === "mushroom" || kind === "icicle_cluster"
+              : kind === "mushroom" ||
+                  kind === "icicle_cluster" ||
+                  kind === "topiary"
                 ? 3.5
                 : 1.6;
           obstacles.push({
@@ -33610,6 +33993,11 @@
             // 初速は扇状に広がった方向のまま飛び出し、その後急旋回で
             // ホーミング先へ大きく軌道を曲げる(極端に曲がる弾道にする)。
             bullet.homingTurnRate = 4.5;
+            // 固定目標へのホーミングは目標通過後は直進するだけのはずだが、
+            // 万一自機位置に近い目標へ収束し続けるケース(密集した複数弾
+            // 同士のsourcePosition/target関係等)で軌道が安定せず画面外に
+            // 出ないまま居座ることを防ぐため、保険として寿命を設ける。
+            bullet.lifeSeconds = ENEMY_HOMING_BULLET_LIFE_SECONDS;
           }
           enemyBullets.push(bullet);
         }
@@ -33624,6 +34012,12 @@
         // ホーミング弾(ゴダーニ専用): 発射直後は発射元の頭部の向きに飛ぶが、
         // 飛行中は少しずつ自機方向へ軌道修正する。直進弾よりは避けにくいが
         // 完全追尾ではないため、左右に大きく動けば振り切れる。
+        // 自機を常に追尾するホーミング弾(isHoming)の最大寿命(秒)。この
+        // 種の弾は行き過ぎても旋回して戻ってこようとするため、Z/Y境界に
+        // よる削除だけでは画面外に出た後もいつまでも軌道を描き続けて
+        // しまう(Tomosの花粉弾等で確認)。一定時間で強制的に消す。
+        var ENEMY_HOMING_BULLET_LIFE_SECONDS = 4.5;
+
         function spawnHomingMissile(sourcePosition, color) {
           var dir = new THREE.Vector3()
             .subVectors(playerGroup.position, sourcePosition)
@@ -33642,6 +34036,11 @@
             nearMissPlayed: false,
             isHoming: true,
             homingTurnRate: 1.8,
+            // 自機を追い続けるホーミング弾は、行き過ぎた後も旋回して
+            // 戻ってこようとするため、Z/Y境界による削除だけでは画面外に
+            // 出た後もいつまでも軌道を描いて戻り続けてしまう。寿命を
+            // 設けて一定時間で強制的に消す。
+            lifeSeconds: ENEMY_HOMING_BULLET_LIFE_SECONDS,
           });
         }
 
@@ -33937,6 +34336,7 @@
             homingTurnRate: 2.2,
             isStarBolt: true,
             spinPhase: Math.random() * Math.PI * 2,
+            lifeSeconds: ENEMY_HOMING_BULLET_LIFE_SECONDS,
           });
         }
 
@@ -34874,6 +35274,14 @@
             if (stageTransitionTimer <= 0) {
               advanceToNextStage();
             }
+          } else if (stageColorFadeActive) {
+            // 色フェード中(advanceToNextStageは既に呼ばれ済みだが、
+            // loadStageによるcurrentStage更新はフェード完了until待ち)。
+            // currentStageがまだ旧ステージのままなので、ここで
+            // stageComplete判定を再度走らせるとdurationSeconds条件が
+            // 依然trueのままclearAllEnemiesAndAdvance()が二重発火し、
+            // クリアファンファーレ二重再生や次ステージBGM無音の原因に
+            // なるため、フェード完了まで判定を止める。
           } else {
             var stageComplete =
               !bossTestModeActive &&
@@ -36003,10 +36411,18 @@
               en.kind === "glitch_drone" ||
               en.kind === "guardian_relic";
             var zThreshold = isScaler ? SCALER_DEEP_RETREAT_Z : -100;
+            // 雑魚エネミー(ボス以外)は、自機のZ座標付近まで来てから撃たれる
+            // と反応時間がなく回避不能になるため、自機より十分手前
+            // (ENEMY_FIRE_MAX_Z未満)にいる間だけ発射を許可する。ボスは
+            // BOSS_ENGAGE_RANGE_BY_TYPEで交戦距離自体が管理されており、
+            // MOAI等は意図的に自機付近まで迫る演出のため対象外とする。
+            var withinFireRange =
+              en.kind === "boss" || en.mesh.position.z < ENEMY_FIRE_MAX_Z;
             if (
               canFire &&
               en.fireTimer <= 0 &&
               en.mesh.position.z > zThreshold &&
+              withinFireRange &&
               !en.scalerFireSuspended
             ) {
               fireAtPlayer(en);
@@ -36577,6 +36993,14 @@
                 // 演出。進行方向を軸に自転させ、揺らめき/雷らしさを出す。
                 eb.spinPhase += dt * 6;
                 eb.mesh.rotation.z = eb.spinPhase;
+              }
+            }
+            if (eb.lifeSeconds !== undefined) {
+              eb.lifeSeconds -= dt;
+              if (eb.lifeSeconds <= 0) {
+                scene.remove(eb.mesh);
+                enemyBullets.splice(ebi, 1);
+                continue;
               }
             }
             if (

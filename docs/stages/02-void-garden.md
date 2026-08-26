@@ -5,8 +5,10 @@
 
 ## コンセプト
 
-幻想世界（FANTASY ZONE）に到着したと思ったら虚無だった、という肩透かしの
-庭園。深緑を基調にした静かで空虚な色調にする。
+幻想世界（FANTASY ZONE）に到着したと思ったら、人の手が入っていたはずの
+西洋庭園が主のいないまま静まり返っていた、という肩透かしの庭園。
+トピアリー（刈り込み仕立ての生垣）や噴水など西洋庭園らしい意匠を配し、
+深緑を基調にした静かで空虚な色調にする。
 
 ## 配色
 
@@ -23,9 +25,12 @@
 
 ## 登場障害物
 
-`obstacleKinds: VOID_OBSTACLE_KINDS = ["withered_tree", "stone_lantern", "floating_island"]`
+`obstacleKinds: VOID_OBSTACLE_KINDS = ["topiary", "fountain", "withered_tree"]`
 
-枯れ木や石灯籠など、庭園の「空虚さ」を表現する障害物を配置する。
+トピアリー（刈り込み仕立ての生垣）や噴水など西洋庭園らしい意匠に、枯れ木を
+混ぜることで「手入れされていたはずの庭が主を失った空虚さ」を表現する。
+石灯籠（`stone_lantern`）は和風の意匠が浮くため、ステージ5 YOZAKURAへ
+移設した（`docs/stages/05-yozakura.md`参照）。
 
 ## ボス
 

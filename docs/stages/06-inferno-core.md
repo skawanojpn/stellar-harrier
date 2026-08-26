@@ -29,7 +29,11 @@
 
 `obstacleKinds: INFERNO_OBSTACLE_KINDS = ["pillar", "magma_boulder", "obsidian_spike"]`
 
-マグマの岩塊や黒曜石の尖塔など、地獄らしい障害物を配置する。
+マグマの岩塊や黒曜石の尖塔など、地獄らしい障害物を配置する。`pillar`は
+このステージだけ`buildInfernoPillarMesh`（地面Y=-4から天井Y=10まで届く
+高さ14の専用メッシュ）に差し替わる。このステージには天井演出
+（`theme: "inferno"`、`buildCeiling`）があるため、通常の`buildPillarMesh`
+（高さ10、天井まで届かない）のままだと柱が天井から浮いて見えるための対応。
 
 ## ボス
 
