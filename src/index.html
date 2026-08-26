@@ -26100,14 +26100,21 @@
 
         var SCALER_SEGMENT_COUNT = 15;
         var SCALER_SEGMENT_SPACING = 1.1;
+        // 胴体セグメント(球体)の横幅(X)方向の拡大率。縦(Y)・前後(Z)は
+        // 変えず、横だけやや広げることで安定感のあるシルエットにする
+        // (頭部は対象外)。
+        var SCALER_BODY_WIDTH_SCALE = 1.25;
         // 龍(スケイラ)が画面手前側で折り返すZ座標。自機のすぐ手前ではなく
         // 画面外に近い位置(敵の削除しきい値z>12の直前)まで迫ってから
         // 折り返すことで、中途半端な位置での「描画ジャンプ」を防ぐ。
         var SCALER_NEAR_TURN_Z = 10;
-        // 折り返し地点付近(自機のすぐ手前で反対側から現れて見える瞬間)は
-        // 不意打ち的な衝突を避けるため、この余裕距離ぶん手前から当たり
-        // 判定を無効化する。
-        var SCALER_TURN_SAFE_MARGIN = 6;
+        // 本体(頭)のZ座標が自機(playerGroup.position.z=2)からこの距離
+        // 以内にある間は、往路(接近中)・復路(折り返し後)を問わず本体との
+        // 衝突判定を無効化する。原作同様スケイラは体当たりで倒せず、
+        // あくまで避けるべき巨大な障害物という位置づけのため、画面
+        // いっぱいを使う8の字飛行がプレイヤーの目の前を横切る演出
+        // そのものを、事故的な被弾なしに安全に見せることを優先する。
+        var SCALER_NEAR_COLLISION_SAFE_DISTANCE = 6;
         // 龍(スケイラ)が折り返す最奥のZ座標。自機の交戦距離よりもさらに
         // 奥まで伸ばし、大胆な遊泳の演出にする。
         var SCALER_DEEP_RETREAT_Z = -160;
@@ -26240,6 +26247,12 @@
               : new THREE.SphereGeometry(segSize, 10, 8);
 
             var segMesh = new THREE.Mesh(segGeo, segMat);
+
+            if (!isHead) {
+              // 胴体セグメントは縦(Y)・前後(Z)の寸法は変えず、横幅(X)だけ
+              // やや広げて安定感のあるシルエットにする(頭部は対象外)。
+              segMesh.scale.set(SCALER_BODY_WIDTH_SCALE, 1, 1);
+            }
 
             if (isHead) {
               // 正面（90度）から30度上方を見上げる角度（60度 = Math.PI / 3）
@@ -26495,6 +26508,7 @@
 
           group.userData.segments = segments;
           group.userData.head = segments[0];
+          group.scale.setScalar(SCALER_VISUAL_SCALE);
 
           return group;
         }
@@ -31929,9 +31943,9 @@
           generic: 8,
         };
         var BOSS_SIZE_BY_TYPE = {
-          // SCALERはメッシュを5倍表示にする(SCALER_VISUAL_SCALE)のに
-          // 合わせ、本体の衝突判定半径も元の2倍にする。
-          scaler: 5.5,
+          // SCALERはメッシュをSCALER_VISUAL_SCALE(1.5倍)で表示するため、
+          // 本体の衝突判定半径も見た目の頭部実寸(約1.15*1.5)に近い値にする。
+          scaler: 2.6,
           tomos: 2.2,
           // CERBERUSはメッシュを3倍表示にする(CERBERUS_VISUAL_SCALE)のに
           // 合わせ、本体の衝突判定半径もデフォルト(2.6)の3倍にする。
@@ -31945,8 +31959,8 @@
         };
         // スケイラ(龍)本体のビジュアルスケール。衝突判定の半径
         // (BOSS_SIZE_BY_TYPE)とは別に、メッシュ自体を大きく見せるための
-        // 拡大率(2.5倍)。
-        var SCALER_VISUAL_SCALE = 5;
+        // 拡大率。
+        var SCALER_VISUAL_SCALE = 1.5;
         // GODANI(双頭竜)本体のビジュアルスケール。参考画像相当の迫力を
         // 出すため、メッシュ全体を2倍で表示する。
         var GODANI_VISUAL_SCALE = 2;
@@ -36482,10 +36496,11 @@
               continue;
             }
 
-            var scalerTurnaroundInvuln =
+            var scalerNearCollisionSafe =
               isScaler &&
-              en.mesh.position.z > SCALER_NEAR_TURN_Z - SCALER_TURN_SAFE_MARGIN;
-            if (invulnerableTimer <= 0 && !scalerTurnaroundInvuln) {
+              Math.abs(en.mesh.position.z - playerGroup.position.z) <
+                SCALER_NEAR_COLLISION_SAFE_DISTANCE;
+            if (invulnerableTimer <= 0 && !scalerNearCollisionSafe) {
               var hitPlayer = circlesIntersect(
                 {
                   x: en.mesh.position.x,
