@@ -35007,18 +35007,139 @@
         // 卒塔婆: 妖怪ステージの障害物。木製の細長い板塔婆。
         function buildSotobaMesh() {
           var group = new THREE.Group();
-          var mat = new THREE.MeshStandardMaterial({ color: 0x998866 });
-          var board = new THREE.Mesh(new THREE.BoxGeometry(0.9, 8, 0.2), mat);
-          group.add(board);
 
-          var inkMat = new THREE.MeshStandardMaterial({
-            color: 0x111111,
-            emissive: 0x220000,
-            emissiveIntensity: 0.2,
+          // --- 1. マテリアル定義 ---
+          var woodMat = new THREE.MeshStandardMaterial({
+            color: 0x785e4f, // 年月の経った古木色
+            emissive: 0x2e1e18,
+            emissiveIntensity: 0.15,
+            roughness: 0.8,
+            metalness: 0.05,
           });
-          var ink = new THREE.Mesh(new THREE.BoxGeometry(0.5, 3, 0.05), inkMat);
-          ink.position.set(0, 2, 0.13);
-          group.add(ink);
+
+          var bonjiMat = new THREE.MeshStandardMaterial({
+            color: 0x0f172a, // 黒漆の梵字刻印
+            emissive: 0x4c0519, // ほのかに赤く光る呪文
+            emissiveIntensity: 0.4,
+            roughness: 0.5,
+          });
+
+          var ropeMat = new THREE.MeshStandardMaterial({
+            color: 0xd97706, // 注連縄（しめなわ）
+            emissive: 0x78350f,
+            emissiveIntensity: 0.2,
+            roughness: 0.9,
+          });
+
+          var spiritMat = new THREE.MeshStandardMaterial({
+            color: 0xa855f7, // 漂う霊気
+            emissive: 0x9333ea,
+            emissiveIntensity: 1.8,
+            transparent: true,
+            opacity: 0.75,
+          });
+
+          // --- 2. 卒塔婆本体（板身 ＆ 五輪切削頭部） ---
+          var sotobaGroup = new THREE.Group();
+
+          // メイン板身
+          var mainBoard = new THREE.Mesh(
+            new THREE.BoxGeometry(0.85, 7.5, 0.16),
+            woodMat,
+          );
+          mainBoard.position.set(0, 3.75, 0);
+          sotobaGroup.add(mainBoard);
+
+          // 卒塔婆頭部の五輪切り欠き（空・風・水・火・地ノコギリ目）
+          for (var notchI = 0; notchI < 4; notchI++) {
+            var notchL = new THREE.Mesh(
+              new THREE.BoxGeometry(0.18, 0.22, 0.18),
+              woodMat,
+            );
+            notchL.position.set(-0.48, 6.8 - notchI * 0.5, 0);
+            sotobaGroup.add(notchL);
+
+            var notchR = new THREE.Mesh(
+              new THREE.BoxGeometry(0.18, 0.22, 0.18),
+              woodMat,
+            );
+            notchR.position.set(0.48, 6.8 - notchI * 0.5, 0);
+            sotobaGroup.add(notchR);
+          }
+
+          // 最上部（キャノピー・宝珠頂点）
+          var topCrest = new THREE.Mesh(
+            new THREE.ConeGeometry(0.35, 0.6, 4),
+            woodMat,
+          );
+          topCrest.rotation.y = Math.PI / 4;
+          topCrest.position.set(0, 7.6, 0);
+          sotobaGroup.add(topCrest);
+
+          // --- 3. 刻まれた梵字（黒漆刻印） ＆ 斜めがけ注連縄 ---
+          for (var bonjiI = 0; bonjiI < 3; bonjiI++) {
+            var bonjiPlate = new THREE.Mesh(
+              new THREE.BoxGeometry(0.48, 1.2, 0.04),
+              bonjiMat,
+            );
+            bonjiPlate.position.set(0, 5.2 - bonjiI * 1.5, 0.09);
+            sotobaGroup.add(bonjiPlate);
+
+            // 裏面刻印
+            var bonjiPlateBack = new THREE.Mesh(
+              new THREE.BoxGeometry(0.48, 1.2, 0.04),
+              bonjiMat,
+            );
+            bonjiPlateBack.position.set(0, 5.2 - bonjiI * 1.5, -0.09);
+            sotobaGroup.add(bonjiPlateBack);
+          }
+
+          // やや斜めがけに結ばれた注連縄（しめ縄）
+          var shimenawa = new THREE.Mesh(
+            new THREE.TorusGeometry(0.52, 0.065, 6, 14),
+            ropeMat,
+          );
+          shimenawa.rotation.x = Math.PI / 2.1;
+          shimenawa.rotation.z = 0.25; // 斜めがけ角度
+          shimenawa.position.set(0, 2.6, 0);
+          shimenawa.scale.set(1.0, 0.55, 1.0);
+          sotobaGroup.add(shimenawa);
+
+          group.add(sotobaGroup);
+
+          // --- 4. 周囲を漂う妖しい霊気パーティクル ---
+          var spiritGroup = new THREE.Group();
+          var spiritNodes = [];
+
+          for (var sI = 0; sI < 3; sI++) {
+            var sPivot = new THREE.Group();
+            var sOrb = new THREE.Mesh(
+              new THREE.SphereGeometry(0.08, 8, 8),
+              spiritMat,
+            );
+            sOrb.position.set(0.6 + sI * 0.15, 0, 0);
+
+            sPivot.add(sOrb);
+            spiritGroup.add(sPivot);
+            spiritNodes.push({
+              pivot: sPivot,
+              phase: sI * ((Math.PI * 2) / 3),
+            });
+          }
+          group.add(spiritGroup);
+
+          // --- 5. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            // 梵字のほのかな赤脈動
+            bonjiMat.emissiveIntensity = 0.3 + Math.sin(time * 3.0) * 0.25;
+
+            // 漂う霊気の縦方向・周囲ゆらゆら旋回動作
+            for (var k = 0; k < spiritNodes.length; k++) {
+              var sn = spiritNodes[k];
+              sn.pivot.rotation.y = time * 1.5 + sn.phase;
+              sn.pivot.position.y = 3.5 + Math.sin(time * 2.5 + sn.phase) * 0.8;
+            }
+          };
 
           return group;
         }
@@ -35026,20 +35147,157 @@
         // 墓石: 妖怪ステージの障害物。苔むした石碑。
         function buildGravestoneMesh() {
           var group = new THREE.Group();
-          var mat = new THREE.MeshStandardMaterial({ color: 0x555a5a });
-          var stone = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.7, 0.9, 2.2, 6),
-            mat,
-          );
-          group.add(stone);
 
-          var mossMat = new THREE.MeshStandardMaterial({ color: 0x445533 });
-          var moss = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.75, 0.75, 0.3, 6),
-            mossMat,
+          // --- 1. マテリアル定義 ---
+          var stoneMat = new THREE.MeshStandardMaterial({
+            color: 0x334155, // 黒御影石（ダークグラナイト）
+            emissive: 0x0f172a,
+            emissiveIntensity: 0.2,
+            roughness: 0.6,
+            metalness: 0.2,
+          });
+
+          var lightStoneMat = new THREE.MeshStandardMaterial({
+            color: 0x64748b, // 台座・縁取りの明るい御影石
+            emissive: 0x1e293b,
+            emissiveIntensity: 0.15,
+            roughness: 0.55,
+          });
+
+          var kanjiMat = new THREE.MeshStandardMaterial({
+            color: 0x020617, // 刻まれた漆黒の戒名
+            emissive: 0x4c0519, // ほのかに浮き上がる赤い金字
+            emissiveIntensity: 0.35,
+            roughness: 0.4,
+          });
+
+          var waterMat = new THREE.MeshStandardMaterial({
+            color: 0x06b6d4, // 水鉢の水面
+            emissive: 0x0891b2,
+            emissiveIntensity: 1.2,
+            transparent: true,
+            opacity: 0.85,
+          });
+
+          var flameMat = new THREE.MeshStandardMaterial({
+            color: 0xa855f7, // 漂う紫の人魂
+            emissive: 0x9333ea,
+            emissiveIntensity: 2.0,
+            transparent: true,
+            opacity: 0.8,
+          });
+
+          // --- 2. 墓石本体（三段重厚台座 ＆ 棹石 ＆ 屋根笠） ---
+          var tombGroup = new THREE.Group();
+
+          // 最下段: 芝台（Base Slab）
+          var baseSlab = new THREE.Mesh(
+            new THREE.BoxGeometry(2.2, 0.4, 2.2),
+            stoneMat,
           );
-          moss.position.y = -0.8;
-          group.add(moss);
+          baseSlab.position.set(0, 0.2, 0);
+          tombGroup.add(baseSlab);
+
+          // 中段: 下台（Middle Pedestal）
+          var midPedestal = new THREE.Mesh(
+            new THREE.BoxGeometry(1.6, 0.5, 1.6),
+            lightStoneMat,
+          );
+          midPedestal.position.set(0, 0.65, 0);
+          tombGroup.add(midPedestal);
+
+          // 上段: 上台（Upper Pedestal）
+          var upperPedestal = new THREE.Mesh(
+            new THREE.BoxGeometry(1.2, 0.45, 1.2),
+            stoneMat,
+          );
+          upperPedestal.position.set(0, 1.125, 0);
+          tombGroup.add(upperPedestal);
+
+          // メイン棹石（竿石・Saoishi Pillar）
+          var saoishi = new THREE.Mesh(
+            new THREE.BoxGeometry(0.9, 2.8, 0.9),
+            stoneMat,
+          );
+          saoishi.position.set(0, 2.75, 0);
+          tombGroup.add(saoishi);
+
+          // 和風屋根笠（Kasa Roof Top）
+          var roofKasa = new THREE.Mesh(
+            new THREE.ConeGeometry(0.95, 0.6, 4),
+            lightStoneMat,
+          );
+          roofKasa.rotation.y = Math.PI / 4;
+          roofKasa.position.set(0, 4.45, 0);
+          tombGroup.add(roofKasa);
+
+          var roofTopOrb = new THREE.Mesh(
+            new THREE.SphereGeometry(0.18, 10, 10),
+            lightStoneMat,
+          );
+          roofTopOrb.position.set(0, 4.85, 0);
+          tombGroup.add(roofTopOrb);
+
+          // --- 3. 刻印戒名 ＆ 水鉢 ---
+          var kanjiPlate = new THREE.Mesh(
+            new THREE.BoxGeometry(0.5, 1.8, 0.04),
+            kanjiMat,
+          );
+          kanjiPlate.position.set(0, 2.75, 0.47);
+          tombGroup.add(kanjiPlate);
+
+          var mizubachi = new THREE.Mesh(
+            new THREE.BoxGeometry(0.6, 0.35, 0.45),
+            lightStoneMat,
+          );
+          mizubachi.position.set(0, 0.58, 0.95);
+          tombGroup.add(mizubachi);
+
+          var waterSurface = new THREE.Mesh(
+            new THREE.BoxGeometry(0.48, 0.04, 0.33),
+            waterMat,
+          );
+          waterSurface.position.set(0, 0.74, 0.95);
+          tombGroup.add(waterSurface);
+
+          group.add(tombGroup);
+
+          // --- 4. 周囲を漂う人魂・鬼火パーティクル ---
+          var flameGroup = new THREE.Group();
+          var flameNodes = [];
+
+          for (var fI = 0; fI < 3; fI++) {
+            var fPivot = new THREE.Group();
+            var fOrb = new THREE.Mesh(
+              new THREE.SphereGeometry(0.1, 10, 10),
+              flameMat,
+            );
+            fOrb.position.set(1.2 + fI * 0.2, 0, 0);
+
+            var fTail = new THREE.Mesh(
+              new THREE.ConeGeometry(0.08, 0.3, 8),
+              flameMat,
+            );
+            fTail.position.set(1.2 + fI * 0.2, 0.18, 0);
+            fTail.rotation.z = -0.2;
+            fPivot.add(fOrb);
+            fPivot.add(fTail);
+
+            flameGroup.add(fPivot);
+            flameNodes.push({ pivot: fPivot, phase: fI * ((Math.PI * 2) / 3) });
+          }
+          group.add(flameGroup);
+
+          // --- 5. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            kanjiMat.emissiveIntensity = 0.25 + Math.sin(time * 2.5) * 0.2;
+
+            for (var k = 0; k < flameNodes.length; k++) {
+              var fn = flameNodes[k];
+              fn.pivot.rotation.y = time * 1.6 + fn.phase;
+              fn.pivot.position.y = 2.2 + Math.sin(time * 2.8 + fn.phase) * 0.6;
+            }
+          };
 
           return group;
         }
@@ -35047,58 +35305,367 @@
         // 竹: 妖怪ステージの障害物。連なる竹林の一部。
         function buildBambooMesh() {
           var group = new THREE.Group();
-          var mat = new THREE.MeshStandardMaterial({
-            color: 0x669944,
-            emissive: 0x113311,
-            emissiveIntensity: 0.15,
+
+          // --- 1. マテリアル定義 ---
+          var bambooMat = new THREE.MeshStandardMaterial({
+            color: 0x15803d, // 深い翡翠（ヒスイ）グリーンの竹肌
+            emissive: 0x052e16,
+            emissiveIntensity: 0.25,
+            roughness: 0.35,
+            metalness: 0.15,
           });
-          var offsets = [-0.6, 0, 0.7];
-          var heights = [9, 11, 8];
-          for (var i = 0; i < offsets.length; i++) {
-            var stalk = new THREE.Mesh(
-              new THREE.CylinderGeometry(0.25, 0.3, heights[i], 6),
-              mat,
+
+          var jointMat = new THREE.MeshStandardMaterial({
+            color: 0x86efac, // 竹の節目（明るい芽緑）
+            emissive: 0x14532d,
+            emissiveIntensity: 0.3,
+            roughness: 0.4,
+          });
+
+          var goldMat = new THREE.MeshStandardMaterial({
+            color: 0xf59e0b, // 金箔の節リング・モールド
+            emissive: 0x78350f,
+            emissiveIntensity: 0.6,
+            metalness: 0.9,
+            roughness: 0.15,
+          });
+
+          var leafMat = new THREE.MeshStandardMaterial({
+            color: 0x22c55e, // 鮮やかな笹の葉
+            emissive: 0x0f5132,
+            emissiveIntensity: 0.3,
+            roughness: 0.5,
+            side: THREE.DoubleSide,
+          });
+
+          // --- 2. 竹の群生（3本の異なる高さと太さの竹竿） ---
+          var stalks = [
+            { x: -0.65, z: 0.1, height: 9.5, radius: 0.26 },
+            { x: 0.0, z: -0.15, height: 11.5, radius: 0.3 },
+            { x: 0.7, z: 0.12, height: 8.5, radius: 0.24 },
+          ];
+
+          var stalkMeshes = [];
+
+          stalks.forEach(function (st, idx) {
+            var stalkGroup = new THREE.Group();
+            stalkGroup.position.set(st.x, 0, st.z);
+
+            // 竹竿メインボディ
+            var numJoints = Math.floor(st.height / 1.5);
+            for (var j = 0; j < numJoints; j++) {
+              var segHeight = st.height / numJoints;
+              var segment = new THREE.Mesh(
+                new THREE.CylinderGeometry(
+                  st.radius * 0.95,
+                  st.radius,
+                  segHeight * 0.92,
+                  10,
+                ),
+                bambooMat,
+              );
+              segment.position.y = j * segHeight + segHeight / 2;
+              stalkGroup.add(segment);
+
+              // 竹の節目リング（Joint Ring）
+              if (j < numJoints - 1) {
+                var joint = new THREE.Mesh(
+                  new THREE.TorusGeometry(st.radius * 1.04, 0.038, 6, 14),
+                  j % 2 === 0 ? jointMat : goldMat,
+                );
+                joint.rotation.x = Math.PI / 2;
+                joint.position.y = (j + 1) * segHeight;
+                stalkGroup.add(joint);
+              }
+            }
+
+            // 先端の斜め切り竹頭 (Cut Bamboo Top)
+            var topCut = new THREE.Mesh(
+              new THREE.CylinderGeometry(
+                st.radius * 0.92,
+                st.radius * 0.95,
+                0.8,
+                10,
+              ),
+              bambooMat,
             );
-            stalk.position.set(offsets[i], heights[i] / 2 - 4, 0);
-            group.add(stalk);
-          }
+            topCut.position.y = st.height + 0.4;
+            topCut.rotation.z = (idx % 2 === 0 ? 1 : -1) * 0.35;
+            stalkGroup.add(topCut);
+
+            // 金の節モールド
+            var topGold = new THREE.Mesh(
+              new THREE.TorusGeometry(st.radius * 0.98, 0.03, 6, 12),
+              goldMat,
+            );
+            topGold.rotation.x = Math.PI / 2;
+            topGold.position.y = st.height;
+            stalkGroup.add(topGold);
+
+            // 竹笹（Bamboo Leaves）の生い茂り
+            for (var lI = 0; lI < 4; lI++) {
+              var leafCluster = new THREE.Group();
+              var lAngle = (lI / 4) * Math.PI * 2;
+              leafCluster.position.set(
+                Math.sin(lAngle) * st.radius,
+                st.height - 1.5 + lI * 0.6,
+                Math.cos(lAngle) * st.radius,
+              );
+              leafCluster.rotation.y = lAngle;
+
+              for (var lf = -1; lf <= 1; lf++) {
+                var leafShape = new THREE.Shape();
+                leafShape.moveTo(0, 0);
+                leafShape.quadraticCurveTo(0.15, 0.4, 0, 1.2);
+                leafShape.quadraticCurveTo(-0.15, 0.4, 0, 0);
+
+                var leafGeo = new THREE.ShapeGeometry(leafShape);
+                var leafMesh = new THREE.Mesh(leafGeo, leafMat);
+                leafMesh.rotation.z = -Math.PI / 3 + lf * 0.3;
+                leafMesh.rotation.x = 0.4;
+                leafMesh.scale.set(0.6, 0.6, 0.6);
+                leafCluster.add(leafMesh);
+              }
+              stalkGroup.add(leafCluster);
+            }
+
+            group.add(stalkGroup);
+            stalkMeshes.push(stalkGroup);
+          });
+
+          // --- 3. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            for (var i = 0; i < stalkMeshes.length; i++) {
+              var sg = stalkMeshes[i];
+              var phase = i * 1.2;
+              sg.rotation.z = Math.sin(time * 1.8 + phase) * 0.035;
+              sg.rotation.x = Math.cos(time * 1.4 + phase) * 0.025;
+            }
+          };
+
           return group;
         }
 
         // ハート型の柱: フェアリーステージの障害物。
         function buildHeartPillarMesh() {
           var group = new THREE.Group();
-          var mat = new THREE.MeshStandardMaterial({
-            color: 0xff6699,
-            emissive: 0x882244,
-            emissiveIntensity: 0.35,
-          });
-          var pillar = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.6, 0.6, 9, 8),
-            mat,
-          );
-          group.add(pillar);
 
-          var heartMat = new THREE.MeshStandardMaterial({
-            color: 0xff2277,
-            emissive: 0xff2277,
-            emissiveIntensity: 0.6,
+          // --- 1. マテリアル定義 ---
+          var pillarMat = new THREE.MeshStandardMaterial({
+            color: 0xfff1f2, // ミルキーピンクパステル柱
+            emissive: 0xfecdd3,
+            emissiveIntensity: 0.25,
+            roughness: 0.3,
           });
-          var lobeGeo = new THREE.SphereGeometry(0.55, 10, 8);
-          var lobeLeft = new THREE.Mesh(lobeGeo, heartMat);
-          lobeLeft.position.set(-0.35, 4.7, 0);
-          group.add(lobeLeft);
-          var lobeRight = new THREE.Mesh(lobeGeo, heartMat.clone());
-          lobeRight.position.set(0.35, 4.7, 0);
-          group.add(lobeRight);
-          var tip = new THREE.Mesh(
-            new THREE.ConeGeometry(0.65, 1, 4),
-            heartMat.clone(),
+
+          var baseMat = new THREE.MeshStandardMaterial({
+            color: 0xf472b6, // 鮮やかなパステルローズ台座
+            emissive: 0xe11d48,
+            emissiveIntensity: 0.3,
+            roughness: 0.4,
+          });
+
+          var goldMat = new THREE.MeshStandardMaterial({
+            color: 0xfbbf24, // 黄金の装飾リング
+            emissive: 0xd97706,
+            emissiveIntensity: 0.5,
+            metalness: 0.85,
+          });
+
+          var bigHeartMat = new THREE.MeshStandardMaterial({
+            color: 0xf43f5e, // 柱頭で輝く大きなパステルハート
+            emissive: 0xe11d48,
+            emissiveIntensity: 1.5,
+            roughness: 0.2,
+            side: THREE.DoubleSide,
+          });
+
+          var miniHeartMat = new THREE.MeshStandardMaterial({
+            color: 0x38bdf8, // 周囲を漂うスカイブルー＆マゼンタのハートクリスタル
+            emissive: 0x0284c7,
+            emissiveIntensity: 1.8,
+            transparent: true,
+            opacity: 0.85,
+          });
+
+          // ハート型のShape生成関数
+          function createHeartShape(s) {
+            var shape = new THREE.Shape();
+            shape.moveTo(0 * s, 0.08 * s);
+            shape.bezierCurveTo(
+              0 * s,
+              0.08 * s,
+              -0.07 * s,
+              0.2 * s,
+              -0.14 * s,
+              0.2 * s,
+            );
+            shape.bezierCurveTo(
+              -0.22 * s,
+              0.2 * s,
+              -0.22 * s,
+              0.08 * s,
+              -0.22 * s,
+              0.08 * s,
+            );
+            shape.bezierCurveTo(
+              -0.22 * s,
+              -0.04 * s,
+              -0.12 * s,
+              -0.15 * s,
+              0 * s,
+              -0.24 * s,
+            );
+            shape.bezierCurveTo(
+              0.12 * s,
+              -0.15 * s,
+              0.22 * s,
+              -0.04 * s,
+              0.22 * s,
+              0.08 * s,
+            );
+            shape.bezierCurveTo(
+              0.22 * s,
+              0.08 * s,
+              0.22 * s,
+              0.2 * s,
+              0.14 * s,
+              0.2 * s,
+            );
+            shape.bezierCurveTo(
+              0.07 * s,
+              0.2 * s,
+              0 * s,
+              0.08 * s,
+              0 * s,
+              0.08 * s,
+            );
+            return shape;
+          }
+
+          // --- 2. 柱の台座 (Base) ---
+          var baseGroup = new THREE.Group();
+
+          // 下段の大台座
+          var baseBottom = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.55, 0.65, 0.2, 12),
+            baseMat,
           );
-          tip.rotation.y = Math.PI / 4;
-          tip.rotation.x = Math.PI;
-          tip.position.set(0, 3.9, 0);
-          group.add(tip);
+          baseBottom.position.set(0, -0.7, 0);
+          baseGroup.add(baseBottom);
+
+          // 中段のモールディング
+          var baseMid = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.42, 0.52, 0.15, 12),
+            goldMat,
+          );
+          baseMid.position.set(0, -0.525, 0);
+          baseGroup.add(baseMid);
+
+          group.add(baseGroup);
+
+          // --- 3. メインピラー (Column Shaft) ＆ スパイラルリボン ---
+          var shaftGroup = new THREE.Group();
+
+          // フルーティング入りのエレガントな柱本体
+          var shaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.32, 0.38, 2.0, 16),
+            pillarMat,
+          );
+          shaft.position.set(0, 0.55, 0);
+          shaftGroup.add(shaft);
+
+          // 柱を包む黄金の装飾リング
+          for (var r = 0; r < 3; r++) {
+            var ring = new THREE.Mesh(
+              new THREE.TorusGeometry(0.35, 0.02, 8, 24),
+              goldMat,
+            );
+            ring.position.set(0, -0.2 + r * 0.75, 0);
+            ring.rotation.x = Math.PI / 2;
+            shaftGroup.add(ring);
+          }
+
+          // 柱頭の黄金冠 (Capital Top)
+          var capital = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.48, 0.34, 0.22, 12),
+            goldMat,
+          );
+          capital.position.set(0, 1.62, 0);
+          shaftGroup.add(capital);
+
+          group.add(shaftGroup);
+
+          // --- 4. 頂点で輝く大きなパステルハート (Big Pulsing Heart) ---
+          var heartGroup = new THREE.Group();
+          heartGroup.position.set(0, 2.1, 0);
+
+          var bigHeartGeo = new THREE.ExtrudeGeometry(createHeartShape(1.8), {
+            depth: 0.18,
+            bevelEnabled: true,
+            bevelThickness: 0.04,
+            bevelSize: 0.04,
+            bevelSegments: 3,
+          });
+
+          var bigHeartMesh = new THREE.Mesh(bigHeartGeo, bigHeartMat);
+          bigHeartMesh.position.set(0, 0, -0.09);
+          heartGroup.add(bigHeartMesh);
+
+          group.add(heartGroup);
+
+          // --- 5. 周囲を浮遊・公転するミニハートジュエル (Orbiting Heart Jewels) ---
+          var jewelsGroup = new THREE.Group();
+          jewelsGroup.position.set(0, 2.1, 0);
+
+          var jewelNodes = [];
+          var jewelGeo = new THREE.ExtrudeGeometry(createHeartShape(0.4), {
+            depth: 0.05,
+            bevelEnabled: true,
+            bevelThickness: 0.01,
+            bevelSize: 0.01,
+          });
+
+          for (var j = 0; j < 4; j++) {
+            var jMesh = new THREE.Mesh(jewelGeo, miniHeartMat);
+            var jAngle = (j / 4) * Math.PI * 2;
+            var jRad = 0.75;
+            jMesh.position.set(
+              Math.cos(jAngle) * jRad,
+              j % 2 === 0 ? 0.2 : -0.2,
+              Math.sin(jAngle) * jRad,
+            );
+            jewelsGroup.add(jMesh);
+
+            jewelNodes.push({
+              mesh: jMesh,
+              baseAngle: jAngle,
+              rad: jRad,
+              phase: j * 1.5,
+            });
+          }
+
+          group.add(jewelsGroup);
+
+          // --- 6. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            // 頂点大ハートの優雅な拍動パルス
+            var heartPulse = 1.0 + Math.sin(time * 4.0) * 0.08;
+            heartGroup.scale.set(heartPulse, heartPulse, heartPulse);
+            heartGroup.rotation.y = Math.sin(time * 1.5) * 0.15;
+
+            bigHeartMat.emissiveIntensity = 1.2 + Math.sin(time * 5.0) * 0.5;
+
+            // ミニハートジュエルのゆっくりとした公転 ＆ 浮遊
+            for (var n = 0; n < jewelNodes.length; n++) {
+              var node = jewelNodes[n];
+              var curAngle = time * 1.8 + node.baseAngle;
+              node.mesh.position.x = Math.cos(curAngle) * node.rad;
+              node.mesh.position.z = Math.sin(curAngle) * node.rad;
+              node.mesh.position.y = Math.sin(time * 3.0 + node.phase) * 0.18;
+              node.mesh.rotation.y = curAngle;
+            }
+          };
 
           return group;
         }
@@ -35106,24 +35673,172 @@
         // 巨大キャンディ: フェアリーステージの障害物。
         function buildLollipopMesh() {
           var group = new THREE.Group();
-          var stickMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+
+          // --- 1. マテリアル定義 ---
+          var stickMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff, // 純白キャンディスティック
+            roughness: 0.3,
+          });
+
+          var stripeMat = new THREE.MeshStandardMaterial({
+            color: 0xf43f5e, // スティックのピンクストライプ
+            emissive: 0xe11d48,
+            emissiveIntensity: 0.3,
+          });
+
+          var swirlPinkMat = new THREE.MeshStandardMaterial({
+            color: 0xf43f5e, // 渦巻きピンク
+            emissive: 0xbe123c,
+            emissiveIntensity: 0.4,
+            roughness: 0.15,
+            metalness: 0.1,
+            side: THREE.DoubleSide,
+          });
+
+          var swirlMintMat = new THREE.MeshStandardMaterial({
+            color: 0x34d399, // 渦巻きミントグリーン
+            emissive: 0x047857,
+            emissiveIntensity: 0.4,
+            roughness: 0.15,
+            metalness: 0.1,
+            side: THREE.DoubleSide,
+          });
+
+          var swirlYellowMat = new THREE.MeshStandardMaterial({
+            color: 0xfacc15, // 渦巻きイエロー
+            emissive: 0xca8a04,
+            emissiveIntensity: 0.4,
+            roughness: 0.15,
+            metalness: 0.1,
+            side: THREE.DoubleSide,
+          });
+
+          var ribbonMat = new THREE.MeshStandardMaterial({
+            color: 0xc084fc, // パステルパープルのリボン結び
+            emissive: 0x7e22ce,
+            emissiveIntensity: 0.3,
+            roughness: 0.4,
+          });
+
+          // --- 2. キャンディスティック (Stick) ＆ ストライプ ---
+          var stickGroup = new THREE.Group();
+
           var stick = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.15, 0.15, 5, 8),
+            new THREE.CylinderGeometry(0.06, 0.06, 2.2, 12),
             stickMat,
           );
-          group.add(stick);
+          stick.position.set(0, 0.1, 0);
+          stickGroup.add(stick);
 
-          var candyMat = new THREE.MeshStandardMaterial({
-            color: 0xff3388,
-            emissive: 0xaa1155,
-            emissiveIntensity: 0.4,
-          });
-          var candy = new THREE.Mesh(
-            new THREE.TorusKnotGeometry(0.9, 0.28, 40, 8, 2, 3),
-            candyMat,
+          // 螺旋ストライプ装飾
+          for (var s = 0; s < 5; s++) {
+            var stripeRing = new THREE.Mesh(
+              new THREE.TorusGeometry(0.064, 0.012, 6, 12),
+              stripeMat,
+            );
+            stripeRing.position.set(0, -0.7 + s * 0.4, 0);
+            stripeRing.rotation.x = Math.PI / 2.5;
+            stickGroup.add(stripeRing);
+          }
+
+          group.add(stickGroup);
+
+          // --- 3. 渦巻きキャンディ盤面 (Spiral Swirl Candy Head) ---
+          var candyGroup = new THREE.Group();
+          candyGroup.position.set(0, 1.4, 0);
+
+          // 渦巻きのセグメント構成
+          var segmentCount = 12;
+          var outerRadius = 0.85;
+
+          for (var i = 0; i < segmentCount; i++) {
+            var startAngle = (i / segmentCount) * Math.PI * 2;
+            var endAngle = ((i + 1) / segmentCount) * Math.PI * 2;
+
+            var swirlShape = new THREE.Shape();
+            swirlShape.moveTo(0, 0);
+            swirlShape.absarc(0, 0, outerRadius, startAngle, endAngle, false);
+            swirlShape.lineTo(0, 0);
+
+            var swirlGeo = new THREE.ExtrudeGeometry(swirlShape, {
+              depth: 0.16,
+              bevelEnabled: true,
+              bevelThickness: 0.02,
+              bevelSize: 0.02,
+              bevelSegments: 2,
+            });
+
+            var curMat =
+              i % 3 === 0
+                ? swirlPinkMat
+                : i % 3 === 1
+                  ? swirlMintMat
+                  : swirlYellowMat;
+            var swirlMesh = new THREE.Mesh(swirlGeo, curMat);
+            swirlMesh.position.set(0, 0, -0.08);
+            candyGroup.add(swirlMesh);
+          }
+
+          // 中央のキャンディキャップ
+          var centerCap = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.18, 0.18, 0.22, 16),
+            swirlPinkMat,
           );
-          candy.position.y = 2.8;
-          group.add(candy);
+          centerCap.rotation.x = Math.PI / 2;
+          candyGroup.add(centerCap);
+
+          group.add(candyGroup);
+
+          // --- 4. リボン結び (Ribbon Bow Decor) ---
+          var bowGroup = new THREE.Group();
+          bowGroup.position.set(0, 0.65, 0.08);
+
+          // 結び目ノット
+          var knot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08, 10, 10),
+            ribbonMat,
+          );
+          knot.scale.set(1.2, 0.9, 0.8);
+          bowGroup.add(knot);
+
+          // 左右のリボンループ
+          for (var rSign = -1; rSign <= 1; rSign += 2) {
+            var loopMesh = new THREE.Mesh(
+              new THREE.TorusGeometry(0.14, 0.04, 8, 16),
+              ribbonMat,
+            );
+            loopMesh.position.set(rSign * 0.18, 0.02, 0);
+            loopMesh.rotation.y = rSign * 0.4;
+            loopMesh.scale.set(1.2, 0.8, 1.0);
+            bowGroup.add(loopMesh);
+
+            // 下に垂れるリボンの脚
+            var tailShape = new THREE.Shape();
+            tailShape.moveTo(0, 0);
+            tailShape.lineTo(rSign * 0.12, -0.32);
+            tailShape.lineTo(rSign * 0.04, -0.35);
+            tailShape.lineTo(0, 0);
+
+            var tailGeo = new THREE.ExtrudeGeometry(tailShape, {
+              depth: 0.01,
+              bevelEnabled: false,
+            });
+            var tailMesh = new THREE.Mesh(tailGeo, ribbonMat);
+            tailMesh.position.set(rSign * 0.04, -0.04, 0.01);
+            bowGroup.add(tailMesh);
+          }
+
+          group.add(bowGroup);
+
+          // --- 5. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            // 渦巻きキャンディ盤面のゆっくりとした自動回転
+            candyGroup.rotation.z = time * 0.8;
+
+            // 全体のゆったりとした風揺れ
+            group.rotation.z = Math.sin(time * 2.0) * 0.03;
+            group.rotation.x = Math.cos(time * 1.5) * 0.02;
+          };
 
           return group;
         }
@@ -35131,31 +35846,275 @@
         // 花のアーチ: フェアリーステージの障害物。
         function buildFlowerArchMesh() {
           var group = new THREE.Group();
-          var vineMat = new THREE.MeshStandardMaterial({ color: 0x559944 });
-          var arch = new THREE.Mesh(
-            new THREE.TorusGeometry(2, 0.3, 8, 16, Math.PI),
+
+          // --- 1. マテリアル定義 ---
+          var archMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff, // 純白のアーチ門
+            roughness: 0.35,
+            metalness: 0.1,
+          });
+
+          var pillarBaseMat = new THREE.MeshStandardMaterial({
+            color: 0xf472b6, // パステルローズの柱台座
+            emissive: 0xe11d48,
+            emissiveIntensity: 0.25,
+            roughness: 0.4,
+          });
+
+          var vineMat = new THREE.MeshStandardMaterial({
+            color: 0x10b981, // 深緑の蔓・葉
+            emissive: 0x047857,
+            emissiveIntensity: 0.3,
+            roughness: 0.4,
+          });
+
+          var goldMat = new THREE.MeshStandardMaterial({
+            color: 0xfbbf24, // 黄金のリング装飾
+            emissive: 0xd97706,
+            emissiveIntensity: 0.6,
+            metalness: 0.85,
+          });
+
+          var pistilMat = new THREE.MeshStandardMaterial({
+            color: 0xfacc15, // 黄色の花芯
+            emissive: 0xca8a04,
+            emissiveIntensity: 1.2,
+          });
+
+          // カラフルお花マテリアル群
+          var flowerMats = [
+            new THREE.MeshStandardMaterial({
+              color: 0xf43f5e,
+              emissive: 0xbe123c,
+              emissiveIntensity: 0.4,
+              roughness: 0.3,
+              side: THREE.DoubleSide,
+            }),
+            new THREE.MeshStandardMaterial({
+              color: 0xf472b6,
+              emissive: 0xdb2777,
+              emissiveIntensity: 0.4,
+              roughness: 0.3,
+              side: THREE.DoubleSide,
+            }),
+            new THREE.MeshStandardMaterial({
+              color: 0x38bdf8,
+              emissive: 0x0284c7,
+              emissiveIntensity: 0.4,
+              roughness: 0.3,
+              side: THREE.DoubleSide,
+            }),
+            new THREE.MeshStandardMaterial({
+              color: 0xc084fc,
+              emissive: 0x7e22ce,
+              emissiveIntensity: 0.4,
+              roughness: 0.3,
+              side: THREE.DoubleSide,
+            }),
+            new THREE.MeshStandardMaterial({
+              color: 0xfacc15,
+              emissive: 0xca8a04,
+              emissiveIntensity: 0.4,
+              roughness: 0.3,
+              side: THREE.DoubleSide,
+            }),
+            new THREE.MeshStandardMaterial({
+              color: 0xfb7185,
+              emissive: 0xe11d48,
+              emissiveIntensity: 0.4,
+              roughness: 0.3,
+              side: THREE.DoubleSide,
+            }),
+          ];
+
+          // 確定論的乱数
+          function pseudoRandom(seed) {
+            var x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+            return x - Math.floor(x);
+          }
+
+          // 1輪のお花 (崩れないクリーン幾何学)
+          function createFlower(scale, colorIdx) {
+            var fGroup = new THREE.Group();
+            var curMat = flowerMats[colorIdx % flowerMats.length];
+
+            for (var p = 0; p < 5; p++) {
+              var angle = (p / 5) * Math.PI * 2;
+              var petal = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.08, 0.02, 0.22, 8),
+                curMat,
+              );
+              petal.position.set(
+                Math.cos(angle) * 0.12,
+                Math.sin(angle) * 0.12,
+                0,
+              );
+              petal.rotation.z = angle + Math.PI / 2;
+              fGroup.add(petal);
+            }
+
+            var pistil = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.06, 0.06, 0.05, 10),
+              pistilMat,
+            );
+            pistil.rotation.x = Math.PI / 2;
+            pistil.position.z = 0.02;
+            fGroup.add(pistil);
+
+            fGroup.scale.setScalar(scale);
+            return fGroup;
+          }
+
+          // --- 2. アーチ門の柱 ＆ 門枠 ---
+          var gateGroup = new THREE.Group();
+
+          // 左右の台座柱
+          for (var side = -1; side <= 1; side += 2) {
+            var base = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.32, 0.38, 0.25, 12),
+              pillarBaseMat,
+            );
+            base.position.set(side * 1.3, -0.55, 0);
+            gateGroup.add(base);
+
+            var col = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.18, 0.22, 1.4, 12),
+              archMat,
+            );
+            col.position.set(side * 1.3, 0.25, 0);
+            gateGroup.add(col);
+
+            var ring = new THREE.Mesh(
+              new THREE.TorusGeometry(0.22, 0.025, 8, 16),
+              goldMat,
+            );
+            ring.position.set(side * 1.3, 0.9, 0);
+            ring.rotation.x = Math.PI / 2;
+            gateGroup.add(ring);
+          }
+
+          // 大きな半円アーチ骨組み
+          var archCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(-1.3, 0.9, 0),
+            new THREE.Vector3(-1.2, 1.7, 0),
+            new THREE.Vector3(0.0, 2.3, 0),
+            new THREE.Vector3(1.2, 1.7, 0),
+            new THREE.Vector3(1.3, 0.9, 0),
+          ]);
+          var archMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(archCurve, 32, 0.12, 12, false),
+            archMat,
+          );
+          gateGroup.add(archMesh);
+
+          // 絡みつく緑のツタ
+          var vineCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(-1.3, -0.4, 0.06),
+            new THREE.Vector3(-1.2, 0.9, -0.06),
+            new THREE.Vector3(-0.7, 1.8, 0.08),
+            new THREE.Vector3(0.0, 2.36, -0.06),
+            new THREE.Vector3(0.7, 1.8, 0.08),
+            new THREE.Vector3(1.2, 0.9, -0.06),
+            new THREE.Vector3(1.3, -0.4, 0.06),
+          ]);
+          var vineMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(vineCurve, 32, 0.035, 8, false),
             vineMat,
           );
-          arch.rotation.z = Math.PI;
-          arch.position.y = -1.5;
-          group.add(arch);
+          gateGroup.add(vineMesh);
 
-          var petalMat = new THREE.MeshStandardMaterial({
-            color: 0xffaadd,
-            emissive: 0xaa5588,
-            emissiveIntensity: 0.3,
-          });
-          var petalGeo = new THREE.SphereGeometry(0.3, 8, 6);
-          for (var i = 0; i <= 6; i++) {
-            var angle = Math.PI * (i / 6);
-            var petal = new THREE.Mesh(petalGeo, petalMat.clone());
-            petal.position.set(
-              Math.cos(angle) * 2,
-              Math.sin(angle) * 2 - 1.5,
-              0,
+          group.add(gateGroup);
+
+          // --- 3. アーチ骨組み自体 ＆ 中央空間を覆い尽くす120輪の大満開お花群 ---
+          var flowersGroup = new THREE.Group();
+          var flowerNodes = [];
+
+          // [A] アーチ骨組み（半円のアーチと柱）に巻きつくように大量に咲くお花 (60輪)
+          for (var a = 0; a < 60; a++) {
+            var t = a / 59;
+            var pt = archCurve.getPoint(t);
+
+            var rA = pseudoRandom(a * 1.7 + 0.2);
+            var rB = pseudoRandom(a * 3.1 + 0.8);
+
+            var offAngle = rA * Math.PI * 2;
+            var offRad = 0.12 + rB * 0.16;
+
+            var fx = pt.x + Math.cos(offAngle) * offRad;
+            var fy = pt.y + Math.sin(offAngle) * offRad;
+            var fz = pt.z + (rA - 0.5) * 0.22;
+
+            var fScale = 0.55 + rB * 0.65;
+            var flower = createFlower(fScale, a);
+            flower.position.set(fx, fy, fz);
+            flower.rotation.z = rA * Math.PI * 2;
+
+            var leaf = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.04, 0.01, 0.2, 6),
+              vineMat,
             );
-            group.add(petal);
+            leaf.position.set(fx + 0.04, fy - 0.04, fz - 0.02);
+            leaf.rotation.z = rB * Math.PI * 2;
+            flowersGroup.add(leaf);
+
+            flowersGroup.add(flower);
+            flowerNodes.push({
+              mesh: flower,
+              baseScale: fScale,
+              phase: a * 0.3,
+            });
           }
+
+          // [B] アーチの内側中央エリアに密生して咲き乱れるお花 (60輪)
+          for (var c = 0; c < 60; c++) {
+            var r1 = pseudoRandom(c * 2.1 + 0.3);
+            var r2 = pseudoRandom(c * 4.3 + 0.9);
+            var r3 = pseudoRandom(c * 6.7 + 1.5);
+            var r4 = pseudoRandom(c * 8.9 + 2.1);
+
+            var angle = r1 * Math.PI;
+            var radX = (0.05 + r2 * 0.95) * 1.12;
+            var radY = (0.05 + r2 * 0.95) * 1.65;
+
+            var fx = Math.cos(angle) * radX;
+            var fy = Math.sin(angle) * radY + 0.1;
+            var fz = (r3 - 0.5) * 0.18;
+
+            var fScale = 0.6 + r4 * 0.65;
+            var flower = createFlower(fScale, c + 60);
+            flower.position.set(fx, fy, fz);
+            flower.rotation.z = r2 * Math.PI * 2;
+
+            var leafC = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.04, 0.01, 0.2, 6),
+              vineMat,
+            );
+            leafC.position.set(fx + 0.04, fy - 0.04, fz - 0.02);
+            leafC.rotation.z = r1 * Math.PI * 2;
+            flowersGroup.add(leafC);
+
+            flowersGroup.add(flower);
+            flowerNodes.push({
+              mesh: flower,
+              baseScale: fScale,
+              phase: (c + 60) * 0.3,
+            });
+          }
+
+          group.add(flowersGroup);
+
+          // --- 4. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            for (var i = 0; i < flowerNodes.length; i++) {
+              var fn = flowerNodes[i];
+              var fPulse =
+                fn.baseScale * (1.0 + Math.sin(time * 3.0 + fn.phase) * 0.08);
+              fn.mesh.scale.setScalar(fPulse);
+            }
+
+            group.rotation.z = Math.sin(time * 1.5) * 0.02;
+            group.position.y = Math.cos(time * 1.2) * 0.015;
+          };
 
           return group;
         }
@@ -35169,120 +36128,186 @@
         function buildMushroomMesh() {
           var group = new THREE.Group();
 
+          // --- 1. マテリアル定義 ---
           var stemMat = new THREE.MeshStandardMaterial({
-            color: 0xfff2d9,
-            emissive: 0x998855,
-            emissiveIntensity: 0.12,
+            color: 0xfffbeb, // クリームアイボリーの柄
+            roughness: 0.5,
           });
-          var stemSegmentCount = 6;
-          var stemSegmentHeight = 0.75;
-          var stemRadius = 0.55;
-          var stemCurveAngle = 0.09;
-          // 各セグメントの底面中心座標(bottomX, bottomY)と、その時点での
-          // 傾き(angle)を明示的に積み上げていく。segment.rotation.zで
-          // 円柱自体をangleぶん傾けたうえで、その円柱のローカル+Y方向
-          // (長さstemSegmentHeight)がワールド空間でどちらを向くかを
-          // (sin(angle), cos(angle))から求め、底面中心+その半分の長さを
-          // セグメントの中心位置とする。これを繰り返すことで、セグメント
-          // 間に隙間や重なりのない滑らかな円弧状の茎になる。
-          var bottomX = 0;
-          var bottomY = 0;
-          var angle = 0;
-          for (var si = 0; si < stemSegmentCount; si++) {
-            var segRadius = stemRadius * (1 - (si / stemSegmentCount) * 0.15);
-            var segment = new THREE.Mesh(
-              new THREE.CylinderGeometry(
-                segRadius * 0.95,
-                segRadius,
-                stemSegmentHeight,
-                10,
-              ),
+
+          var capRedMat = new THREE.MeshStandardMaterial({
+            color: 0xf43f5e, // 鮮やかなローズレッドの傘
+            emissive: 0xbe123c,
+            emissiveIntensity: 0.35,
+            roughness: 0.25,
+          });
+
+          var capPinkMat = new THREE.MeshStandardMaterial({
+            color: 0xf472b6, // パステルピンクの小きのこ傘
+            emissive: 0xdb2777,
+            emissiveIntensity: 0.35,
+            roughness: 0.25,
+          });
+
+          var dotMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff, // 純白の水玉ドット
+            roughness: 0.3,
+          });
+
+          var sporeMat = new THREE.MeshStandardMaterial({
+            color: 0xfef08a, // 輝くパステル胞子粒子
+            emissive: 0xca8a04,
+            emissiveIntensity: 2.0,
+            transparent: true,
+            opacity: 0.85,
+          });
+
+          // 1本のきのこを構築するヘルパー関数
+          function createSingleMushroom(scale, isPink) {
+            var mGroup = new THREE.Group();
+            var curCapMat = isPink ? capPinkMat : capRedMat;
+
+            // きのこの柄 (Stem)
+            var stemCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(0, 0, 0),
+              new THREE.Vector3(0.02, 0.4, 0.01),
+              new THREE.Vector3(0, 0.8, 0),
+            ]);
+            var stemMesh = new THREE.Mesh(
+              new THREE.TubeGeometry(stemCurve, 12, 0.14, 10, false),
               stemMat,
             );
-            var dirX = Math.sin(angle);
-            var dirY = Math.cos(angle);
-            segment.position.set(
-              bottomX + dirX * (stemSegmentHeight / 2),
-              bottomY + dirY * (stemSegmentHeight / 2),
+            mGroup.add(stemMesh);
+
+            // 柄のヒダフリル (Ring)
+            var ring = new THREE.Mesh(
+              new THREE.TorusGeometry(0.15, 0.025, 6, 14),
+              stemMat,
+            );
+            ring.position.set(0, 0.55, 0);
+            ring.rotation.x = Math.PI / 2;
+            mGroup.add(ring);
+
+            // きのこの傘 (Cap Dome)
+            var capGroup = new THREE.Group();
+            capGroup.position.set(0, 0.8, 0);
+
+            var capGeo = new THREE.SphereGeometry(
+              0.48,
+              16,
+              12,
               0,
+              Math.PI * 2,
+              0,
+              Math.PI * 0.55,
             );
-            segment.rotation.z = angle;
-            group.add(segment);
-            bottomX += dirX * stemSegmentHeight;
-            bottomY += dirY * stemSegmentHeight;
-            angle += stemCurveAngle;
-          }
-          var stemTopX = bottomX;
-          var stemTopY = bottomY;
+            var capMesh = new THREE.Mesh(capGeo, curCapMat);
+            capGroup.add(capMesh);
 
-          var capMat = new THREE.MeshStandardMaterial({
-            color: 0xff4d7a,
-            emissive: 0x99223f,
-            emissiveIntensity: 0.3,
-            roughness: 0.9,
-          });
-          // ドラフト(支給されたmushroom.json)のSphereGeometryは元々
-          // thetaStart=0, thetaLength=PI(上半分の半球)だったため、その
-          // 構造をそのまま踏襲する。半径・Yスケールはステージの他の
-          // 障害物(高さ約9〜10)とのバランスを見て拡大する。
-          var capGeo = new THREE.SphereGeometry(
-            2.2,
-            24,
-            14,
-            0,
-            Math.PI * 2,
-            0,
-            Math.PI / 2,
-          );
-          var cap = new THREE.Mesh(capGeo, capMat);
-          cap.scale.set(1, 0.62, 1);
-          cap.position.set(stemTopX, stemTopY, 0);
-          group.add(cap);
-
-          // かさの縁の裏側(ひだ)を薄いリングで軽く表現し、半球だけでは
-          // 出ない「傘の裏」の陰影を足す。
-          var gillMat = new THREE.MeshStandardMaterial({
-            color: 0xffe6ee,
-            emissive: 0x552233,
-            emissiveIntensity: 0.15,
-            side: THREE.DoubleSide,
-          });
-          var gill = new THREE.Mesh(
-            new THREE.CylinderGeometry(2.15, 1.9, 0.18, 24, 1, true),
-            gillMat,
-          );
-          gill.position.set(stemTopX, stemTopY - 0.05, 0);
-          group.add(gill);
-
-          // 白い水玉模様: かさの表面に小さな白い球を複数貼り付け、
-          // ファンタジーなキノコらしさを強める。
-          var spotMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            emissive: 0xffffff,
-            emissiveIntensity: 0.15,
-          });
-          var spotGeo = new THREE.SphereGeometry(0.22, 8, 6);
-          // かさ表面上の点(cap中心からの相対座標)。半球の半径2.2×Y方向
-          // スケール0.62を踏まえ、頂点付近から縁に向かって並ぶよう
-          // Y座標は0(赤道面)〜1.3(頂点付近)の範囲で散らす。
-          var spotPositions = [
-            [0, 1.2, 0.6],
-            [0.9, 0.75, -0.5],
-            [-1, 0.8, -0.4],
-            [-0.5, 1.05, 0.9],
-            [0.6, 1.05, 0.6],
-            [1.2, 0.5, 0.4],
-            [-1.2, 0.45, 0.5],
-          ];
-          for (var pi = 0; pi < spotPositions.length; pi++) {
-            var spot = new THREE.Mesh(spotGeo, spotMat);
-            spot.position.set(
-              stemTopX + spotPositions[pi][0],
-              stemTopY + spotPositions[pi][1],
-              spotPositions[pi][2],
+            // 傘の裏側のヒダ (Gills)
+            var gills = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.46, 0.1, 0.06, 16),
+              stemMat,
             );
-            group.add(spot);
+            gills.position.set(0, -0.02, 0);
+            capGroup.add(gills);
+
+            // 傘の表面のぷっくり白水玉ドット (Polka Dots)
+            var dotConfigs = [
+              { x: 0, y: 0.46, z: 0, r: 0.08 },
+              { x: 0.28, y: 0.32, z: 0.18, r: 0.065 },
+              { x: -0.28, y: 0.32, z: 0.18, r: 0.065 },
+              { x: 0.32, y: 0.28, z: -0.16, r: 0.06 },
+              { x: -0.32, y: 0.28, z: -0.16, r: 0.06 },
+              { x: 0, y: 0.22, z: 0.38, r: 0.07 },
+              { x: 0, y: 0.22, z: -0.38, r: 0.07 },
+            ];
+
+            for (var d = 0; d < dotConfigs.length; d++) {
+              var dCfg = dotConfigs[d];
+              var dot = new THREE.Mesh(
+                new THREE.SphereGeometry(dCfg.r, 8, 8),
+                dotMat,
+              );
+              dot.position.set(dCfg.x, dCfg.y, dCfg.z);
+              dot.scale.set(1.0, 0.4, 1.0);
+              capGroup.add(dot);
+            }
+
+            mGroup.add(capGroup);
+            mGroup.scale.setScalar(scale);
+
+            return { group: mGroup, cap: capGroup };
           }
+
+          // --- 2. 親子きのこクラスタの配置 ---
+          var mushrooms = [];
+
+          // 中央の大親きのこ
+          var mainMushroom = createSingleMushroom(1.4, false);
+          mainMushroom.group.position.set(0, -0.7, 0);
+          group.add(mainMushroom.group);
+          mushrooms.push(mainMushroom);
+
+          // 左右の小きのこたち
+          var sub1 = createSingleMushroom(0.85, true);
+          sub1.group.position.set(-0.55, -0.7, 0.2);
+          sub1.group.rotation.z = 0.15;
+          group.add(sub1.group);
+          mushrooms.push(sub1);
+
+          var sub2 = createSingleMushroom(0.7, false);
+          sub2.group.position.set(0.5, -0.7, -0.15);
+          sub2.group.rotation.z = -0.2;
+          group.add(sub2.group);
+          mushrooms.push(sub2);
+
+          // --- 3. 漂う幻想的な胞子粒子 (Spores) ---
+          var sporeGroup = new THREE.Group();
+          sporeGroup.position.set(0, 0.5, 0);
+
+          var sporeNodes = [];
+          for (var p = 0; p < 6; p++) {
+            var pMesh = new THREE.Mesh(
+              new THREE.SphereGeometry(0.03, 6, 6),
+              sporeMat,
+            );
+            var pAngle = (p / 6) * Math.PI * 2;
+            var pRad = 0.6 + (p % 2) * 0.2;
+            pMesh.position.set(
+              Math.cos(pAngle) * pRad,
+              (p - 3) * 0.15,
+              Math.sin(pAngle) * pRad,
+            );
+            sporeGroup.add(pMesh);
+
+            sporeNodes.push({
+              mesh: pMesh,
+              baseAngle: pAngle,
+              rad: pRad,
+              phase: p * 1.2,
+            });
+          }
+
+          group.add(sporeGroup);
+
+          // --- 4. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            for (var m = 0; m < mushrooms.length; m++) {
+              var mCap = mushrooms[m].cap;
+              var squish = 1.0 + Math.sin(time * 3.0 + m * 1.2) * 0.05;
+              mCap.scale.set(1.0 / squish, squish, 1.0 / squish);
+            }
+
+            for (var sn = 0; sn < sporeNodes.length; sn++) {
+              var node = sporeNodes[sn];
+              var curA = time * 2.0 + node.baseAngle;
+              node.mesh.position.x = Math.cos(curA) * node.rad;
+              node.mesh.position.z = Math.sin(curA) * node.rad;
+              node.mesh.position.y = Math.sin(time * 3.5 + node.phase) * 0.22;
+            }
+
+            group.rotation.z = Math.sin(time * 1.5) * 0.02;
+          };
 
           return group;
         }
@@ -35581,43 +36606,107 @@
         // 石灯籠(VOID GARDEN専用): 庭園の名残を感じさせる石灯籠。
         function buildStoneLanternMesh() {
           var group = new THREE.Group();
-          var stoneMat = new THREE.MeshStandardMaterial({ color: 0x556655 });
-          var glowMat = new THREE.MeshStandardMaterial({
-            color: 0xffddaa,
-            emissive: 0xffcc66,
-            emissiveIntensity: 0.8,
+
+          // --- 1. マテリアル定義 ---
+          var stoneMat = new THREE.MeshStandardMaterial({
+            color: 0x475569, // 青御影石
+            emissive: 0x0f172a,
+            emissiveIntensity: 0.2,
+            roughness: 0.6,
+            metalness: 0.15,
           });
+
+          var glowMat = new THREE.MeshStandardMaterial({
+            color: 0xfde047, // 温かく光る火袋の灯火
+            emissive: 0xf59e0b,
+            emissiveIntensity: 1.5,
+            roughness: 0.2,
+          });
+
+          var goldMat = new THREE.MeshStandardMaterial({
+            color: 0xf59e0b, // 宝珠・モールドの金箔
+            emissive: 0x78350f,
+            emissiveIntensity: 0.5,
+            metalness: 0.85,
+            roughness: 0.2,
+          });
+
+          // --- 2. 石灯籠構造 ---
+          var lanternGroup = new THREE.Group();
+
+          // 1) 基礎台座（Base Pedestal）
           var base = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.9, 1.1, 0.6, 8),
+            new THREE.CylinderGeometry(0.95, 1.15, 0.5, 8),
             stoneMat,
           );
-          base.position.y = -2.5;
-          group.add(base);
+          base.position.y = 0.25;
+          lanternGroup.add(base);
+
+          // 2) 竿（Pillar Shaft）
           var pillar = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.35, 0.4, 3, 8),
+            new THREE.CylinderGeometry(0.35, 0.42, 2.5, 10),
             stoneMat,
           );
-          pillar.position.y = -0.7;
-          group.add(pillar);
-          var firebox = new THREE.Mesh(
-            new THREE.BoxGeometry(1.1, 1.1, 1.1),
+          pillar.position.y = 1.75;
+          lanternGroup.add(pillar);
+
+          // 竿の金帯リング
+          var ring = new THREE.Mesh(
+            new THREE.TorusGeometry(0.43, 0.035, 6, 12),
+            goldMat,
+          );
+          ring.rotation.x = Math.PI / 2;
+          ring.position.y = 1.75;
+          lanternGroup.add(ring);
+
+          // 3) 中台（Middle Platform）
+          var midPlatform = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.85, 0.55, 0.45, 6),
             stoneMat,
           );
-          firebox.position.y = 1.2;
-          group.add(firebox);
-          var light = new THREE.Mesh(
-            new THREE.SphereGeometry(0.4, 8, 8),
+          midPlatform.position.y = 3.225;
+          lanternGroup.add(midPlatform);
+
+          // 4) 火袋（Firebox & Glowing Core）
+          var fireboxFrame = new THREE.Mesh(
+            new THREE.BoxGeometry(0.9, 0.9, 0.9),
+            stoneMat,
+          );
+          fireboxFrame.position.y = 3.9;
+          lanternGroup.add(fireboxFrame);
+
+          // 火袋の中の暖かな灯火コア
+          var lightCore = new THREE.Mesh(
+            new THREE.SphereGeometry(0.36, 12, 12),
             glowMat,
           );
-          light.position.y = 1.2;
-          group.add(light);
-          var roof = new THREE.Mesh(
-            new THREE.ConeGeometry(1, 0.7, 4),
+          lightCore.position.y = 3.9;
+          lanternGroup.add(lightCore);
+
+          // 5) 六角笠（Hexagonal Roof Kasa）
+          var roofKasa = new THREE.Mesh(
+            new THREE.ConeGeometry(1.15, 0.65, 6),
             stoneMat,
           );
-          roof.position.y = 2.1;
-          roof.rotation.y = Math.PI / 4;
-          group.add(roof);
+          roofKasa.position.y = 4.675;
+          roofKasa.rotation.y = Math.PI / 6;
+          lanternGroup.add(roofKasa);
+
+          // 6) 宝珠頂点（Orb Pinnacle）
+          var jewelTop = new THREE.Mesh(
+            new THREE.SphereGeometry(0.22, 10, 10),
+            goldMat,
+          );
+          jewelTop.position.y = 5.15;
+          lanternGroup.add(jewelTop);
+
+          group.add(lanternGroup);
+
+          // --- 3. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            glowMat.emissiveIntensity = 1.3 + Math.sin(time * 4.0) * 0.35;
+          };
+
           return group;
         }
 
@@ -39535,6 +40624,12 @@
         function updateObstacles(dt) {
           for (var oi = obstacles.length - 1; oi >= 0; oi--) {
             var ob = obstacles[oi];
+            if (ob.mesh.userData.updateLoop) {
+              // 一部の障害物メッシュ(竹林の風揺れ・灯籠の灯火明滅・花の
+              // 拍動など)は、自前のupdateLoop(time)に全アニメーションを
+              // 内蔵している。持っている場合のみ毎フレーム呼び出す。
+              ob.mesh.userData.updateLoop(elapsedTime);
+            }
             ob.mesh.position.z += ob.speed * dt;
             if (ob.mesh.position.z > 12) {
               scene.remove(ob.mesh);
