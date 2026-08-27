@@ -28388,44 +28388,432 @@
         // 義経: 妖怪ステージの雑魚(近接高速型)。甲冑姿で刀を構え突進する。
         function buildYoshitsuneMesh() {
           var group = new THREE.Group();
+
+          // --- 1. マテリアル定義 ---
           var armorMat = new THREE.MeshStandardMaterial({
-            color: 0x223377,
-            emissive: 0x0a1144,
-            emissiveIntensity: 0.35,
-            metalness: 0.3,
+            color: 0x0f172a, // 漆黒・暗紺の小札鎧
+            emissive: 0x020617,
+            emissiveIntensity: 0.2,
+            metalness: 0.7,
+            roughness: 0.35,
           });
-          var body = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.3, 0.4, 1.1, 6),
+
+          var darkSteelMat = new THREE.MeshStandardMaterial({
+            color: 0x1e293b, // ダークスチールの肩当て・下駄歯
+            emissive: 0x0f172a,
+            emissiveIntensity: 0.15,
+            metalness: 0.8,
+            roughness: 0.3,
+          });
+
+          var koteMat = new THREE.MeshStandardMaterial({
+            color: 0x334155, // 篭手（こて・腕パーツ）
+            emissive: 0x0f172a,
+            emissiveIntensity: 0.1,
+            metalness: 0.5,
+            roughness: 0.4,
+          });
+
+          var goldMat = new THREE.MeshStandardMaterial({
+            color: 0xffd700, // 鮮やかで眩い純金色（大鍬形・フチ縁取）
+            emissive: 0xb45309,
+            emissiveIntensity: 0.8,
+            metalness: 1.0,
+            roughness: 0.08,
+          });
+
+          var redRobeMat = new THREE.MeshStandardMaterial({
+            color: 0x9f1239, // 深紅の水干紐・アクセント
+            emissive: 0x4c0519,
+            emissiveIntensity: 0.3,
+            roughness: 0.4,
+          });
+
+          var bladeMat = new THREE.MeshStandardMaterial({
+            color: 0xf8fafc, // 名刀・薄緑（鋭く輝く青白の刃）
+            emissive: 0x38bdf8,
+            emissiveIntensity: 1.0,
+            metalness: 0.95,
+            roughness: 0.05,
+          });
+
+          // 手と足・脚のグレー統一マテリアル
+          var graySkinMat = new THREE.MeshStandardMaterial({
+            color: 0x94a3b8, // 洗練されたライトスチールグレー
+            emissive: 0x1e293b,
+            emissiveIntensity: 0.12,
+            metalness: 0.4,
+            roughness: 0.35,
+          });
+
+          var maskMat = new THREE.MeshStandardMaterial({
+            color: 0x020617, // 漆黒の面頬
+            emissive: 0x000000,
+            metalness: 0.6,
+            roughness: 0.5,
+          });
+
+          var redEyeMat = new THREE.MeshStandardMaterial({
+            color: 0xff0033,
+            emissive: 0xff0033,
+            emissiveIntensity: 0.0,
+            roughness: 0.1,
+          });
+
+          var youkiMat = new THREE.MeshStandardMaterial({
+            color: 0xa855f7,
+            emissive: 0x9333ea,
+            emissiveIntensity: 2.2,
+            transparent: true,
+            opacity: 0.75,
+          });
+
+          // --- 2. 頭部・正統派の星兜・正面開放＆後頭部完全包囲の錣(しころ)・純金大鍬形・赤眼 ---
+          var headGroup = new THREE.Group();
+          headGroup.position.set(0, 0.75, 0.05);
+
+          var headMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(0.24, 12, 12),
+            graySkinMat,
+          );
+          headGroup.add(headMesh);
+
+          // 兜の下で時々赤く光る目
+          var eyesGroup = new THREE.Group();
+          for (var eyeSign = -1; eyeSign <= 1; eyeSign += 2) {
+            var redEye = new THREE.Mesh(
+              new THREE.SphereGeometry(0.045, 8, 8),
+              redEyeMat,
+            );
+            redEye.position.set(eyeSign * 0.09, 0.02, 0.2);
+            redEye.scale.set(0.9, 0.4, 0.4);
+            eyesGroup.add(redEye);
+          }
+          headGroup.add(eyesGroup);
+
+          // 漆黒の面頬（正面の顔）
+          var maskMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(0.25, 12, 10),
+            maskMat,
+          );
+          maskMesh.position.set(0, -0.05, 0.04);
+          maskMesh.scale.set(0.9, 0.6, 0.9);
+          headGroup.add(maskMesh);
+
+          // 兜鉢
+          var helmet = new THREE.Mesh(
+            new THREE.SphereGeometry(
+              0.27,
+              14,
+              12,
+              0,
+              Math.PI * 2,
+              0,
+              Math.PI * 0.55,
+            ),
             armorMat,
           );
-          group.add(body);
+          helmet.position.set(0, 0.04, 0);
+          headGroup.add(helmet);
 
-          var helmetMat = new THREE.MeshStandardMaterial({
-            color: 0x111133,
-            emissive: 0x000022,
-            emissiveIntensity: 0.3,
-            metalness: 0.5,
-          });
-          var helmet = new THREE.Mesh(
-            new THREE.ConeGeometry(0.32, 0.4, 6),
-            helmetMat,
-          );
-          helmet.position.y = 0.75;
-          group.add(helmet);
+          // 正統派しころ（錣）
+          var backShikoroGroup = new THREE.Group();
+          backShikoroGroup.position.set(0, -0.04, 0);
 
-          var swordMat = new THREE.MeshStandardMaterial({
-            color: 0xdddddd,
-            emissive: 0x666666,
-            emissiveIntensity: 0.4,
-            metalness: 0.7,
-          });
-          var sword = new THREE.Mesh(
-            new THREE.BoxGeometry(0.08, 0.9, 0.08),
-            swordMat,
+          for (var sI = 0; sI < 5; sI++) {
+            var bShikoro = new THREE.Mesh(
+              new THREE.CylinderGeometry(
+                0.28 + sI * 0.02,
+                0.32 + sI * 0.025,
+                0.09,
+                14,
+                1,
+                true,
+                Math.PI * 0.22,
+                Math.PI * 1.56,
+              ),
+              armorMat,
+            );
+            bShikoro.position.set(0, -sI * 0.065, -0.02);
+            bShikoro.rotation.x = -0.15;
+            backShikoroGroup.add(bShikoro);
+
+            var bRim = new THREE.Mesh(
+              new THREE.CylinderGeometry(
+                0.282 + sI * 0.02,
+                0.322 + sI * 0.025,
+                0.015,
+                14,
+                1,
+                true,
+                Math.PI * 0.22,
+                Math.PI * 1.56,
+              ),
+              goldMat,
+            );
+            bRim.position.set(0, -sI * 0.065 - 0.04, -0.02);
+            bRim.rotation.x = -0.15;
+            backShikoroGroup.add(bRim);
+          }
+          headGroup.add(backShikoroGroup);
+
+          // 純金箔のV字大鍬形
+          for (var kSign = -1; kSign <= 1; kSign += 2) {
+            var kuwagataCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(0, 0.18, 0.24),
+              new THREE.Vector3(kSign * 0.22, 0.45, 0.28),
+              new THREE.Vector3(kSign * 0.42, 0.78, 0.22),
+            ]);
+            var kuwagataMesh = new THREE.Mesh(
+              new THREE.TubeGeometry(kuwagataCurve, 10, 0.032, 8, false),
+              goldMat,
+            );
+            headGroup.add(kuwagataMesh);
+          }
+          var frontCrest = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.09),
+            goldMat,
           );
-          sword.rotation.z = Math.PI / 4;
-          sword.position.set(0.5, 0.3, 0.2);
-          group.add(sword);
+          frontCrest.position.set(0, 0.22, 0.26);
+          headGroup.add(frontCrest);
+
+          group.add(headGroup);
+
+          // --- 3. 胴体 ＆ 草摺 ---
+          var bodyGroup = new THREE.Group();
+
+          var torso = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.22, 0.32, 0.65, 8),
+            armorMat,
+          );
+          torso.position.set(0, 0.25, 0);
+          bodyGroup.add(torso);
+
+          var cord = new THREE.Mesh(
+            new THREE.TorusGeometry(0.14, 0.02, 6, 12),
+            redRobeMat,
+          );
+          cord.rotation.x = Math.PI / 2.2;
+          cord.position.set(0, 0.45, 0.15);
+          bodyGroup.add(cord);
+
+          for (var kusazuriI = 0; kusazuriI < 6; kusazuriI++) {
+            var kAngle = (kusazuriI / 6) * Math.PI * 2;
+            var kPlate = new THREE.Mesh(
+              new THREE.BoxGeometry(0.14, 0.32, 0.04),
+              armorMat,
+            );
+            kPlate.position.set(
+              Math.sin(kAngle) * 0.26,
+              -0.22,
+              Math.cos(kAngle) * 0.26,
+            );
+            kPlate.rotation.y = kAngle;
+            kPlate.rotation.z = Math.sin(kAngle) * 0.15;
+            bodyGroup.add(kPlate);
+          }
+
+          group.add(bodyGroup);
+
+          // --- 4. 肩当て（大袖）・篭手（腕）・グレー統一の手先 ＆ 【左手に持つ名刀「薄緑」】 ---
+
+          // 【左腕システム】
+          var armGroupLeft = new THREE.Group();
+          armGroupLeft.position.set(-0.32, 0.55, 0);
+
+          var shoulderLGroup = new THREE.Group();
+          shoulderLGroup.position.set(-0.06, 0.02, 0);
+          shoulderLGroup.rotation.z = 0.25;
+
+          for (var sL = 0; sL < 3; sL++) {
+            var plateL = new THREE.Mesh(
+              new THREE.BoxGeometry(0.26, 0.14, 0.24),
+              darkSteelMat,
+            );
+            plateL.position.set(-0.04, -sL * 0.09, 0);
+            shoulderLGroup.add(plateL);
+
+            var rimL = new THREE.Mesh(
+              new THREE.BoxGeometry(0.28, 0.02, 0.26),
+              goldMat,
+            );
+            rimL.position.set(-0.04, -sL * 0.09 - 0.06, 0);
+            shoulderLGroup.add(rimL);
+          }
+          armGroupLeft.add(shoulderLGroup);
+
+          var armLeftCylinder = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.065, 0.055, 0.42, 8),
+            koteMat,
+          );
+          armLeftCylinder.position.set(-0.16, -0.24, 0.05);
+          armLeftCylinder.rotation.z = 0.35;
+          armGroupLeft.add(armLeftCylinder);
+
+          var handLeft = new THREE.Mesh(
+            new THREE.SphereGeometry(0.072, 8, 8),
+            graySkinMat,
+          );
+          handLeft.position.set(-0.24, -0.42, 0.1);
+          armGroupLeft.add(handLeft);
+
+          // 左手に持つ名刀「薄緑」
+          var swordGroup = new THREE.Group();
+          swordGroup.position.set(-0.24, -0.42, 0.1);
+          swordGroup.rotation.x = 0.45;
+          swordGroup.rotation.z = 0.65;
+          swordGroup.rotation.y = 0.25;
+
+          var blade = new THREE.Mesh(
+            new THREE.BoxGeometry(0.04, 1.15, 0.015),
+            bladeMat,
+          );
+          blade.position.set(0, 0.58, 0);
+          swordGroup.add(blade);
+
+          var tsuba = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.09, 0.09, 0.02, 10),
+            darkSteelMat,
+          );
+          tsuba.position.set(0, 0.02, 0);
+          swordGroup.add(tsuba);
+
+          var tsuka = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.028, 0.028, 0.22, 8),
+            maskMat,
+          );
+          tsuka.position.set(0, -0.1, 0);
+          swordGroup.add(tsuka);
+
+          var muzzle = new THREE.Object3D();
+          muzzle.position.set(0, 1.15, 0);
+          swordGroup.add(muzzle);
+
+          armGroupLeft.add(swordGroup);
+          group.add(armGroupLeft);
+
+          // 【右腕システム】
+          var armGroupRight = new THREE.Group();
+          armGroupRight.position.set(0.32, 0.55, 0);
+
+          var shoulderRGroup = new THREE.Group();
+          shoulderRGroup.position.set(0.06, 0.02, 0);
+          shoulderRGroup.rotation.z = -0.25;
+
+          for (var sR = 0; sR < 3; sR++) {
+            var plateR = new THREE.Mesh(
+              new THREE.BoxGeometry(0.26, 0.14, 0.24),
+              darkSteelMat,
+            );
+            plateR.position.set(0.04, -sR * 0.09, 0);
+            shoulderRGroup.add(plateR);
+
+            var rimR = new THREE.Mesh(
+              new THREE.BoxGeometry(0.28, 0.02, 0.26),
+              goldMat,
+            );
+            rimR.position.set(0.04, -sR * 0.09 - 0.06, 0);
+            shoulderRGroup.add(rimR);
+          }
+          armGroupRight.add(shoulderRGroup);
+
+          var armRightCylinder = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.065, 0.055, 0.42, 8),
+            koteMat,
+          );
+          armRightCylinder.position.set(0.16, -0.24, 0.05);
+          armRightCylinder.rotation.z = -0.35;
+          armGroupRight.add(armRightCylinder);
+
+          var handRight = new THREE.Mesh(
+            new THREE.SphereGeometry(0.068, 8, 8),
+            graySkinMat,
+          );
+          handRight.position.set(0.25, -0.42, 0.08);
+          armGroupRight.add(handRight);
+
+          group.add(armGroupRight);
+
+          // --- 5. 一本歯高下駄 ＆ グレー統一の足・脚 ---
+          var legsGroup = new THREE.Group();
+          legsGroup.position.set(0, -0.45, 0);
+
+          for (var legSign = -1; legSign <= 1; legSign += 2) {
+            var leg = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.06, 0.06, 0.4, 8),
+              graySkinMat,
+            );
+            leg.position.set(legSign * 0.15, -0.18, 0);
+            legsGroup.add(leg);
+
+            var getaBase = new THREE.Mesh(
+              new THREE.BoxGeometry(0.13, 0.045, 0.28),
+              darkSteelMat,
+            );
+            getaBase.position.set(legSign * 0.15, -0.4, 0.02);
+
+            var getaTooth = new THREE.Mesh(
+              new THREE.BoxGeometry(0.032, 0.24, 0.04),
+              darkSteelMat,
+            );
+            getaTooth.position.set(legSign * 0.15, -0.54, 0.02);
+
+            legsGroup.add(getaBase);
+            legsGroup.add(getaTooth);
+          }
+          group.add(legsGroup);
+
+          // --- 6. 周囲を浮遊・ゆらめく暗黒妖気 ---
+          var youkiGroup = new THREE.Group();
+          var youkiNodes = [];
+
+          for (var yI = 0; yI < 5; yI++) {
+            var yPivot = new THREE.Group();
+            var yOrb = new THREE.Mesh(
+              new THREE.SphereGeometry(0.09, 8, 8),
+              youkiMat,
+            );
+            yOrb.position.set(0.75 + (yI % 2) * 0.35, 0, 0);
+            yOrb.scale.set(1.0, 1.8, 1.0);
+
+            yPivot.add(yOrb);
+            youkiGroup.add(yPivot);
+            youkiNodes.push({
+              pivot: yPivot,
+              phase: yI * ((Math.PI * 2) / 5),
+              speed: 1.2 + yI * 0.3,
+            });
+          }
+          group.add(youkiGroup);
+
+          // --- 7. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            group.position.y = Math.sin(time * 3.0) * 0.22;
+            group.position.x = Math.cos(time * 1.8) * 0.15;
+            group.rotation.z = Math.sin(time * 2.0) * 0.08;
+            group.rotation.x = Math.cos(time * 2.5) * 0.05;
+
+            swordGroup.rotation.z = 0.65 - Math.sin(time * 3.5) * 0.15;
+            bladeMat.emissiveIntensity = 0.8 + Math.sin(time * 6.0) * 0.35;
+
+            var pulse = Math.sin(time * 2.5);
+            if (pulse > 0.6) {
+              redEyeMat.emissiveIntensity = (pulse - 0.6) * 4.5;
+            } else {
+              redEyeMat.emissiveIntensity = 0.0;
+            }
+
+            for (var k = 0; k < youkiNodes.length; k++) {
+              var yn = youkiNodes[k];
+              yn.pivot.rotation.y = time * yn.speed + yn.phase;
+              yn.pivot.position.y = Math.sin(time * 2.5 + yn.phase) * 0.4 - 0.2;
+            }
+          };
+
+          group.userData.muzzle = muzzle;
+          group.userData.head = headGroup;
+          group.userData.sword = swordGroup;
+          group.userData.youki = youkiGroup;
 
           return group;
         }
@@ -28433,41 +28821,314 @@
         // 河童: 妖怪ステージの雑魚(近接跳躍型)。緑の体に皿を頂く。
         function buildFrogMesh() {
           var group = new THREE.Group();
-          var bodyMat = new THREE.MeshStandardMaterial({
-            color: 0x33aa44,
-            emissive: 0x114411,
-            emissiveIntensity: 0.3,
-          });
-          var body = new THREE.Mesh(
-            new THREE.SphereGeometry(0.42, 10, 8),
-            bodyMat,
-          );
-          group.add(body);
 
-          var plateMat = new THREE.MeshStandardMaterial({
-            color: 0x99ccaa,
-            emissive: 0x224422,
-            emissiveIntensity: 0.3,
+          // --- 1. マテリアル定義 ---
+          var skinMat = new THREE.MeshStandardMaterial({
+            color: 0x16a34a, // 深緑の河童肌
+            emissive: 0x052e16,
+            emissiveIntensity: 0.25,
+            roughness: 0.35,
+            metalness: 0.1,
           });
-          var plate = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.22, 0.22, 0.05, 10),
-            plateMat,
-          );
-          plate.position.y = 0.42;
-          group.add(plate);
+
+          var bellyMat = new THREE.MeshStandardMaterial({
+            color: 0x86efac, // 淡い黄緑のお腹
+            emissive: 0x14532d,
+            emissiveIntensity: 0.2,
+            roughness: 0.4,
+          });
+
+          var dishMat = new THREE.MeshStandardMaterial({
+            color: 0x475569, // 頑丈な皿フレーム
+            emissive: 0x0f172a,
+            emissiveIntensity: 0.2,
+            roughness: 0.5,
+            metalness: 0.6,
+          });
+
+          var waterMat = new THREE.MeshStandardMaterial({
+            color: 0x06b6d4, // 皿に満ちる神秘の水・透明水玉
+            emissive: 0x0891b2,
+            emissiveIntensity: 1.2,
+            transparent: true,
+            opacity: 0.85,
+            roughness: 0.1,
+          });
+
+          var shellMat = new THREE.MeshStandardMaterial({
+            color: 0x78350f, // 背中の褐色甲羅
+            emissive: 0x451a03,
+            emissiveIntensity: 0.25,
+            roughness: 0.6,
+            metalness: 0.15,
+          });
+
+          var shellRimMat = new THREE.MeshStandardMaterial({
+            color: 0xf59e0b, // 甲羅の黄金フチ
+            emissive: 0x78350f,
+            emissiveIntensity: 0.5,
+            metalness: 0.8,
+            roughness: 0.2,
+          });
+
+          var beakMat = new THREE.MeshStandardMaterial({
+            color: 0xfbbf24, // 黄色のくちばし
+            emissive: 0xd97706,
+            emissiveIntensity: 0.4,
+            roughness: 0.3,
+          });
 
           var eyeMat = new THREE.MeshStandardMaterial({
-            color: 0xffff00,
-            emissive: 0xffff00,
-            emissiveIntensity: 0.8,
+            color: 0xfacc15, // ギョロっと光る黄色い目
+            emissive: 0xeab308,
+            emissiveIntensity: 1.0,
+            roughness: 0.1,
           });
-          var eyeGeo = new THREE.SphereGeometry(0.09, 6, 6);
-          var eyeLeft = new THREE.Mesh(eyeGeo, eyeMat);
-          eyeLeft.position.set(-0.18, 0.18, 0.34);
-          group.add(eyeLeft);
-          var eyeRight = new THREE.Mesh(eyeGeo, eyeMat.clone());
-          eyeRight.position.set(0.18, 0.18, 0.34);
-          group.add(eyeRight);
+
+          var pupilMat = new THREE.MeshBasicMaterial({ color: 0x020617 });
+
+          // 前傾姿勢ルートグループ
+          var mainContainer = new THREE.Group();
+          mainContainer.rotation.x = 0.32;
+
+          // --- 2. 頭部 ＆ 頭頂の水皿 ＆ くちばし ---
+          var headGroup = new THREE.Group();
+          headGroup.position.set(0, 0.45, 0.12);
+
+          var headBase = new THREE.Mesh(
+            new THREE.SphereGeometry(0.35, 14, 12),
+            skinMat,
+          );
+          headBase.scale.set(1.1, 0.9, 1.0);
+          headGroup.add(headBase);
+
+          // 頭頂の河童皿
+          var dishFrame = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.28, 0.22, 0.08, 14),
+            dishMat,
+          );
+          dishFrame.position.set(0, 0.32, 0);
+          headGroup.add(dishFrame);
+
+          var waterSurface = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.24, 0.24, 0.04, 14),
+            waterMat,
+          );
+          waterSurface.position.set(0, 0.35, 0);
+          headGroup.add(waterSurface);
+
+          // くちばし
+          var beakUpper = new THREE.Mesh(
+            new THREE.ConeGeometry(0.12, 0.25, 10),
+            beakMat,
+          );
+          beakUpper.rotation.x = Math.PI / 2.1;
+          beakUpper.position.set(0, -0.05, 0.38);
+          beakUpper.scale.set(1.2, 0.7, 1.0);
+          headGroup.add(beakUpper);
+
+          var beakLower = new THREE.Mesh(
+            new THREE.ConeGeometry(0.09, 0.2, 10),
+            beakMat,
+          );
+          beakLower.rotation.x = Math.PI / 2.3;
+          beakLower.position.set(0, -0.12, 0.35);
+          beakLower.scale.set(1.0, 0.5, 0.8);
+          headGroup.add(beakLower);
+
+          // ギョロ目
+          for (var eyeSign = -1; eyeSign <= 1; eyeSign += 2) {
+            var eyeObj = new THREE.Group();
+            var eyeGlobe = new THREE.Mesh(
+              new THREE.SphereGeometry(0.09, 12, 12),
+              eyeMat,
+            );
+            eyeGlobe.position.set(eyeSign * 0.18, 0.12, 0.28);
+            eyeObj.add(eyeGlobe);
+
+            var pupil = new THREE.Mesh(
+              new THREE.SphereGeometry(0.04, 10, 10),
+              pupilMat,
+            );
+            pupil.position.set(eyeSign * 0.19, 0.13, 0.35);
+            pupil.scale.set(0.5, 1.2, 0.5);
+            eyeObj.add(pupil);
+
+            headGroup.add(eyeObj);
+          }
+          mainContainer.add(headGroup);
+
+          // --- 3. 胴体 ＆ 淡い黄緑のお腹 ＆ 背中の甲羅 ---
+          var bodyGroup = new THREE.Group();
+
+          var torso = new THREE.Mesh(
+            new THREE.SphereGeometry(0.42, 14, 12),
+            skinMat,
+          );
+          torso.position.set(0, 0, 0);
+          torso.scale.set(0.95, 1.1, 0.9);
+          bodyGroup.add(torso);
+
+          var belly = new THREE.Mesh(
+            new THREE.SphereGeometry(0.38, 12, 10),
+            bellyMat,
+          );
+          belly.position.set(0, -0.04, 0.08);
+          belly.scale.set(0.85, 0.95, 0.7);
+          bodyGroup.add(belly);
+
+          // 背中の甲羅
+          var shellGroup = new THREE.Group();
+          shellGroup.position.set(0, 0.02, -0.22);
+          shellGroup.rotation.x = -0.15;
+
+          var shellMain = new THREE.Mesh(
+            new THREE.SphereGeometry(
+              0.38,
+              14,
+              12,
+              0,
+              Math.PI * 2,
+              0,
+              Math.PI * 0.6,
+            ),
+            shellMat,
+          );
+          shellMain.rotation.x = -Math.PI / 2;
+          shellMain.scale.set(0.9, 0.5, 1.1);
+          shellGroup.add(shellMain);
+
+          var shellRim = new THREE.Mesh(
+            new THREE.TorusGeometry(0.36, 0.038, 10, 20),
+            shellRimMat,
+          );
+          shellRim.rotation.x = Math.PI / 2;
+          shellRim.scale.set(0.85, 1.05, 0.85);
+          shellGroup.add(shellRim);
+
+          bodyGroup.add(shellGroup);
+          mainContainer.add(bodyGroup);
+
+          // --- 4. バンザイポーズの長い手 ＆ 先端の水かき手先 ＆ 足 ---
+          var limbsGroup = new THREE.Group();
+
+          // バンザイしている長い左腕
+          var armL = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.04, 0.54, 10),
+            skinMat,
+          );
+          armL.position.set(-0.38, 0.15, 0.15);
+          armL.rotation.z = 0.65;
+          armL.rotation.x = 0.3;
+          limbsGroup.add(armL);
+
+          // バンザイしている長い右腕
+          var armR = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.04, 0.54, 10),
+            skinMat,
+          );
+          armR.position.set(0.38, 0.15, 0.15);
+          armR.rotation.z = -0.65;
+          armR.rotation.x = 0.3;
+          limbsGroup.add(armR);
+
+          // 左手の先に連結された扇形水かき手先
+          var webbedHandL = new THREE.Mesh(
+            new THREE.ConeGeometry(0.14, 0.25, 12),
+            bellyMat,
+          );
+          webbedHandL.position.set(-0.62, 0.32, 0.28);
+          webbedHandL.scale.set(1.2, 1.0, 0.2);
+          webbedHandL.rotation.z = 0.65;
+          webbedHandL.rotation.x = Math.PI / 2.2;
+          limbsGroup.add(webbedHandL);
+
+          // 右手の先に連結された扇形水かき手先
+          var webbedHandR = new THREE.Mesh(
+            new THREE.ConeGeometry(0.14, 0.25, 12),
+            bellyMat,
+          );
+          webbedHandR.position.set(0.62, 0.32, 0.28);
+          webbedHandR.scale.set(1.2, 1.0, 0.2);
+          webbedHandR.rotation.z = -0.65;
+          webbedHandR.rotation.x = Math.PI / 2.2;
+          limbsGroup.add(webbedHandR);
+
+          // 脚 (Legs)
+          for (var lSign = -1; lSign <= 1; lSign += 2) {
+            var legUpper = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.09, 0.06, 0.38, 10),
+              skinMat,
+            );
+            legUpper.position.set(lSign * 0.25, -0.32, -0.05);
+            legUpper.rotation.z = -lSign * 0.4;
+            limbsGroup.add(legUpper);
+
+            var webbedFoot = new THREE.Mesh(
+              new THREE.ConeGeometry(0.14, 0.24, 12),
+              bellyMat,
+            );
+            webbedFoot.position.set(lSign * 0.32, -0.54, 0.14);
+            webbedFoot.scale.set(1.3, 1.0, 0.25);
+            webbedFoot.rotation.x = Math.PI / 2.2;
+            limbsGroup.add(webbedFoot);
+          }
+
+          var muzzle = new THREE.Object3D();
+          muzzle.position.set(0, -0.05, 0.45);
+          headGroup.add(muzzle);
+
+          mainContainer.add(limbsGroup);
+          group.add(mainContainer);
+
+          // --- 5. 周囲を浮遊する丸いクリア水玉ビーズ ---
+          var dropletGroup = new THREE.Group();
+          var dropletNodes = [];
+
+          for (var drI = 0; drI < 5; drI++) {
+            var drPivot = new THREE.Group();
+            var drDrop = new THREE.Mesh(
+              new THREE.SphereGeometry(0.07, 12, 12),
+              waterMat,
+            );
+            drDrop.position.set(0.68 + (drI % 2) * 0.2, 0, 0);
+
+            drPivot.add(drDrop);
+            dropletGroup.add(drPivot);
+            dropletNodes.push({
+              pivot: drPivot,
+              phase: drI * ((Math.PI * 2) / 5),
+            });
+          }
+          group.add(dropletGroup);
+
+          // --- 6. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            var hop = Math.abs(Math.sin(time * 3.5));
+            group.position.y = hop * 0.22;
+            mainContainer.rotation.x = 0.32 + Math.sin(time * 2.5) * 0.06;
+            group.rotation.z = Math.cos(time * 1.5) * 0.05;
+
+            // バンザイしている手と先端の水かきの躍動パタパタ
+            var armWave = Math.sin(time * 3.0) * 0.12;
+            armL.rotation.z = 0.65 + armWave;
+            armR.rotation.z = -0.65 - armWave;
+            webbedHandL.rotation.z = 0.65 + armWave;
+            webbedHandR.rotation.z = -0.65 - armWave;
+
+            waterSurface.position.y = 0.35 + Math.sin(time * 4.0) * 0.015;
+            waterMat.emissiveIntensity = 1.0 + Math.sin(time * 5.0) * 0.4;
+
+            for (var k = 0; k < dropletNodes.length; k++) {
+              var dn = dropletNodes[k];
+              dn.pivot.rotation.y = time * 2.0 + dn.phase;
+              dn.pivot.position.y = Math.sin(time * 3.0 + dn.phase) * 0.2;
+            }
+          };
+
+          group.userData.muzzle = muzzle;
+          group.userData.head = headGroup;
+          group.userData.water = waterSurface;
 
           return group;
         }
@@ -28475,92 +29136,579 @@
         // 琵琶法師: 妖怪ステージの雑魚(遠距離型)。琵琶を奏でて音撃を放つ。
         function buildBiwaHoshiMesh() {
           var group = new THREE.Group();
-          var robeMat = new THREE.MeshStandardMaterial({
-            color: 0x443322,
-            emissive: 0x221100,
-            emissiveIntensity: 0.25,
-          });
-          var robe = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.4, 0.5, 1.2, 8),
-            robeMat,
-          );
-          group.add(robe);
 
-          var headMat = new THREE.MeshStandardMaterial({
-            color: 0xddbb99,
-            emissive: 0x221100,
+          // --- 1. マテリアル定義 ---
+          var boneMat = new THREE.MeshStandardMaterial({
+            color: 0xe2e8f0, // 褪せた白骨色
+            emissive: 0x1e293b,
+            emissiveIntensity: 0.15,
+            roughness: 0.45,
+            metalness: 0.1,
+          });
+
+          var darkBoneMat = new THREE.MeshStandardMaterial({
+            color: 0x475569, // 眼窩・骨の影
+            emissive: 0x0f172a,
             emissiveIntensity: 0.2,
+            roughness: 0.7,
           });
-          var head = new THREE.Mesh(
-            new THREE.SphereGeometry(0.28, 10, 8),
-            headMat,
-          );
-          head.position.y = 0.85;
-          group.add(head);
 
-          var biwaMat = new THREE.MeshStandardMaterial({
-            color: 0x996633,
-            emissive: 0x442200,
-            emissiveIntensity: 0.35,
+          var teethMat = new THREE.MeshStandardMaterial({
+            color: 0xf8fafc, // 白い歯
+            emissive: 0x334155,
+            emissiveIntensity: 0.1,
+            roughness: 0.2,
           });
-          var biwa = new THREE.Mesh(
-            new THREE.SphereGeometry(0.35, 10, 8),
-            biwaMat,
-          );
-          biwa.scale.set(0.5, 1, 0.25);
-          biwa.rotation.z = Math.PI / 3;
-          biwa.position.set(0.4, 0.5, 0.2);
-          group.add(biwa);
 
-          group.userData.muzzle = biwa;
+          var blueFlameMat = new THREE.MeshStandardMaterial({
+            color: 0x06b6d4, // 眼窩の蒼い鬼火
+            emissive: 0x00f0ff,
+            emissiveIntensity: 2.2,
+            transparent: true,
+            opacity: 0.9,
+          });
+
+          var biwaBodyMat = new THREE.MeshStandardMaterial({
+            color: 0x78350f, // 栗色・古木の琵琶胴
+            emissive: 0x451a03,
+            emissiveIntensity: 0.3,
+            roughness: 0.5,
+            metalness: 0.2,
+          });
+
+          var biwaRimMat = new THREE.MeshStandardMaterial({
+            color: 0xf59e0b, // 金箔の琵琶縁取・装飾
+            emissive: 0x78350f,
+            emissiveIntensity: 0.6,
+            metalness: 0.85,
+            roughness: 0.2,
+          });
+
+          // --- 2. 巨大な白骨髑髏 (Skull Head) ---
+          var skullGroup = new THREE.Group();
+          skullGroup.position.set(0, 0.55, 0.05);
+
+          // 脳頭蓋（Cranium Dome）
+          var cranium = new THREE.Mesh(
+            new THREE.SphereGeometry(0.38, 16, 14),
+            boneMat,
+          );
+          cranium.scale.set(0.95, 1.05, 1.05);
+          skullGroup.add(cranium);
+
+          // 頬骨
+          for (var cSign = -1; cSign <= 1; cSign += 2) {
+            var cheek = new THREE.Mesh(
+              new THREE.BoxGeometry(0.12, 0.1, 0.22),
+              boneMat,
+            );
+            cheek.position.set(cSign * 0.26, -0.15, 0.18);
+            cheek.rotation.z = -cSign * 0.2;
+            skullGroup.add(cheek);
+          }
+
+          // 眼窩 ＆ 蒼い鬼火
+          for (var eSign = -1; eSign <= 1; eSign += 2) {
+            var socket = new THREE.Mesh(
+              new THREE.SphereGeometry(0.12, 10, 10),
+              darkBoneMat,
+            );
+            socket.position.set(eSign * 0.14, 0.04, 0.32);
+            socket.scale.set(0.9, 1.0, 0.5);
+            skullGroup.add(socket);
+
+            var flameEye = new THREE.Mesh(
+              new THREE.SphereGeometry(0.065, 8, 8),
+              blueFlameMat,
+            );
+            flameEye.position.set(eSign * 0.14, 0.04, 0.35);
+            skullGroup.add(flameEye);
+          }
+
+          // 鼻孔
+          var nose = new THREE.Mesh(
+            new THREE.ConeGeometry(0.06, 0.12, 4),
+            darkBoneMat,
+          );
+          nose.position.set(0, -0.1, 0.38);
+          nose.rotation.x = -Math.PI / 2;
+          skullGroup.add(nose);
+
+          // 上顎 ＆ 歯列
+          var upperJaw = new THREE.Mesh(
+            new THREE.BoxGeometry(0.32, 0.08, 0.22),
+            boneMat,
+          );
+          upperJaw.position.set(0, -0.24, 0.24);
+          skullGroup.add(upperJaw);
+
+          for (var tI = -3; tI <= 3; tI++) {
+            var tooth = new THREE.Mesh(
+              new THREE.BoxGeometry(0.032, 0.06, 0.035),
+              teethMat,
+            );
+            tooth.position.set(tI * 0.042, -0.28, 0.33);
+            skullGroup.add(tooth);
+          }
+
+          // 下顎骨
+          var lowerJaw = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.1, 0.25),
+            boneMat,
+          );
+          lowerJaw.position.set(0, -0.36, 0.2);
+          skullGroup.add(lowerJaw);
+
+          group.add(skullGroup);
+
+          // --- 3. 脊椎 ＆ 正面に開く肋骨 ＆ 骨盤・脚骨 (Spine, Ribcage & Pelvis/Legs) ---
+          var spineGroup = new THREE.Group();
+          spineGroup.position.set(0, -0.1, 0);
+
+          // 背骨
+          var spine = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.07, 0.75, 8),
+            boneMat,
+          );
+          spine.position.set(0, -0.2, -0.1);
+          spineGroup.add(spine);
+
+          // 肋骨
+          for (var rI = 0; rI < 4; rI++) {
+            for (var rSign = -1; rSign <= 1; rSign += 2) {
+              var ribCurve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(0, 0.08 - rI * 0.13, -0.1),
+                new THREE.Vector3(
+                  rSign * (0.3 - rI * 0.02),
+                  0.05 - rI * 0.13,
+                  0.05,
+                ),
+                new THREE.Vector3(rSign * 0.08, 0.02 - rI * 0.13, 0.22),
+              ]);
+              var ribMesh = new THREE.Mesh(
+                new THREE.TubeGeometry(ribCurve, 10, 0.024, 6, false),
+                boneMat,
+              );
+              spineGroup.add(ribMesh);
+            }
+          }
+
+          // 骨盤 ＆ 大腿骨・脚骨
+          var lowerBodyGroup = new THREE.Group();
+          lowerBodyGroup.position.set(0, -0.42, -0.05);
+
+          var pelvis = new THREE.Mesh(
+            new THREE.TorusGeometry(0.24, 0.045, 8, 14),
+            boneMat,
+          );
+          pelvis.rotation.x = Math.PI / 2.3;
+          lowerBodyGroup.add(pelvis);
+
+          var sacrum = new THREE.Mesh(
+            new THREE.ConeGeometry(0.08, 0.18, 6),
+            boneMat,
+          );
+          sacrum.rotation.x = Math.PI;
+          sacrum.position.set(0, -0.05, -0.08);
+          lowerBodyGroup.add(sacrum);
+
+          for (var legSign = -1; legSign <= 1; legSign += 2) {
+            var legGroup = new THREE.Group();
+            legGroup.position.set(legSign * 0.16, -0.05, 0);
+
+            var femur = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.042, 0.035, 0.42, 8),
+              boneMat,
+            );
+            femur.position.set(0, -0.22, 0);
+            femur.rotation.z = -legSign * 0.15;
+            legGroup.add(femur);
+
+            var knee = new THREE.Mesh(
+              new THREE.SphereGeometry(0.052, 8, 8),
+              boneMat,
+            );
+            knee.position.set(legSign * 0.03, -0.44, 0.02);
+            legGroup.add(knee);
+
+            var shin = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.035, 0.028, 0.38, 8),
+              boneMat,
+            );
+            shin.position.set(legSign * 0.05, -0.65, 0.05);
+            shin.rotation.z = legSign * 0.1;
+            legGroup.add(shin);
+
+            lowerBodyGroup.add(legGroup);
+          }
+          spineGroup.add(lowerBodyGroup);
+
+          group.add(spineGroup);
+
+          // --- 4. 顎の正面手前に抱えられた呪いの古琵琶 ---
+          var biwaGroup = new THREE.Group();
+          biwaGroup.position.set(0.18, -0.18, 0.52);
+          biwaGroup.rotation.z = Math.PI * 0.32;
+          biwaGroup.rotation.y = -0.25;
+
+          var biwaBody = new THREE.Mesh(
+            new THREE.SphereGeometry(0.38, 12, 10),
+            biwaBodyMat,
+          );
+          biwaBody.scale.set(0.65, 1.2, 0.25);
+          biwaGroup.add(biwaBody);
+
+          var biwaRim = new THREE.Mesh(
+            new THREE.TorusGeometry(0.36, 0.02, 6, 16),
+            biwaRimMat,
+          );
+          biwaRim.scale.set(0.65, 1.2, 0.25);
+          biwaGroup.add(biwaRim);
+
+          var biwaNeck = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.04, 0.03, 0.7, 8),
+            biwaBodyMat,
+          );
+          biwaNeck.position.set(0, 0.75, 0);
+          biwaGroup.add(biwaNeck);
+
+          for (var pegI = -1; pegI <= 1; pegI += 2) {
+            var peg = new THREE.Mesh(
+              new THREE.BoxGeometry(0.18, 0.025, 0.03),
+              biwaRimMat,
+            );
+            peg.position.set(0, 0.95 + pegI * 0.08, 0);
+            biwaGroup.add(peg);
+          }
+
+          var boneArmL = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.04, 0.035, 0.52, 6),
+            boneMat,
+          );
+          boneArmL.position.set(-0.28, 0.08, 0.28);
+          boneArmL.rotation.z = 0.58;
+          boneArmL.rotation.x = 0.5;
+          group.add(boneArmL);
+
+          var boneArmR = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.04, 0.035, 0.52, 6),
+            boneMat,
+          );
+          boneArmR.position.set(0.28, -0.24, 0.42);
+          boneArmR.rotation.z = -0.45;
+          boneArmR.rotation.x = 0.45;
+          group.add(boneArmR);
+
+          var muzzle = new THREE.Object3D();
+          muzzle.position.set(0, 0, 0.4);
+          biwaGroup.add(muzzle);
+
+          group.add(biwaGroup);
+
+          // --- 5. 周囲を漂う浮遊骨片・怨霊オーラ ---
+          var bonePieceGroup = new THREE.Group();
+          var bonePieceNodes = [];
+
+          for (var bpI = 0; bpI < 5; bpI++) {
+            var bpPivot = new THREE.Group();
+            var bpMesh = new THREE.Mesh(
+              new THREE.BoxGeometry(0.08, 0.18, 0.05),
+              boneMat,
+            );
+            bpMesh.position.set(0.7 + (bpI % 2) * 0.25, 0, 0);
+            bpMesh.rotation.z = bpI * 0.4;
+
+            bpPivot.add(bpMesh);
+            bonePieceGroup.add(bpPivot);
+            bonePieceNodes.push({
+              pivot: bpPivot,
+              phase: bpI * ((Math.PI * 2) / 5),
+            });
+          }
+          group.add(bonePieceGroup);
+
+          // --- 6. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            group.position.y = Math.sin(time * 2.2) * 0.2;
+            group.position.x = Math.cos(time * 1.5) * 0.12;
+            group.rotation.z = Math.sin(time * 1.8) * 0.06;
+            group.rotation.x = Math.cos(time * 2.0) * 0.05;
+
+            lowerBodyGroup.rotation.z = Math.sin(time * 2.0) * 0.1;
+            lowerBodyGroup.rotation.x = Math.cos(time * 1.6) * 0.08;
+
+            blueFlameMat.emissiveIntensity = 1.8 + Math.sin(time * 6.0) * 0.6;
+
+            biwaGroup.rotation.z = Math.PI * 0.32 + Math.sin(time * 3.5) * 0.05;
+            boneArmR.rotation.z = -0.45 + Math.cos(time * 3.5) * 0.08;
+
+            for (var k = 0; k < bonePieceNodes.length; k++) {
+              var bpn = bonePieceNodes[k];
+              bpn.pivot.rotation.y = time * 1.8 + bpn.phase;
+              bpn.pivot.position.y = Math.sin(time * 2.5 + bpn.phase) * 0.25;
+            }
+          };
+
+          group.userData.muzzle = muzzle;
+          group.userData.head = skullGroup;
+          group.userData.biwa = biwaGroup;
+
           return group;
         }
 
         // フェアリー: フェアリーステージの雑魚(遠距離型)。羽を持つ小妖精。
         function buildFairyMesh() {
           var group = new THREE.Group();
-          var bodyMat = new THREE.MeshStandardMaterial({
-            color: 0xff88cc,
-            emissive: 0x881144,
-            emissiveIntensity: 0.4,
+
+          // --- 1. マテリアル定義 ---
+          var skinMat = new THREE.MeshStandardMaterial({
+            color: 0xffedd5, // もち肌の肌色
+            emissive: 0xffd8a8,
+            emissiveIntensity: 0.15,
+            roughness: 0.4,
           });
-          var body = new THREE.Mesh(
-            new THREE.SphereGeometry(0.3, 10, 8),
-            bodyMat,
-          );
-          group.add(body);
+
+          var hairMat = new THREE.MeshStandardMaterial({
+            color: 0x38bdf8, // 鮮やかなエメラルド〜シアンの妖精髪
+            emissive: 0x0284c7,
+            emissiveIntensity: 0.3,
+            roughness: 0.4,
+            side: THREE.DoubleSide,
+          });
+
+          var dressMat = new THREE.MeshStandardMaterial({
+            color: 0x22c55e, // 上品なエメラルドグリーンチュニック
+            emissive: 0x15803d,
+            emissiveIntensity: 0.35,
+            roughness: 0.3,
+          });
 
           var wingMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            emissive: 0xaaccff,
-            emissiveIntensity: 0.5,
+            color: 0xe0f2fe, // 澄み渡る薄青のグラデーション半透明羽
+            emissive: 0x38bdf8,
+            emissiveIntensity: 0.7,
             transparent: true,
-            opacity: 0.7,
+            opacity: 0.75,
+            side: THREE.DoubleSide,
           });
-          var wingGeo = new THREE.CircleGeometry(0.35, 8);
-          var wingLeft = new THREE.Mesh(wingGeo, wingMat);
-          wingLeft.position.set(-0.35, 0.1, -0.1);
-          wingLeft.rotation.y = 0.6;
-          group.add(wingLeft);
-          var wingRight = new THREE.Mesh(wingGeo, wingMat.clone());
-          wingRight.position.set(0.35, 0.1, -0.1);
-          wingRight.rotation.y = -0.6;
-          group.add(wingRight);
 
           var wandMat = new THREE.MeshStandardMaterial({
-            color: 0xffee44,
-            emissive: 0xffcc00,
-            emissiveIntensity: 0.7,
+            color: 0xfef08a, // 輝く星の頭部
+            emissive: 0xfacc15,
+            emissiveIntensity: 1.9,
+            roughness: 0.15,
           });
-          var wand = new THREE.Mesh(
-            new THREE.SphereGeometry(0.1, 8, 8),
+
+          var handleMat = new THREE.MeshStandardMaterial({
+            color: 0xfacc15, // 金色のステッキ柄
+            emissive: 0xb45309,
+            emissiveIntensity: 0.5,
+            metalness: 0.85,
+          });
+
+          // --- 2. スマートな頭部 ＆ 背中・後ろ(-Z)に流れて靡くロングヘア ---
+          var headGroup = new THREE.Group();
+          headGroup.position.set(0, 0.52, 0);
+
+          var head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.14, 14, 12),
+            skinMat,
+          );
+          headGroup.add(head);
+
+          var hairTop = new THREE.Mesh(
+            new THREE.SphereGeometry(0.155, 12, 10),
+            hairMat,
+          );
+          hairTop.position.set(0, 0.03, -0.015);
+          headGroup.add(hairTop);
+
+          var longHairShape = new THREE.Shape();
+          longHairShape.moveTo(-0.14, 0);
+          longHairShape.quadraticCurveTo(-0.18, -0.3, -0.15, -0.58);
+          longHairShape.quadraticCurveTo(0, -0.65, 0.15, -0.58);
+          longHairShape.quadraticCurveTo(0.18, -0.3, 0.14, 0);
+
+          var longHairGeo = new THREE.ShapeGeometry(longHairShape);
+          var longHairMesh = new THREE.Mesh(longHairGeo, hairMat);
+          longHairMesh.position.set(0, 0.02, -0.12);
+          longHairMesh.rotation.x = 0.75;
+          headGroup.add(longHairMesh);
+
+          for (var hSign = -1; hSign <= 1; hSign += 2) {
+            var hairStrand = new THREE.Mesh(
+              new THREE.ConeGeometry(0.05, 0.42, 6),
+              hairMat,
+            );
+            hairStrand.position.set(hSign * 0.11, -0.15, -0.05);
+            hairStrand.rotation.z = -hSign * 0.25;
+            hairStrand.rotation.x = 0.4;
+            headGroup.add(hairStrand);
+          }
+
+          group.add(headGroup);
+
+          // --- 3. スマートな胴体 ＆ 唯一無二の滑らかな単一曲線アーム ＆ 美脚 ---
+          var bodyGroup = new THREE.Group();
+
+          var torso = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.08, 0.1, 0.28, 10),
+            dressMat,
+          );
+          torso.position.set(0, 0.28, 0);
+          bodyGroup.add(torso);
+
+          var skirt = new THREE.Mesh(
+            new THREE.ConeGeometry(0.18, 0.26, 10),
+            dressMat,
+          );
+          skirt.position.set(0, 0.08, 0);
+          bodyGroup.add(skirt);
+
+          // 1) 曲線美脚
+          for (var lSign = -1; lSign <= 1; lSign += 2) {
+            var legCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(lSign * 0.06, 0.04, 0.02),
+              new THREE.Vector3(lSign * 0.05, -0.18, 0.04),
+              new THREE.Vector3(lSign * 0.045, -0.32, 0.01),
+              new THREE.Vector3(lSign * 0.04, -0.48, -0.16),
+            ]);
+            var legMesh = new THREE.Mesh(
+              new THREE.TubeGeometry(legCurve, 16, 0.022, 10, false),
+              skinMat,
+            );
+            bodyGroup.add(legMesh);
+          }
+
+          // 2) 滑らかな一本化左腕
+          var armLCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(-0.09, 0.38, 0.01),
+            new THREE.Vector3(-0.18, 0.22, 0.04),
+            new THREE.Vector3(-0.25, 0.08, 0.12),
+          ]);
+          var armLMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(armLCurve, 12, 0.016, 8, false),
+            skinMat,
+          );
+          bodyGroup.add(armLMesh);
+
+          // 3) 滑らかな一本化右腕
+          var armRCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0.09, 0.38, 0.01),
+            new THREE.Vector3(0.18, 0.22, 0.05),
+            new THREE.Vector3(0.2, 0.22, 0.24),
+          ]);
+          var armRMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(armRCurve, 12, 0.016, 8, false),
+            skinMat,
+          );
+          bodyGroup.add(armRMesh);
+
+          // 4) 魔法ステッキ
+          var wandGroup = new THREE.Group();
+          wandGroup.position.set(0.2, 0.22, 0.24);
+          wandGroup.rotation.x = 0.3;
+          wandGroup.rotation.z = -0.25;
+
+          var handle = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.011, 0.011, 0.6, 8),
+            handleMat,
+          );
+          handle.position.set(0, 0.22, 0);
+          wandGroup.add(handle);
+
+          var starTop = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.09),
             wandMat,
           );
-          wand.position.set(0.35, -0.1, 0.25);
-          group.add(wand);
+          starTop.position.set(0, 0.52, 0);
+          wandGroup.add(starTop);
 
-          group.userData.muzzle = wand;
-          group.userData.wings = [wingLeft, wingRight];
+          var muzzle = new THREE.Object3D();
+          muzzle.position.set(0, 0.55, 0);
+          wandGroup.add(muzzle);
+
+          bodyGroup.add(wandGroup);
+
+          group.add(bodyGroup);
+
+          // --- 4. 背中から左右へ広がるエレガントな4枚羽 ---
+          var wingNodes = [];
+
+          for (var topSign = -1; topSign <= 1; topSign += 2) {
+            var wingPivotT = new THREE.Group();
+            wingPivotT.position.set(topSign * 0.04, 0.35, -0.1);
+
+            var shapeT = new THREE.Shape();
+            shapeT.moveTo(0, 0);
+            shapeT.quadraticCurveTo(topSign * 0.4, 0.35, topSign * 0.32, 0.6);
+            shapeT.quadraticCurveTo(topSign * 0.08, 0.45, 0, 0);
+
+            var meshT = new THREE.Mesh(
+              new THREE.ShapeGeometry(shapeT),
+              wingMat,
+            );
+            meshT.scale.set(1.0, 1.0, 1.0);
+            meshT.rotation.z = -topSign * 0.1;
+
+            wingPivotT.add(meshT);
+            group.add(wingPivotT);
+            wingNodes.push({
+              pivot: wingPivotT,
+              baseRotY: topSign * 0.15,
+              sign: topSign,
+            });
+          }
+
+          for (var botSign = -1; botSign <= 1; botSign += 2) {
+            var wingPivotB = new THREE.Group();
+            wingPivotB.position.set(botSign * 0.04, 0.28, -0.1);
+
+            var shapeB = new THREE.Shape();
+            shapeB.moveTo(0, 0);
+            shapeB.quadraticCurveTo(
+              botSign * 0.55,
+              -0.25,
+              botSign * 0.45,
+              -0.75,
+            );
+            shapeB.quadraticCurveTo(botSign * 0.12, -0.4, 0, 0);
+
+            var meshB = new THREE.Mesh(
+              new THREE.ShapeGeometry(shapeB),
+              wingMat,
+            );
+            meshB.scale.set(1.28, 1.28, 1.0);
+            meshB.rotation.z = -botSign * 0.15;
+
+            wingPivotB.add(meshB);
+            group.add(wingPivotB);
+            wingNodes.push({
+              pivot: wingPivotB,
+              baseRotY: botSign * 0.12,
+              sign: botSign,
+            });
+          }
+
+          // --- 6. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            group.position.y = Math.sin(time * 3.0) * 0.1;
+            group.rotation.z = Math.sin(time * 1.8) * 0.04;
+
+            // 4枚羽の高速パタパタ羽ばたき
+            for (var wI = 0; wI < wingNodes.length; wI++) {
+              var wn = wingNodes[wI];
+              wn.pivot.rotation.y =
+                wn.baseRotY + Math.sin(time * 16.0) * 0.35 * wn.sign;
+            }
+
+            wandMat.emissiveIntensity = 1.5 + Math.sin(time * 5.0) * 0.5;
+            starTop.rotation.y = time * 2.5;
+          };
+
+          group.userData.muzzle = muzzle;
+          group.userData.wings = wingNodes;
+
           return group;
         }
 
@@ -28688,7 +29836,6 @@
           bun.position.set(0, 0.24, -0.08);
           headGroup.add(bun);
 
-          // 愛らしい前髪
           var bangs = new THREE.Mesh(
             new THREE.SphereGeometry(0.12, 8, 8),
             hairMat,
@@ -28699,7 +29846,7 @@
 
           group.add(headGroup);
 
-          // --- 3. 可憐な二頭身ボディ ＆ 葉っぱのリーフドレス ---
+          // --- 3. 可憐な二頭身ボディ ＆ 葉っぱのリーフドレス ＆ 曲線美脚 ---
           var bodyGroup = new THREE.Group();
 
           var torso = new THREE.Mesh(
@@ -28717,7 +29864,7 @@
           bustier.position.set(0, 0.16, 0);
           bodyGroup.add(bustier);
 
-          // スカラップ（葉っぱ）カットの層状ミニスカート
+          // スカート
           var skirtGroup = new THREE.Group();
           skirtGroup.position.set(0, 0.04, 0);
 
@@ -28742,30 +29889,83 @@
               p % 2 === 0 ? dressMat : dressHighlightMat,
             );
             leafMesh.rotation.y = pAngle;
-            leafMesh.rotation.x = 0.35; // 外側へ可憐に広がる
+            leafMesh.rotation.x = 0.35;
             skirtGroup.add(leafMesh);
           }
           bodyGroup.add(skirtGroup);
 
-          // 華奢で綺麗な足（素足）
-          for (var legSign = -1; legSign <= 1; legSign += 2) {
-            var leg = new THREE.Mesh(
-              new THREE.CylinderGeometry(0.042, 0.025, 0.38, 8),
+          // 膝がしなやかに屈曲し後ろへ流れるシームレス美脚
+          for (var lSign = -1; lSign <= 1; lSign += 2) {
+            var legCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(lSign * 0.06, -0.04, 0.02),
+              new THREE.Vector3(lSign * 0.05, -0.18, 0.04),
+              new THREE.Vector3(lSign * 0.045, -0.28, 0.01),
+              new THREE.Vector3(lSign * 0.04, -0.42, -0.14),
+            ]);
+            var legMesh = new THREE.Mesh(
+              new THREE.TubeGeometry(legCurve, 16, 0.022, 10, false),
               skinMat,
             );
-            leg.position.set(legSign * 0.07, -0.2, 0.02);
-            leg.rotation.z = -legSign * 0.08;
-            leg.rotation.x = 0.12;
-            bodyGroup.add(leg);
-
-            var foot = new THREE.Mesh(
-              new THREE.SphereGeometry(0.028, 8, 8),
-              skinMat,
-            );
-            foot.position.set(legSign * 0.085, -0.38, 0.05);
-            foot.scale.set(0.7, 0.5, 1.2);
-            bodyGroup.add(foot);
+            bodyGroup.add(legMesh);
           }
+
+          // 胴体上部(y=0.26)から生える滑らかな腕構造
+          // 左腕
+          var armLCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(-0.09, 0.26, 0.02),
+            new THREE.Vector3(-0.18, 0.18, 0.06),
+            new THREE.Vector3(-0.24, 0.08, 0.14),
+          ]);
+          var armLMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(armLCurve, 12, 0.016, 8, false),
+            skinMat,
+          );
+          bodyGroup.add(armLMesh);
+
+          // 右腕
+          var armRCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0.09, 0.26, 0.02),
+            new THREE.Vector3(0.18, 0.22, 0.08),
+            new THREE.Vector3(0.2, 0.24, 0.2),
+          ]);
+          var armRMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(armRCurve, 12, 0.016, 8, false),
+            skinMat,
+          );
+          bodyGroup.add(armRMesh);
+
+          // 魔法ステッキ
+          var wandGroup = new THREE.Group();
+          wandGroup.position.set(0.2, 0.24, 0.2);
+          wandGroup.rotation.x = 0.2;
+          wandGroup.rotation.z = -0.2;
+
+          var wandShaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.008, 0.006, 0.42, 6),
+            goldWandMat,
+          );
+          wandShaft.position.set(0, 0.21, 0);
+          wandGroup.add(wandShaft);
+
+          var starHead = new THREE.Mesh(
+            new THREE.OctahedronGeometry(0.05, 0),
+            starGlowMat,
+          );
+          starHead.position.set(0, 0.42, 0);
+          wandGroup.add(starHead);
+
+          var starRing = new THREE.Mesh(
+            new THREE.TorusGeometry(0.06, 0.008, 6, 12),
+            goldWandMat,
+          );
+          starRing.position.set(0, 0.42, 0);
+          wandGroup.add(starRing);
+
+          var muzzle = new THREE.Object3D();
+          muzzle.position.set(0, 0.45, 0);
+          wandGroup.add(muzzle);
+
+          bodyGroup.add(wandGroup);
 
           group.add(bodyGroup);
 
@@ -28806,7 +30006,6 @@
             var wingMesh = new THREE.Mesh(wingGeo, wingMat);
             wingGroup.add(wingMesh);
 
-            // 翅脈（フレーム）
             var frameCurve = new THREE.CatmullRomCurve3([
               new THREE.Vector3(0, 0, 0),
               new THREE.Vector3(sign * 0.25, isUpper ? 0.35 : -0.22, 0.01),
@@ -28826,12 +30025,20 @@
           }
 
           var wingConfigs = [
-            { isUpper: true, isLeft: true, posX: -0.06, posY: 0.22, rotY: 0.3 },
+            {
+              isUpper: true,
+              isLeft: true,
+              posX: -0.06,
+              posY: 0.22,
+              posZ: -0.08,
+              rotY: 0.3,
+            },
             {
               isUpper: true,
               isLeft: false,
               posX: 0.06,
               posY: 0.22,
+              posZ: -0.08,
               rotY: -0.3,
             },
             {
@@ -28839,6 +30046,7 @@
               isLeft: true,
               posX: -0.05,
               posY: 0.15,
+              posZ: -0.13,
               rotY: 0.2,
             },
             {
@@ -28846,6 +30054,7 @@
               isLeft: false,
               posX: 0.05,
               posY: 0.15,
+              posZ: -0.13,
               rotY: -0.2,
             },
           ];
@@ -28853,7 +30062,7 @@
           for (var w = 0; w < wingConfigs.length; w++) {
             var wCfg = wingConfigs[w];
             var wPivot = new THREE.Group();
-            wPivot.position.set(wCfg.posX, wCfg.posY, -0.08);
+            wPivot.position.set(wCfg.posX, wCfg.posY, wCfg.posZ);
             wPivot.rotation.y = wCfg.rotY;
 
             var wingMesh = createPixieWing(wCfg.isUpper, wCfg.isLeft);
@@ -28863,63 +30072,6 @@
             wingPivots.push({ pivot: wPivot, cfg: wCfg });
             wings.push(wPivot);
           }
-
-          // --- 5. 腕 ＆ 星の魔法ステッキ (Pixie Wand & Muzzle) ---
-          var armLeft = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.028, 0.02, 0.22, 6),
-            skinMat,
-          );
-          armLeft.position.set(-0.13, 0.18, 0.05);
-          armLeft.rotation.z = Math.PI / 4;
-          armLeft.rotation.x = -0.2;
-          group.add(armLeft);
-
-          var armRight = new THREE.Group();
-          armRight.position.set(0.11, 0.2, 0.02);
-
-          var armRightMesh = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.028, 0.02, 0.22, 6),
-            skinMat,
-          );
-          armRightMesh.position.set(0.06, -0.05, 0.06);
-          armRightMesh.rotation.z = -Math.PI / 3.5;
-          armRightMesh.rotation.x = -Math.PI / 4;
-          armRight.add(armRightMesh);
-
-          // 魔法ステッキ
-          var wandGroup = new THREE.Group();
-          wandGroup.position.set(0.12, -0.1, 0.15);
-          wandGroup.rotation.x = -0.3;
-
-          var wandShaft = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.008, 0.006, 0.42, 6),
-            goldWandMat,
-          );
-          wandShaft.position.set(0, 0.21, 0);
-          wandGroup.add(wandShaft);
-
-          // 星型トップ (Octahedron)
-          var starHead = new THREE.Mesh(
-            new THREE.OctahedronGeometry(0.05, 0),
-            starGlowMat,
-          );
-          starHead.position.set(0, 0.42, 0);
-          wandGroup.add(starHead);
-
-          var starRing = new THREE.Mesh(
-            new THREE.TorusGeometry(0.06, 0.008, 6, 12),
-            goldWandMat,
-          );
-          starRing.position.set(0, 0.42, 0);
-          wandGroup.add(starRing);
-
-          // 弾幕射出口 (Muzzle)
-          var muzzle = new THREE.Object3D();
-          muzzle.position.set(0, 0.45, 0);
-          wandGroup.add(muzzle);
-
-          armRight.add(wandGroup);
-          group.add(armRight);
 
           // --- 6. 周囲を漂う妖精の粉 (Pixie Dust) ---
           var dustGroup = new THREE.Group();
@@ -28948,12 +30100,10 @@
 
           // --- 7. アニメーション処理 (userData.updateLoop) ---
           group.userData.updateLoop = function (time) {
-            // 小妖精特有のピョンピョンと俊敏な高速ホバリング
             group.position.y = Math.sin(time * 6.0) * 0.08;
             group.rotation.z = Math.sin(time * 4.0) * 0.05;
             group.rotation.x = Math.cos(time * 3.5) * 0.04;
 
-            // 2対4枚の翼の超高速羽ばたき
             var flap = Math.sin(time * 28.0) * 0.45;
             for (var i = 0; i < wingPivots.length; i++) {
               var wp = wingPivots[i];
@@ -28961,11 +30111,9 @@
               wp.pivot.rotation.y = wp.cfg.rotY + sign * flap;
             }
 
-            // 魔法のステッキの揺らぎと星の脈動
             wandGroup.rotation.z = Math.sin(time * 5.0) * 0.12;
             starHead.scale.setScalar(1.0 + Math.sin(time * 9.0) * 0.25);
 
-            // 妖精の粉（ピクシーダスト）の公転
             for (var dn = 0; dn < dustNodes.length; dn++) {
               var node = dustNodes[dn];
               var curA = time * 2.5 + node.phase;
@@ -28978,7 +30126,6 @@
           group.userData.muzzle = muzzle;
           group.userData.wings = wings;
           group.userData.wand = wandGroup;
-          group.userData.head = headGroup;
 
           return group;
         }
@@ -28989,367 +30136,366 @@
 
           // --- 1. マテリアル定義 ---
           var skinMat = new THREE.MeshStandardMaterial({
-            color: 0xffdcc8,
-            emissive: 0x4a2518,
-            emissiveIntensity: 0.2,
+            color: 0xffedd5, // もちもち赤ちゃんの肌色
+            emissive: 0xffd8a8,
+            emissiveIntensity: 0.15,
             roughness: 0.45,
-            metalness: 0.05,
           });
 
-          var hairMat = new THREE.MeshStandardMaterial({
-            color: 0xffeb85,
-            emissive: 0x664d00,
-            emissiveIntensity: 0.3,
+          var diaperMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff, // 白いおむつ（布）
+            emissive: 0xe2e8f0,
+            emissiveIntensity: 0.2,
             roughness: 0.6,
           });
 
-          var haloMat = new THREE.MeshStandardMaterial({
-            color: 0xffea00,
-            emissive: 0xffd700,
-            emissiveIntensity: 1.4,
-            metalness: 0.9,
-            roughness: 0.1,
+          var hairMat = new THREE.MeshStandardMaterial({
+            color: 0xfacc15, // クリンクリンの金髪くるくる毛
+            emissive: 0xca8a04,
+            emissiveIntensity: 0.35,
+            roughness: 0.5,
           });
 
           var wingMat = new THREE.MeshStandardMaterial({
-            color: 0xfff5f8,
-            emissive: 0xf472b6,
-            emissiveIntensity: 0.45,
-            roughness: 0.35,
-            metalness: 0.1,
+            color: 0xfff1f2, // ふんわり純白羽毛の天使翼
+            emissive: 0xfecdd3,
+            emissiveIntensity: 0.4,
+            roughness: 0.3,
             side: THREE.DoubleSide,
           });
 
-          var goldBowMat = new THREE.MeshStandardMaterial({
-            color: 0xffd700,
-            emissive: 0x996600,
-            emissiveIntensity: 0.55,
-            metalness: 0.85,
+          var haloMat = new THREE.MeshStandardMaterial({
+            color: 0xfef08a, // 輝く金色の天使の輪
+            emissive: 0xeab308,
+            emissiveIntensity: 2.0,
+            metalness: 0.8,
+          });
+
+          var bowMat = new THREE.MeshStandardMaterial({
+            color: 0xf59e0b, // 黄金の弓
+            emissive: 0xb45309,
+            emissiveIntensity: 0.5,
+            metalness: 0.8,
+          });
+
+          var heartMat = new THREE.MeshStandardMaterial({
+            color: 0xf43f5e, // ぷっくり真紅のハート
+            emissive: 0xe11d48,
+            emissiveIntensity: 1.6,
             roughness: 0.2,
+            side: THREE.DoubleSide,
           });
 
-          var heartArrowMat = new THREE.MeshStandardMaterial({
-            color: 0xff1493,
-            emissive: 0xff0066,
-            emissiveIntensity: 1.8,
-            roughness: 0.1,
-          });
+          var eyeMat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
 
-          var eyeMat = new THREE.MeshBasicMaterial({ color: 0x1f2937 });
+          // ハート型のShape生成関数
+          function createPerfectHeartShape(s) {
+            var shape = new THREE.Shape();
+            shape.moveTo(0 * s, 0.08 * s);
+            shape.bezierCurveTo(
+              0 * s,
+              0.08 * s,
+              -0.07 * s,
+              0.2 * s,
+              -0.14 * s,
+              0.2 * s,
+            );
+            shape.bezierCurveTo(
+              -0.22 * s,
+              0.2 * s,
+              -0.22 * s,
+              0.08 * s,
+              -0.22 * s,
+              0.08 * s,
+            );
+            shape.bezierCurveTo(
+              -0.22 * s,
+              -0.04 * s,
+              -0.12 * s,
+              -0.15 * s,
+              0 * s,
+              -0.24 * s,
+            );
+            shape.bezierCurveTo(
+              0.12 * s,
+              -0.15 * s,
+              0.22 * s,
+              -0.04 * s,
+              0.22 * s,
+              0.08 * s,
+            );
+            shape.bezierCurveTo(
+              0.22 * s,
+              0.08 * s,
+              0.22 * s,
+              0.2 * s,
+              0.14 * s,
+              0.2 * s,
+            );
+            shape.bezierCurveTo(
+              0.07 * s,
+              0.2 * s,
+              0 * s,
+              0.08 * s,
+              0 * s,
+              0.08 * s,
+            );
+            return shape;
+          }
 
-          // --- 2. 頭部・天使の輪・巻き毛 ---
+          // --- 2. ぽっちゃり赤ちゃんの大きな頭部 ＆ 金色くるくる毛 ＆ 天使の輪 ---
           var headGroup = new THREE.Group();
-          headGroup.position.set(0, 0.55, 0);
+          headGroup.position.set(0, 0.46, 0);
 
+          // 赤ちゃんの丸い大きな頭
           var head = new THREE.Mesh(
-            new THREE.SphereGeometry(0.32, 16, 14),
+            new THREE.SphereGeometry(0.18, 16, 14),
             skinMat,
           );
-          head.scale.set(1.0, 1.05, 0.95);
           headGroup.add(head);
+
+          // ぷっくりほっぺ ＆ 紅潮
+          for (var cSign = -1; cSign <= 1; cSign += 2) {
+            var cheek = new THREE.Mesh(
+              new THREE.SphereGeometry(0.06, 10, 10),
+              skinMat,
+            );
+            cheek.position.set(cSign * 0.11, -0.05, 0.08);
+            headGroup.add(cheek);
+
+            var blush = new THREE.Mesh(
+              new THREE.SphereGeometry(0.04, 8, 8),
+              new THREE.MeshBasicMaterial({
+                color: 0xf43f5e,
+                transparent: true,
+                opacity: 0.5,
+              }),
+            );
+            blush.position.set(cSign * 0.12, -0.04, 0.14);
+            blush.scale.set(1.0, 0.6, 0.4);
+            headGroup.add(blush);
+          }
+
+          // 金髪くるくる毛
+          var curls = [
+            { x: 0, y: 0.18, z: 0.05, r: 0.07 },
+            { x: -0.09, y: 0.16, z: 0.02, r: 0.06 },
+            { x: 0.09, y: 0.16, z: 0.02, r: 0.06 },
+            { x: 0, y: 0.17, z: -0.08, r: 0.07 },
+            { x: -0.08, y: 0.12, z: -0.1, r: 0.065 },
+            { x: 0.08, y: 0.12, z: -0.1, r: 0.065 },
+          ];
+          for (var i = 0; i < curls.length; i++) {
+            var c = curls[i];
+            var curlMesh = new THREE.Mesh(
+              new THREE.SphereGeometry(c.r, 8, 8),
+              hairMat,
+            );
+            curlMesh.position.set(c.x, c.y, c.z);
+            headGroup.add(curlMesh);
+          }
+
+          // くりくりとした瞳
+          for (var eyeSign = -1; eyeSign <= 1; eyeSign += 2) {
+            var eye = new THREE.Mesh(
+              new THREE.SphereGeometry(0.026, 8, 8),
+              eyeMat,
+            );
+            eye.position.set(eyeSign * 0.06, 0.01, 0.165);
+            eye.scale.set(1.0, 1.2, 0.5);
+            headGroup.add(eye);
+          }
 
           // 天使の輪 (Halo)
           var halo = new THREE.Mesh(
-            new THREE.TorusGeometry(0.24, 0.03, 8, 20),
+            new THREE.TorusGeometry(0.12, 0.014, 8, 20),
             haloMat,
           );
+          halo.position.set(0, 0.28, 0);
           halo.rotation.x = Math.PI / 2.2;
-          halo.position.set(0, 0.45, -0.05);
           headGroup.add(halo);
-
-          // くりっとした目とピンクの頬
-          for (var eyeSign = -1; eyeSign <= 1; eyeSign += 2) {
-            var eye = new THREE.Mesh(
-              new THREE.SphereGeometry(0.045, 8, 8),
-              eyeMat,
-            );
-            eye.position.set(eyeSign * 0.11, 0.04, 0.28);
-            eye.scale.set(0.7, 1.2, 0.5);
-            headGroup.add(eye);
-
-            var cheek = new THREE.Mesh(
-              new THREE.SphereGeometry(0.05, 8, 8),
-              new THREE.MeshBasicMaterial({
-                color: 0xff6699,
-                transparent: true,
-                opacity: 0.65,
-              }),
-            );
-            cheek.position.set(eyeSign * 0.16, -0.06, 0.26);
-            cheek.scale.set(1.0, 0.5, 0.5);
-            headGroup.add(cheek);
-          }
-
-          // くるくる巻き毛 (Curly Hair)
-          for (var h = 0; h < 14; h++) {
-            var angle = (h / 14) * Math.PI * 2;
-            var curl = new THREE.Mesh(
-              new THREE.SphereGeometry(0.09, 8, 8),
-              hairMat,
-            );
-            curl.position.set(
-              Math.sin(angle) * 0.28,
-              0.15 + Math.cos(angle * 2) * 0.05,
-              Math.cos(angle) * 0.26 - 0.02,
-            );
-            headGroup.add(curl);
-          }
-          var topCurl = new THREE.Mesh(
-            new THREE.SphereGeometry(0.12, 8, 8),
-            hairMat,
-          );
-          topCurl.position.set(0, 0.32, 0);
-          headGroup.add(topCurl);
 
           group.add(headGroup);
 
-          // --- 3. ぽっちゃりとした天使の素体 (Classic Cherub Body) ---
+          // --- 3. 裸体ぽっちゃり赤ちゃんボディ ＆ 白おむつ ＆ むちむち手足 ---
           var bodyGroup = new THREE.Group();
 
-          var torso = new THREE.Mesh(
-            new THREE.SphereGeometry(0.38, 14, 12),
-            skinMat,
-          );
-          torso.scale.set(0.9, 1.1, 0.85);
-          torso.position.set(0, 0.1, 0);
-          bodyGroup.add(torso);
-
+          // ぽっこり出たぽっちゃりお腹
           var belly = new THREE.Mesh(
-            new THREE.SphereGeometry(0.3, 10, 10),
+            new THREE.SphereGeometry(0.17, 14, 12),
             skinMat,
           );
-          belly.position.set(0, -0.02, 0.1);
-          belly.scale.set(0.95, 0.95, 0.85);
+          belly.position.set(0, 0.22, 0.02);
+          belly.scale.set(1.05, 1.1, 1.05);
           bodyGroup.add(belly);
 
-          var pelvis = new THREE.Mesh(
-            new THREE.SphereGeometry(0.32, 12, 10),
-            skinMat,
+          // 白いおむつ (Diaper)
+          var diaper = new THREE.Mesh(
+            new THREE.SphereGeometry(0.175, 14, 12),
+            diaperMat,
           );
-          pelvis.position.set(0, -0.18, 0);
-          pelvis.scale.set(0.95, 0.8, 0.85);
-          bodyGroup.add(pelvis);
+          diaper.position.set(0, 0.13, 0.01);
+          diaper.scale.set(1.08, 0.75, 1.06);
+          bodyGroup.add(diaper);
 
-          // ぷっくりとした可愛らしい素足（指つきの裸足）
-          for (var legSign = -1; legSign <= 1; legSign += 2) {
-            var leg = new THREE.Mesh(
-              new THREE.CylinderGeometry(0.13, 0.08, 0.35, 8),
-              skinMat,
-            );
-            leg.position.set(legSign * 0.16, -0.36, 0.02);
-            leg.rotation.z = -legSign * 0.15;
-            leg.rotation.x = 0.2;
-            bodyGroup.add(leg);
-
-            // 足の甲・かかと（素足）
-            var footInstep = new THREE.Mesh(
-              new THREE.SphereGeometry(0.08, 8, 8),
-              skinMat,
-            );
-            footInstep.position.set(legSign * 0.18, -0.5, 0.08);
-            footInstep.scale.set(0.85, 0.65, 1.2);
-            bodyGroup.add(footInstep);
-
-            // ぷっくりとした5本の可愛い足指
-            for (var toeI = 0; toeI < 5; toeI++) {
-              var toeRatio = (toeI - 2) * 0.022;
-              var toeSize = 0.022 - Math.abs(toeI - 1) * 0.002;
-              var toe = new THREE.Mesh(
-                new THREE.SphereGeometry(toeSize, 6, 6),
-                skinMat,
-              );
-              toe.position.set(legSign * 0.18 + toeRatio, -0.52, 0.17);
-              bodyGroup.add(toe);
-            }
-          }
-
-          group.add(bodyGroup);
-
-          // --- 4. 立体的な羽毛で構築された翼（天使の羽根） ---
-          var wingPivots = [];
-          for (var wSign = -1; wSign <= 1; wSign += 2) {
-            var wingPivot = new THREE.Group();
-            wingPivot.position.set(wSign * 0.2, 0.22, -0.18);
-            wingPivot.rotation.y = wSign * 0.4;
-
-            var wingBoneCurve = new THREE.CatmullRomCurve3([
-              new THREE.Vector3(0, 0, 0),
-              new THREE.Vector3(wSign * 0.4, 0.35, -0.05),
-              new THREE.Vector3(wSign * 0.9, 0.1, -0.1),
+          // むちむち脚
+          for (var lSign = -1; lSign <= 1; lSign += 2) {
+            var legCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(lSign * 0.08, 0.06, 0.02),
+              new THREE.Vector3(lSign * 0.1, -0.06, 0.04),
+              new THREE.Vector3(lSign * 0.08, -0.16, -0.08),
             ]);
-            var wingBone = new THREE.Mesh(
-              new THREE.TubeGeometry(wingBoneCurve, 8, 0.035, 6, false),
-              wingMat,
+            var legMesh = new THREE.Mesh(
+              new THREE.TubeGeometry(legCurve, 12, 0.038, 10, false),
+              skinMat,
             );
-            wingPivot.add(wingBone);
-
-            var featherCount = 7;
-            for (var f = 0; f < featherCount; f++) {
-              var t = f / (featherCount - 1);
-              var pos = wingBoneCurve.getPoint(t);
-              var fLen = 0.35 + Math.sin(t * Math.PI) * 0.45;
-
-              var featherShape = new THREE.Shape();
-              featherShape.moveTo(0, 0);
-              featherShape.bezierCurveTo(
-                wSign * 0.08,
-                -fLen * 0.3,
-                wSign * 0.08,
-                -fLen * 0.8,
-                0,
-                -fLen,
-              );
-              featherShape.bezierCurveTo(
-                -wSign * 0.04,
-                -fLen * 0.7,
-                -wSign * 0.04,
-                -fLen * 0.3,
-                0,
-                0,
-              );
-
-              var featherGeo = new THREE.ExtrudeGeometry(featherShape, {
-                depth: 0.012,
-                bevelEnabled: true,
-                bevelThickness: 0.005,
-                bevelSize: 0.008,
-                bevelSegments: 2,
-              });
-
-              var featherMesh = new THREE.Mesh(featherGeo, wingMat);
-              featherMesh.position.copy(pos);
-              featherMesh.rotation.z = wSign * (-0.2 + t * 0.25);
-              featherMesh.rotation.x = 0.1;
-              wingPivot.add(featherMesh);
-            }
-
-            group.add(wingPivot);
-            wingPivots.push(wingPivot);
+            bodyGroup.add(legMesh);
           }
 
-          // --- 5. 腕 ＆ 豪華な愛の黄金弓矢 ---
-          var armLeft = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.06, 0.38, 8),
+          // むちむち腕 (左腕: 弓のグリップを持つ、右腕: 弦を引く)
+          var armLCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(-0.13, 0.3, 0.02),
+            new THREE.Vector3(-0.18, 0.26, 0.12),
+            new THREE.Vector3(-0.18, 0.24, 0.24),
+          ]);
+          var armLMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(armLCurve, 10, 0.028, 8, false),
             skinMat,
           );
-          armLeft.position.set(-0.24, 0.2, 0.18);
-          armLeft.rotation.z = Math.PI / 2.8;
-          armLeft.rotation.x = -Math.PI / 4;
-          group.add(armLeft);
+          bodyGroup.add(armLMesh);
 
-          var armRight = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.08, 0.06, 0.38, 8),
+          var armRCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0.13, 0.3, 0.02),
+            new THREE.Vector3(0.18, 0.24, 0.1),
+            new THREE.Vector3(0.04, 0.24, 0.2),
+          ]);
+          var armRMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(armRCurve, 10, 0.028, 8, false),
             skinMat,
           );
-          armRight.position.set(0.24, 0.18, 0.08);
-          armRight.rotation.z = -Math.PI / 3.2;
-          armRight.rotation.x = -Math.PI / 3;
-          group.add(armRight);
+          bodyGroup.add(armRMesh);
 
+          // --- 4. 縦にまっすぐ構え前(+Z)へ力強く張り出す正統派アーチェリー黄金弓 ＆ 80%ハート矢先 ---
           var bowGroup = new THREE.Group();
-          bowGroup.position.set(-0.15, 0.2, 0.38);
-          bowGroup.rotation.y = -0.3;
+          bowGroup.position.set(-0.18, 0.24, 0.24); // 左手先（グリップ位置）に配置
 
+          // 縦に直立し前(+Z)へ滑らかに張り出すRecurve Bowの三日月曲線
           var bowCurve = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(0, 0.6, -0.1),
-            new THREE.Vector3(0, 0.35, 0.15),
-            new THREE.Vector3(0, 0, 0.22),
-            new THREE.Vector3(0, -0.35, 0.15),
-            new THREE.Vector3(0, -0.6, -0.1),
+            new THREE.Vector3(0, 0.32, -0.06),
+            new THREE.Vector3(0, 0.2, 0.08),
+            new THREE.Vector3(0, 0.0, 0.12),
+            new THREE.Vector3(0, -0.2, 0.08),
+            new THREE.Vector3(0, -0.32, -0.06),
           ]);
           var bowMesh = new THREE.Mesh(
-            new THREE.TubeGeometry(bowCurve, 16, 0.035, 8, false),
-            goldBowMat,
+            new THREE.TubeGeometry(bowCurve, 20, 0.015, 8, false),
+            bowMat,
           );
           bowGroup.add(bowMesh);
 
-          var heartShape = new THREE.Shape();
-          heartShape.moveTo(0, 0);
-          heartShape.bezierCurveTo(0, 0, -0.05, 0.08, -0.1, 0.08);
-          heartShape.bezierCurveTo(-0.16, 0.08, -0.16, 0.02, -0.16, 0.02);
-          heartShape.bezierCurveTo(-0.16, -0.06, -0.08, -0.12, 0, -0.18);
-          heartShape.bezierCurveTo(0.08, -0.12, 0.16, -0.06, 0.16, 0.02);
-          heartShape.bezierCurveTo(0.16, 0.02, 0.16, 0.08, 0.1, 0.08);
-          heartShape.bezierCurveTo(0.05, 0.08, 0, 0, 0, 0);
-
-          var heartGeo = new THREE.ExtrudeGeometry(heartShape, {
-            depth: 0.04,
-            bevelEnabled: true,
-            bevelThickness: 0.015,
-            bevelSize: 0.02,
-            bevelSegments: 2,
-          });
-          heartGeo.center();
-
-          var bowHeart = new THREE.Mesh(heartGeo, heartArrowMat);
-          bowHeart.position.set(0, 0, 0.24);
-          bowHeart.scale.set(0.65, 0.65, 0.65);
-          bowGroup.add(bowHeart);
-
-          var stringGeo = new THREE.CylinderGeometry(0.006, 0.006, 1.2, 4);
-          var bowString = new THREE.Mesh(
-            stringGeo,
-            new THREE.MeshBasicMaterial({
-              color: 0xffffff,
-              transparent: true,
-              opacity: 0.8,
-            }),
-          );
-          bowString.position.set(0, 0, -0.08);
-          bowGroup.add(bowString);
-
-          var arrowGroup = new THREE.Group();
-          arrowGroup.position.set(0, 0, 0.05);
-
-          var shaft = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.015, 0.015, 0.85, 6),
-            goldBowMat,
-          );
-          shaft.rotation.x = Math.PI / 2;
-          arrowGroup.add(shaft);
-
-          var arrowTip = new THREE.Mesh(heartGeo, heartArrowMat);
-          arrowTip.position.set(0, 0, 0.45);
-          arrowTip.rotation.x = Math.PI / 2;
-          arrowTip.scale.set(0.7, 0.7, 0.7);
-          arrowGroup.add(arrowTip);
-
-          for (var flSign = -1; flSign <= 1; flSign += 2) {
-            var fletch = new THREE.Mesh(
-              new THREE.BoxGeometry(0.01, 0.08, 0.12),
-              heartArrowMat,
+          // 弓の上下先端ノック
+          for (var kSign = -1; kSign <= 1; kSign += 2) {
+            var nock = new THREE.Mesh(
+              new THREE.SphereGeometry(0.02, 8, 8),
+              bowMat,
             );
-            fletch.position.set(flSign * 0.04, 0, -0.38);
-            fletch.rotation.z = flSign * 0.3;
-            arrowGroup.add(fletch);
+            nock.position.set(0, kSign * 0.32, -0.06);
+            bowGroup.add(nock);
           }
 
+          // 弦 (上端・右手引き位置・下端を繋ぐ)
+          var stringGeo = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0.32, -0.06),
+            new THREE.Vector3(0.22, 0.0, -0.04),
+            new THREE.Vector3(0, -0.32, -0.06),
+          ]);
+          var stringMesh = new THREE.Line(
+            stringGeo,
+            new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }),
+          );
+          bowGroup.add(stringMesh);
+
+          // ハートの矢 (Arrow with 80% Heart Tip)
+          var arrowGroup = new THREE.Group();
+          arrowGroup.position.set(0.08, 0, 0);
+
+          var shaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.008, 0.008, 0.55, 6),
+            bowMat,
+          );
+          shaft.rotation.z = -Math.PI / 2;
+          shaft.rotation.y = Math.PI / 2;
+          arrowGroup.add(shaft);
+
+          // 正面カメラ（XY平面）へ向けた大粒ハート矢頭
+          var arrowHeartGeo = new THREE.ExtrudeGeometry(
+            createPerfectHeartShape(0.6),
+            {
+              depth: 0.035,
+              bevelEnabled: true,
+              bevelThickness: 0.01,
+              bevelSize: 0.01,
+            },
+          );
+          var arrowHeartTip = new THREE.Mesh(arrowHeartGeo, heartMat);
+          arrowHeartTip.position.set(0, 0, 0.28);
+          arrowHeartTip.rotation.x = 0;
+          arrowGroup.add(arrowHeartTip);
+
           var muzzle = new THREE.Object3D();
-          muzzle.position.set(0, 0, 0.52);
+          muzzle.position.set(0, 0, 0.36);
           arrowGroup.add(muzzle);
 
           bowGroup.add(arrowGroup);
-          group.add(bowGroup);
+          bodyGroup.add(bowGroup);
 
-          // --- 6. アニメーション処理 (userData.updateLoop) ---
+          group.add(bodyGroup);
+
+          // --- 5. 背中の小さな天使の羽 (Baby Wings) ---
+          var wingNodes = [];
+          for (var wSign = -1; wSign <= 1; wSign += 2) {
+            var wingPivot = new THREE.Group();
+            wingPivot.position.set(wSign * 0.06, 0.32, -0.1);
+
+            var aShape = new THREE.Shape();
+            aShape.moveTo(0, 0);
+            aShape.quadraticCurveTo(wSign * 0.25, 0.2, wSign * 0.38, 0.45);
+            aShape.quadraticCurveTo(wSign * 0.45, 0.25, wSign * 0.3, 0.05);
+            aShape.quadraticCurveTo(wSign * 0.35, -0.12, wSign * 0.2, -0.25);
+            aShape.quadraticCurveTo(wSign * 0.08, -0.12, 0, 0);
+
+            var wingMesh = new THREE.Mesh(
+              new THREE.ShapeGeometry(aShape),
+              wingMat,
+            );
+            wingPivot.add(wingMesh);
+
+            group.add(wingPivot);
+            wingNodes.push({
+              pivot: wingPivot,
+              baseRotY: wSign * 0.2,
+              sign: wSign,
+            });
+          }
+
+          // --- 6. アニメーション定義 (userData.updateLoop) ---
           group.userData.updateLoop = function (time) {
-            group.position.y = Math.sin(time * 3.0) * 0.12;
-            group.rotation.z = Math.sin(time * 2.0) * 0.05;
+            group.position.y = Math.sin(time * 3.5) * 0.08;
+            group.rotation.z = Math.sin(time * 2.2) * 0.04;
 
-            var flap = Math.sin(time * 7.0) * 0.35;
-            wingPivots[0].rotation.y = 0.4 + flap;
-            wingPivots[1].rotation.y = -0.4 - flap;
+            for (var w = 0; w < wingNodes.length; w++) {
+              var wn = wingNodes[w];
+              wn.pivot.rotation.y =
+                wn.baseRotY + Math.sin(time * 9.0) * 0.35 * wn.sign;
+            }
 
-            var pull = (Math.sin(time * 4.0) + 1.0) * 0.08;
-            arrowGroup.position.z = 0.05 - pull;
-            bowHeart.scale.setScalar(0.65 + Math.sin(time * 8.0) * 0.08);
-            arrowTip.scale.setScalar(0.7 + Math.cos(time * 8.0) * 0.09);
+            halo.rotation.z = time * 1.5;
+            heartMat.emissiveIntensity = 1.2 + Math.sin(time * 6.0) * 0.5;
           };
 
           group.userData.muzzle = muzzle;
-          group.userData.wings = wingPivots;
+          group.userData.wings = wingNodes;
           group.userData.bow = bowGroup;
-          group.userData.head = headGroup;
 
           return group;
         }
@@ -29357,31 +30503,198 @@
         // インプ: フェアリーステージの雑魚(近接型)。小さな悪戯妖精。
         function buildImpMesh() {
           var group = new THREE.Group();
+
+          // --- 1. マテリアル定義 ---
           var bodyMat = new THREE.MeshStandardMaterial({
-            color: 0xcc3355,
-            emissive: 0x550011,
-            emissiveIntensity: 0.4,
+            color: 0xc084fc, // ポップで可愛らしいマゼンタパープル
+            emissive: 0x7e22ce,
+            emissiveIntensity: 0.25,
+            roughness: 0.4,
           });
-          var body = new THREE.Mesh(
-            new THREE.ConeGeometry(0.3, 0.7, 6),
-            bodyMat,
-          );
-          group.add(body);
 
           var hornMat = new THREE.MeshStandardMaterial({
-            color: 0x220000,
-            emissive: 0x440000,
+            color: 0x334155, // ダークグレーの小悪魔ツノ
+            emissive: 0x1e293b,
+            emissiveIntensity: 0.2,
+            roughness: 0.3,
+          });
+
+          var eyeMat = new THREE.MeshStandardMaterial({
+            color: 0xfacc15, // ギラリと光る黄色の小悪魔の目
+            emissive: 0xeab308,
+            emissiveIntensity: 1.2,
+          });
+
+          var wingMat = new THREE.MeshStandardMaterial({
+            color: 0x581c87, // ダークパープルのコウモリ羽
+            emissive: 0x3b0764,
+            emissiveIntensity: 0.4,
+            side: THREE.DoubleSide,
+          });
+
+          var tailMat = new THREE.MeshStandardMaterial({
+            color: 0x9333ea, // 矢印尻尾
+            emissive: 0x6b21a8,
             emissiveIntensity: 0.3,
           });
-          var hornGeo = new THREE.ConeGeometry(0.06, 0.25, 5);
-          var hornLeft = new THREE.Mesh(hornGeo, hornMat);
-          hornLeft.position.set(-0.12, 0.45, 0);
-          hornLeft.rotation.z = 0.3;
-          group.add(hornLeft);
-          var hornRight = new THREE.Mesh(hornGeo, hornMat.clone());
-          hornRight.position.set(0.12, 0.45, 0);
-          hornRight.rotation.z = -0.3;
-          group.add(hornRight);
+
+          // --- 2. 頭部 ＆ 小悪魔のツノ ＆ 目元 ---
+          var headGroup = new THREE.Group();
+          headGroup.position.set(0, 0.45, 0);
+
+          // 丸みのある小悪魔頭部
+          var head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.18, 14, 12),
+            bodyMat,
+          );
+          headGroup.add(head);
+
+          // 左右の小さな悪魔のツノ (Horns)
+          for (var hSign = -1; hSign <= 1; hSign += 2) {
+            var horn = new THREE.Mesh(
+              new THREE.ConeGeometry(0.045, 0.18, 8),
+              hornMat,
+            );
+            horn.position.set(hSign * 0.1, 0.17, 0.02);
+            horn.rotation.z = -hSign * 0.35;
+            horn.rotation.x = -0.15;
+            headGroup.add(horn);
+          }
+
+          // ギラリと輝くつり目 (Eyes)
+          for (var eSign = -1; eSign <= 1; eSign += 2) {
+            var eye = new THREE.Mesh(
+              new THREE.SphereGeometry(0.04, 8, 8),
+              eyeMat,
+            );
+            eye.position.set(eSign * 0.07, 0.03, 0.15);
+            eye.scale.set(1.0, 0.6, 0.5);
+            eye.rotation.z = -eSign * 0.3; // にんまりつり目！
+            headGroup.add(eye);
+          }
+
+          // いたずらなにっかりスマイル口元
+          var mouthShape = new THREE.TorusGeometry(0.04, 0.008, 8, 12, Math.PI);
+          var mouth = new THREE.Mesh(mouthShape, hornMat);
+          mouth.position.set(0, -0.04, 0.16);
+          mouth.rotation.x = 0.2;
+          mouth.rotation.z = Math.PI; // ニッコリ曲がり！
+          headGroup.add(mouth);
+
+          group.add(headGroup);
+
+          // --- 3. 小さな胴体 ＆ 手足 ---
+          var bodyGroup = new THREE.Group();
+
+          // ぽっちゃり丸みのあるお腹
+          var torso = new THREE.Mesh(
+            new THREE.SphereGeometry(0.16, 12, 10),
+            bodyMat,
+          );
+          torso.position.set(0, 0.22, 0);
+          torso.scale.set(1.0, 1.15, 0.9);
+          bodyGroup.add(torso);
+
+          // 左右の小さな手 (Arms)
+          for (var aSign = -1; aSign <= 1; aSign += 2) {
+            var armCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(aSign * 0.12, 0.28, 0.0),
+              new THREE.Vector3(aSign * 0.22, 0.2, 0.08),
+              new THREE.Vector3(aSign * 0.18, 0.12, 0.16),
+            ]);
+            var armMesh = new THREE.Mesh(
+              new THREE.TubeGeometry(armCurve, 10, 0.022, 8, false),
+              bodyMat,
+            );
+            bodyGroup.add(armMesh);
+          }
+
+          // 左右の小さな脚 (Legs)
+          for (var lSign = -1; lSign <= 1; lSign += 2) {
+            var legCurve = new THREE.CatmullRomCurve3([
+              new THREE.Vector3(lSign * 0.08, 0.1, 0.0),
+              new THREE.Vector3(lSign * 0.1, -0.05, 0.04),
+              new THREE.Vector3(lSign * 0.08, -0.18, -0.08),
+            ]);
+            var legMesh = new THREE.Mesh(
+              new THREE.TubeGeometry(legCurve, 10, 0.025, 8, false),
+              bodyMat,
+            );
+            bodyGroup.add(legMesh);
+          }
+
+          group.add(bodyGroup);
+
+          // --- 4. 背中のコウモリ皮膜羽 (Bat Wings) ---
+          var wingNodes = [];
+          for (var wSign = -1; wSign <= 1; wSign += 2) {
+            var wingPivot = new THREE.Group();
+            wingPivot.position.set(wSign * 0.06, 0.28, -0.12);
+
+            var batShape = new THREE.Shape();
+            batShape.moveTo(0, 0);
+            batShape.quadraticCurveTo(wSign * 0.25, 0.25, wSign * 0.45, 0.2);
+            batShape.quadraticCurveTo(wSign * 0.3, 0.05, wSign * 0.35, -0.1);
+            batShape.quadraticCurveTo(wSign * 0.2, 0.02, wSign * 0.18, -0.15);
+            batShape.quadraticCurveTo(wSign * 0.1, 0.0, 0, 0);
+
+            var wingMesh = new THREE.Mesh(
+              new THREE.ShapeGeometry(batShape),
+              wingMat,
+            );
+            wingPivot.add(wingMesh);
+            group.add(wingPivot);
+
+            wingNodes.push({
+              pivot: wingPivot,
+              baseRotY: wSign * 0.2,
+              sign: wSign,
+            });
+          }
+
+          // --- 5. 悪魔の矢印型尻尾 (Devil Tail) ---
+          var tailGroup = new THREE.Group();
+          tailGroup.position.set(0, 0.12, -0.12);
+
+          var tailCurve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0.08, -0.08, -0.15),
+            new THREE.Vector3(-0.05, -0.18, -0.28),
+            new THREE.Vector3(0, -0.12, -0.42),
+          ]);
+
+          var tailMesh = new THREE.Mesh(
+            new THREE.TubeGeometry(tailCurve, 16, 0.015, 8, false),
+            tailMat,
+          );
+          tailGroup.add(tailMesh);
+
+          var arrowHead = new THREE.Mesh(
+            new THREE.ConeGeometry(0.05, 0.12, 4),
+            tailMat,
+          );
+          arrowHead.position.set(0, -0.12, -0.44);
+          arrowHead.rotation.x = -Math.PI / 2;
+          arrowHead.rotation.z = Math.PI / 4;
+          tailGroup.add(arrowHead);
+
+          group.add(tailGroup);
+
+          // --- 6. アニメーション定義 (userData.updateLoop) ---
+          group.userData.updateLoop = function (time) {
+            group.position.y = Math.sin(time * 4.0) * 0.08;
+            group.rotation.z = Math.sin(time * 2.5) * 0.08;
+            group.rotation.x = Math.sin(time * 1.8) * 0.05;
+
+            for (var w = 0; w < wingNodes.length; w++) {
+              var wn = wingNodes[w];
+              wn.pivot.rotation.y =
+                wn.baseRotY + Math.sin(time * 12.0) * 0.4 * wn.sign;
+            }
+
+            tailGroup.rotation.y = Math.sin(time * 3.5) * 0.25;
+            tailGroup.rotation.z = Math.cos(time * 2.8) * 0.15;
+          };
 
           return group;
         }
@@ -37765,11 +39078,18 @@
             } else if (
               en.kind === "princess" ||
               en.kind === "cupid" ||
-              en.kind === "pixie"
+              en.kind === "pixie" ||
+              en.kind === "yoshitsune" ||
+              en.kind === "frog" ||
+              en.kind === "biwa_hoshi" ||
+              en.kind === "fairy" ||
+              en.kind === "imp"
             ) {
-              // 平安鬼姫・キューピッド・ピクシーは自前のupdateLoop(time)で
-              // 全パーツ(浮遊・袖/裾のなびき・扇/弓/杖の演出・発光脈動等)を
-              // まとめてアニメーションするため、専用メッシュ側に委譲する。
+              // 平安鬼姫・キューピッド・ピクシー・遮那王・河童・
+              // 怨霊髑髏・フェアリー・インプは自前のupdateLoop(time)で
+              // 全パーツ(浮遊・袖/裾のなびき・扇/弓/杖の演出・発光脈動・
+              // 羽ばたき等)をまとめてアニメーションするため、専用メッシュ
+              // 側に委譲する。
               en.mesh.userData.updateLoop(elapsedTime);
             } else if (en.kind === "glitch_drone") {
               // 約1.5秒ごとに瞬間移動する。連続移動ではなく、その場に
