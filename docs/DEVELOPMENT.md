@@ -438,6 +438,42 @@ Gemini向けの現在進行中の依頼内容・詳細な編集ルールは
      3本→6本・長さ約2倍に拡張、常時うねるアニメーションに変更
    - `npm run verify`全通過、Playwrightで実機確認（Stage2実プレイ+Character
      Galleryで5体全て個別レンダリング確認、コンソールエラーなし）
+10. **Gemini制作のYOZAKURA/SWEETHEART GROVEデザイン統合とステージクリア
+    BGM新設**（2026-08-27）:
+    - QUEEN TITANIA（`fairy_queen`）を全面刷新。`buildFairyQueenMesh`を
+      Geminiデザイン（漆黒ツインテール・8頭身・ルビーハイヒール・28枚の
+      公転薔薇花びら）に差し替え、`updateFairyQueenPerformance`を新
+      `userData`構造（肘の独立ピボットが無いため腕全体の回転で表現）に
+      合わせて全面書き換え。あわせて新規の「花びら防御ギミック」を追加:
+      28枚の花びら全てに個別HP1を持たせ、全て撃ち落とすまで本体
+      （`en.hp`）にダメージが通らない仕様に変更。新パターン`petal_storm`
+      （既存のwand/wand/kiss/flybyサイクルに追加）で生存花びらを一斉に
+      ホーミング弾として自機へ放出し、6秒かけて再生する
+    - YOZAKURA/SWEETHEART GROVEの登場エネミー計7種
+      （yoshitsune/frog/biwa_hoshi/fairy/imp/pixie/cupid）のメッシュを
+      Geminiデザインに刷新。`biwa_hoshi`はモチーフを琵琶法師から
+      「怨霊髑髏（がしゃどくろ）」へ変更。新デザインは全て
+      `userData.updateLoop`前提のため、`updateEnemies`側で該当`kind`に
+      `updateLoop`を呼び出す分岐を追加（呼ばないと静止したポーズのまま
+      表示されてしまうため必須の対応）
+    - 同2ステージの登場障害物のうち未着手だった8種
+      （sotoba/gravestone/bamboo/stone_lantern/heart_pillar/lollipop/
+      flower_arch/mushroom）のメッシュをGeminiデザインに刷新。これらも
+      `userData.updateLoop`前提のため、`updateObstacles`に
+      `updateLoop`呼び出しを新設して対応
+    - ステージクリアBGM（`stage_clear`、`assets/music/`に新規追加）を
+      `STELLAR_TRACK_DATA`へ統合。8ch同時発声（ch1〜ch8）の要望に応え、
+      既存の4ch/5ch構成では対応できなかったため、`stellarAudio.step()`
+      にch4・ch6〜ch8の再生処理を新設（既存トラックはこれらのデータを
+      持たないため無影響）。単発SEだった`playStageClearSound()`の代わりに
+      `clearAllEnemiesAndAdvance()`でこのBGMを再生するよう変更し、
+      `stageTransitionTimer`をBGM尺（約9.73秒、`STAGE_CLEAR_BGM_SECONDS`）
+      に合わせて延長（色フェード用の`STAGE_TRANSITION_SECONDS`とは独立）
+    - `npm run verify`全通過、Playwrightで実機確認（QUEEN TITANIA戦を
+      無敵化デバッグリグで観察し花びらの減少・petal_storm発動・再生
+      サイクルを確認、Character Galleryで7エネミー+8障害物を個別確認、
+      Sound Testでステージクリア新BGMの8ch再生を確認、いずれもコンソール
+      エラーなし）
 
 ## 今後の課題
 
